@@ -14,9 +14,6 @@ touching the engine or the call sites:
         ...
 
     model = MODELS.build("transformer", cfg)   # resolved at runtime from config
-
-This mirrors how larger research stacks (e.g. fvcore/detectron2, timm) keep a
-small composable core while allowing an open set of components.
 """
 
 from __future__ import annotations

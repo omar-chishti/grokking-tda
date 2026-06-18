@@ -30,7 +30,7 @@ def build_point_cloud(matrix: np.ndarray, cfg: PointCloudCfg, *, seed: int = 0) 
     if x.ndim != 2:
         raise ValueError(f"expected a 2D matrix, got shape {x.shape}")
 
-    if getattr(cfg, "drop_first", False):  # residue 0: outside the multiplicative group
+    if cfg.drop_first:  # residue 0 sits outside the multiplicative group (mul/div)
         x = x[1:]
 
     if cfg.normalize == "none":
@@ -45,7 +45,7 @@ def build_point_cloud(matrix: np.ndarray, cfg: PointCloudCfg, *, seed: int = 0) 
         raise ValueError(f"unknown normalize {cfg.normalize!r}")
 
     if cfg.max_points and x.shape[0] > cfg.max_points:
-        method = getattr(cfg, "subsample", "random")
+        method = cfg.subsample
         if method == "random":
             rng = np.random.default_rng(seed)
             idx = np.sort(rng.choice(x.shape[0], size=cfg.max_points, replace=False))

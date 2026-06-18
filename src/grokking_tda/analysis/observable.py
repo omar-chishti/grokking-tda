@@ -61,7 +61,7 @@ class ObservationContext:
                 self.run,
                 self.snapshot,
                 self.cfg.representation,
-                getattr(self.cfg, "representation_split", "all"),
+                self.cfg.representation_split,
             )
             self._point_cloud = build_point_cloud(matrix, self.cfg.pointcloud, seed=self.seed)
         return self._point_cloud
@@ -72,12 +72,12 @@ class ObservationContext:
             str(v)
             for v in (
                 self.cfg.representation,
-                getattr(self.cfg, "representation_split", "all"),
+                self.cfg.representation_split,
                 pc.normalize,
                 pc.metric,
                 pc.max_points,
-                getattr(pc, "subsample", "random"),
-                getattr(pc, "drop_first", False),
+                pc.subsample,
+                pc.drop_first,
                 hm.maxdim,
                 hm.coeff,
                 hm.thresh,
@@ -92,7 +92,7 @@ class ObservationContext:
     def diagrams(self) -> dict[int, np.ndarray]:
         if self._diagrams is not None:
             return self._diagrams
-        cache_enabled = bool(getattr(self.cfg, "cache_diagrams", True))
+        cache_enabled = bool(self.cfg.cache_diagrams)
         path = self._diagram_cache_path()
         if cache_enabled and path.exists():
             with np.load(path) as data:

@@ -1,0 +1,50 @@
+# Code/.gitignore — scoped for a repo rooted at Code/ (the public-code candidate).
+# A repo rooted here does NOT see the project-root .gitignore, so the venv and
+# run outputs must be excluded explicitly or `git add -A` would commit gigabytes.
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# uv: track the lockfile (reproducibility), ignore the resolved venv
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/**/*.ipynb_checkpoints/
+
+# Build outputs
+build/
+dist/
+*.egg-info/
+
+# Environment / secrets
+.env
+.env.*
+
+# Research outputs (artifact store) — heavy, regenerable
+results/raw/*
+results/processed/*
+results/figures/*
+!results/raw/.gitkeep
+!results/processed/.gitkeep
+!results/figures/.gitkeep
+
+# Checkpoints and large artifacts
+*.pt
+*.pth
+*.ckpt
+*.npz
+*.npy
+*.pkl
+*.joblib

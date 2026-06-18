@@ -1,0 +1,10 @@
+# @package _global_
+# Tiny end-to-end verification run (laptop CPU/MPS): mod 11, 200 steps.
+# Smoke runs are rerun constantly, so reusing the run dir is expected here.
+defaults:
+  - override /model: transformer
+  - override /data: mod_add_p11_smoke
+  - override /train: smoke
+
+seed: 0
+overwrite: true

@@ -1,0 +1,22 @@
+# Top-level Hydra config. Composes the typed schema with one preset per group.
+# Override anything from the CLI, e.g.:
+#   gtda-train data=mod_add_p113 train.optimizer.weight_decay=0.5 seed=3
+#   gtda-train +experiment=tf_mod97_grok           # apply an experiment preset
+#   gtda-train -m +experiment=tf_mod97_grok seed=0,1,2   # multirun sweep
+defaults:
+  - experiment_base
+  - model: transformer
+  - data: mod_add_p97
+  - train: full_batch_adamw
+  - analysis: default
+  - _self_
+
+# Hydra writes its own logs/outputs alongside our artifact store.
+hydra:
+  run:
+    dir: ${output_root}/${run_name}
+  sweep:
+    dir: ${output_root}/_sweeps/${now:%Y%m%d_%H%M%S}
+    subdir: ${run_name}_job${hydra.job.num}
+  job:
+    chdir: false

@@ -1,0 +1,12 @@
+# @package _global_
+# Faithful Tang et al. reproduction: 2-layer GELU transformer, p=113, frac 0.3,
+# minibatch AdamW (lr 3e-3, wd 0.1, eps 1e-6), 60k steps, snapshots every 500.
+# Known deviations (documented in Code_Review_Findings.md): 3-token [a, b, =]
+# tokenisation (Nanda-style) vs Tang's 2-token; no 10-step LR warmup.
+defaults:
+  - override /model: transformer_tang
+  - override /data: mod_add_p113
+  - override /train: tang
+
+seed: 0
+notes: "Tang et al. faithful reproduction (transformer, p=113, 60k steps)."

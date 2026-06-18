@@ -1,0 +1,12 @@
+# @package _global_
+# Intervention experiment: grokking via StableMax + OrthoGrad (no weight decay),
+# following Prieto et al. Used to test whether the topological signature tracks the
+# intervention rather than the slow weight-decay dynamics.
+defaults:
+  - override /model: transformer
+  - override /data: mod_add_p97
+  - override /train: stablemax_orthograd
+
+seed: 0
+train:
+  steps: 40000

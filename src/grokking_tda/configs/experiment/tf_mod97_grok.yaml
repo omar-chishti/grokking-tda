@@ -1,0 +1,15 @@
+# @package _global_
+# Canonical transformer grokking reproduction on modular addition mod 97.
+# On Apple hardware run with `train.device=cpu`: MPS has no float64, so the default
+# high-precision CE silently degrades to float32 (one-time warning) — keep CPU/CUDA
+# for the numerics the thesis relies on. See the runbook in Code_Review_Findings.md.
+defaults:
+  - override /model: transformer
+  - override /data: mod_add_p97
+  - override /train: full_batch_adamw
+
+seed: 0
+train:
+  steps: 40000
+  optimizer:
+    weight_decay: 1.0

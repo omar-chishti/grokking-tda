@@ -1,0 +1,16 @@
+#!/bin/bash
+# PBS Pro job-array sweep (Imperial central HPC uses PBS). Submit from Code/:
+#   qsub -v EXPERIMENT=tf_mod97_grok src/grokking_tda/orchestration/templates/pbs_array.pbs
+#PBS -N grokking-tda
+#PBS -l select=1:ncpus=8:mem=32gb:ngpus=1
+#PBS -l walltime=04:00:00
+#PBS -J 0-4
+set -euo pipefail
+
+cd "${PBS_O_WORKDIR:-.}"
+EXPERIMENT="${EXPERIMENT:-tf_mod97_grok}"
+SEED="${PBS_ARRAY_INDEX}"
+
+# module load cuda/12.1 2>/dev/null || true   # uncomment / adjust for the cluster
+echo "running ${EXPERIMENT} seed=${SEED} on $(hostname)"
+uv run gtda-train +experiment="${EXPERIMENT}" seed="${SEED}" train.device=cuda

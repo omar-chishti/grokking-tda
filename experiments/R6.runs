@@ -1,11 +1,13 @@
 # R6 — prime sweep (p=97 is R1).
-+experiment=tf_mod97_grok data=mod_add_p113 seed=0 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p113 seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p113 seed=2 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p113 seed=3 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p113 seed=4 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p149 seed=0 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p149 seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p149 seed=2 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p149 seed=3 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_add_p149 seed=4 train.capture_representations=false train.n_snapshots=150
+# Step budget raised to 60k on 2026-08-24: the measured grokking step for this
+# recipe is 25.7k-34.7k, so a 40k budget leaves no post-transition plateau.
++experiment=tf_mod97_grok data=mod_add_p113 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p113 seed=1 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p113 seed=2 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p113 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p113 seed=4 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p149 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p149 seed=1 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p149 seed=2 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p149 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p149 seed=4 train.capture_representations=false train.n_snapshots=150 train.steps=60000

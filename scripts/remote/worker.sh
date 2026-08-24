@@ -6,6 +6,11 @@ set -euo pipefail
 slice=$1 jobs=$2 out_root=$3
 mkdir -p "${out_root}/logs"
 
+export PATH="${HOME}/.local/bin:${PATH}"
+# Every run is a separate process on one GPU; let each use a single CPU thread so
+# concurrent runs do not fight over the machine's cores.
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+
 run_one() {
     local overrides=$1 out_root=$2
     local tag
@@ -18,5 +23,5 @@ run_one() {
 }
 export -f run_one
 
-grep -vE '^\s*(#|$)' "${slice}" \
+grep -vE '^[[:space:]]*(#|$)' "${slice}" \
     | xargs -P "${jobs}" -I LINE bash -c 'run_one "LINE" "$0"' "${out_root}"

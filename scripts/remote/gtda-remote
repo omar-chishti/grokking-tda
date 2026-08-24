@@ -2,14 +2,17 @@
 # Drive grokking_tda runs across the DoC lab GPU workstations.
 #
 # The lab machines have no scheduler: they are shared desktops reached over SSH.
-# This script is the missing scheduler — it finds idle GPUs, splits a run
-# manifest across them, and collects the artifacts back.
+# This script is the missing one — it finds idle GPUs, splits a run manifest
+# across them, and runs each host's share under tmux. Code, environment and
+# results all live on /vol/bitbucket, which every DoC machine mounts, so there is
+# a single checkout and a single results tree rather than per-node copies.
 #
-#   ./scripts/remote/gtda-remote sync                       # push the repo, build the env
-#   ./scripts/remote/gtda-remote probe                      # list usable GPU hosts
+#   ./scripts/remote/gtda-remote sync                       # push code, build the env
+#   ./scripts/remote/gtda-remote probe                      # list idle GPU hosts
 #   ./scripts/remote/gtda-remote launch experiments/R1.runs
 #   ./scripts/remote/gtda-remote status
-#   ./scripts/remote/gtda-remote fetch
+#   ./scripts/remote/gtda-remote analyse                    # observables + figures, remotely
+#   ./scripts/remote/gtda-remote fetch                      # pull artifacts back
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,155 +20,187 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=config.sh
 source "${SCRIPT_DIR}/config.sh"
 
-RSYNC_RSH="ssh ${SSH_OPTS[*]}"
 STATE_DIR="${PROJECT_DIR}/results/.remote"
 
 die() { echo "error: $*" >&2; exit 1; }
 
 # --- host discovery ----------------------------------------------------------
+# Probing runs *on* the shell server: one SSH hop from here instead of 36, and the
+# gpu hosts are on its local network.
 
 probe() {
-    local host free total users
-    for host in ${GPU_POOL}; do
-        read -r free total users < <(
-            on_host "${host}" '
-                read -r free total < <(nvidia-smi --query-gpu=memory.free,memory.total \
-                    --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ",")
-                echo "${free:-0} ${total:-0} $(who | wc -l)"
-            ' 2>/dev/null
-        ) || continue
-        [[ -z "${free}" || "${free}" -lt "${MIN_FREE_MB}" ]] && continue
-        # Someone is logged in at the console; leave their machine alone.
-        [[ "${users}" -gt 0 ]] && continue
-        echo "${host} ${free} ${total}"
-    done
+    on_shell "bash -s" <<EOF
+check() {
+    ssh -o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "\$1" '
+        read -r free name < <(nvidia-smi --query-gpu=memory.free,name \
+            --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ",")
+        load=\$(cut -d" " -f1 /proc/loadavg)
+        echo "\${free:-0} \${load} \${name:-unknown}"
+    ' 2>/dev/null | awk -v h="\$1" -v m=${MIN_FREE_MB} -v l=${MAX_LOAD} \
+        '\$1 >= m && \$2 <= l { printf "%s %s %s ", h, \$1, \$2; for(i=3;i<=NF;i++) printf "%s ", \$i; print "" }'
+}
+for h in ${GPU_POOL}; do check "\$h" & done
+wait
+EOF
 }
 
-available_hosts() { probe | awk '{print $1}'; }
+available_hosts() { probe | sort -k2 -nr | awk '{print $1}'; }
 
 # --- setup -------------------------------------------------------------------
 
 sync_repo() {
-    echo "syncing ${PROJECT_DIR} -> ${REMOTE_USER}@${JUMP_HOST}:~/${REPO_DIR}"
-    rsync -az --delete --rsh="${RSYNC_RSH}" \
+    echo "syncing source -> ${JUMP_HOST}:${REMOTE_BASE}"
+    on_shell "mkdir -p '${REMOTE_BASE}' '${UV_CACHE}'"
+    rsync -az --delete \
+        --rsh="ssh ${SHELL_OPTS[*]}" \
         --exclude '.venv' --exclude 'results' --exclude '.git' \
         --exclude '__pycache__' --exclude '.pytest_cache' --exclude '.ruff_cache' \
-        "${PROJECT_DIR}/" "${REMOTE_USER}@${JUMP_HOST}:${REPO_DIR}/"
+        "${PROJECT_DIR}/" "${JUMP_HOST}:${REMOTE_BASE}/"
 
-    echo "building the environment (shared over NFS home)"
-    ssh "${SSH_OPTS[@]}" "${REMOTE_USER}@${JUMP_HOST}" bash -s <<EOF
+    # Build the environment on a GPU host, not the shell server (which forbids
+    # heavy processes) — but into bitbucket, so every host shares the result.
+    local host
+    host=$(available_hosts | head -1)
+    [[ -n "${host}" ]] || die "no idle GPU host to build the environment on"
+    echo "building the environment on ${host} (shared via bitbucket)"
+
+    on_host "${host}" "bash -s" <<EOF
 set -euo pipefail
-command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="\$HOME/.local/bin:\$PATH"
-cd "\$HOME/${REPO_DIR}"
+export UV_CACHE_DIR="${UV_CACHE}"
+command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+cd "${REMOTE_BASE}"
 uv sync --frozen
-uv run python -c "import torch; print('torch', torch.__version__)"
+uv run python -c "import torch; print('torch', torch.__version__, '| cuda', torch.cuda.is_available(), '|', torch.cuda.get_device_name(0))"
 EOF
 }
 
 # --- launching ---------------------------------------------------------------
 
 launch() {
-    local manifest=${1:-} hosts=() host_list slice n_hosts i=0
+    local manifest=${1:-} hosts=() n_hosts i=0 host
     [[ -f "${manifest}" ]] || die "manifest not found: ${manifest}"
 
-    mapfile -t hosts < <(available_hosts)
+    # read into an array without mapfile: macOS ships bash 3.2
+    while IFS= read -r host; do
+        [[ -n "${host}" ]] && hosts+=("${host}")
+    done < <(available_hosts)
     n_hosts=${#hosts[@]}
-    (( n_hosts > 0 )) || die "no GPU hosts available (try MIN_FREE_MB= or a wider GPU_POOL)"
-    echo "${n_hosts} hosts available: ${hosts[*]}"
+    (( n_hosts > 0 )) || die "no idle GPU hosts (relax MIN_FREE_MB / MAX_LOAD, or wait)"
+    echo "${n_hosts} idle hosts: ${hosts[*]}"
 
     rm -rf "${STATE_DIR}"; mkdir -p "${STATE_DIR}"
     for host in "${hosts[@]}"; do : > "${STATE_DIR}/${host}.slice"; done
 
-    # Round-robin so a host never lands the whole tail of an ordered manifest.
+    # Round-robin, so no host inherits the whole expensive tail of an ordered manifest.
     while IFS= read -r line; do
         [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
         echo "${line}" >> "${STATE_DIR}/${hosts[i % n_hosts]}.slice"
         i=$((i + 1))
     done < "${manifest}"
-    echo "${i} runs across ${n_hosts} hosts, ${JOBS_PER_HOST} at a time each"
+    echo "${i} runs across ${n_hosts} hosts, ${JOBS_PER_HOST} concurrent each"
 
-    host_list=""
+    on_shell "mkdir -p '${REMOTE_BASE}/slices' '${REMOTE_BASE}/results/logs'"
+    rsync -az --rsh="ssh ${SHELL_OPTS[*]}" \
+        "${STATE_DIR}/" "${JUMP_HOST}:${REMOTE_BASE}/slices/"
+
+    : > "${STATE_DIR}/hosts"
     for host in "${hosts[@]}"; do
-        slice="${STATE_DIR}/${host}.slice"
-        [[ -s "${slice}" ]] || continue
-        on_host "${host}" "mkdir -p '${RUN_ROOT}'"
-        rsync -az --rsh="${RSYNC_RSH}" "${slice}" \
-            "${REMOTE_USER}@${host}.${REMOTE_DOMAIN}:${RUN_ROOT}/slice.txt"
-        on_host "${host}" "
-            export PATH=\"\$HOME/.local/bin:\$PATH\"
-            cd \"\$HOME/${REPO_DIR}\"
+        [[ -s "${STATE_DIR}/${host}.slice" ]] || continue
+        # A flaky host must cost its own slice, not the whole launch.
+        if on_host "${host}" "
+            export PATH=\"\$HOME/.local/bin:\$PATH\" UV_CACHE_DIR='${UV_CACHE}'
+            cd '${REMOTE_BASE}'
             tmux kill-session -t ${TMUX_SESSION} 2>/dev/null || true
             tmux new-session -d -s ${TMUX_SESSION} \
-                'bash scripts/remote/worker.sh ${RUN_ROOT}/slice.txt ${JOBS_PER_HOST} ${RUN_ROOT}'
-        "
-        host_list+="${host} "
-        echo "  ${host}: $(wc -l < "${slice}") runs"
+                'bash scripts/remote/worker.sh ${REMOTE_BASE}/slices/${host}.slice ${JOBS_PER_HOST} ${REMOTE_BASE}/results'
+        " 2>/dev/null; then
+            echo "${host}" >> "${STATE_DIR}/hosts"
+            echo "  ${host}: $(wc -l < "${STATE_DIR}/${host}.slice") runs"
+        else
+            echo "  ${host}: unreachable, skipped (re-run launch to pick it up)" >&2
+        fi
     done
-    echo "${host_list}" > "${STATE_DIR}/hosts"
-}
-
-launched_hosts() {
-    [[ -f "${STATE_DIR}/hosts" ]] || die "nothing launched from here yet"
-    cat "${STATE_DIR}/hosts"
+    local started
+    started=$(wc -l < "${STATE_DIR}/hosts")
+    (( started > 0 )) || die "every host failed to start"
 }
 
 # --- monitoring and collection ----------------------------------------------
 
 status() {
-    local host
-    for host in $(launched_hosts); do
-        printf '\n=== %s ===\n' "${host}"
-        on_host "${host}" "
-            tmux has-session -t ${TMUX_SESSION} 2>/dev/null \
-                && echo 'worker: running' || echo 'worker: finished'
-            done=\$(ls -d ${RUN_ROOT}/raw/*/ 2>/dev/null | wc -l)
-            echo \"run dirs: \$done / \$(grep -cvE '^\s*(#|\$)' ${RUN_ROOT}/slice.txt)\"
-            [[ -s ${RUN_ROOT}/logs/failures.txt ]] && echo 'FAILURES:' \
-                && cat ${RUN_ROOT}/logs/failures.txt
-            for m in ${RUN_ROOT}/raw/*/metrics.jsonl; do
-                [[ -f \"\$m\" ]] || continue
-                printf '  %-52s %s\n' \"\$(basename \$(dirname \$m))\" \"\$(tail -1 \$m | cut -c1-90)\"
-            done
-        " 2>/dev/null || echo "unreachable"
+    local hosts=() host
+    if [[ -f "${STATE_DIR}/hosts" ]]; then
+        while IFS= read -r host; do
+            [[ -n "${host}" ]] && hosts+=("${host}")
+        done < "${STATE_DIR}/hosts"
+    fi
+
+    echo "=== workers ==="
+    for host in "${hosts[@]}"; do
+        printf '  %-7s %s\n' "${host}" \
+            "$(on_host "${host}" "tmux has-session -t ${TMUX_SESSION} 2>/dev/null && echo running || echo finished" 2>/dev/null || echo unreachable)"
     done
+
+    echo "=== runs (shared results tree) ==="
+    on_shell "
+        cd '${REMOTE_BASE}' || exit 0
+        queued=\$(cat slices/*.slice 2>/dev/null | grep -cvE '^[[:space:]]*(#|\$)' || echo 0)
+        started=\$(ls -d results/raw/*/ 2>/dev/null | wc -l)
+        echo \"\${started} run dirs started of \${queued} queued\"
+        [ -s results/logs/failures.txt ] && { echo '--- FAILURES ---'; cat results/logs/failures.txt; }
+        [ -d results/raw ] && python3 scripts/remote/summarise.py results/raw
+    "
 }
 
-fetch() {
+analyse() {
     local host
+    host=$(available_hosts | head -1)
+    [[ -n "${host}" ]] || die "no idle host to analyse on"
+    echo "analysing every run on ${host} (CPU work, on the shared tree)"
+    on_host "${host}" "
+        export PATH=\"\$HOME/.local/bin:\$PATH\" UV_CACHE_DIR='${UV_CACHE}'
+        export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 KMP_DUPLICATE_LIB_OK=TRUE
+        cd '${REMOTE_BASE}'
+        tmux kill-session -t ${TMUX_SESSION}-an 2>/dev/null || true
+        tmux new-session -d -s ${TMUX_SESSION}-an \
+            'bash scripts/remote/analyse.sh ${REMOTE_BASE}/results/raw ${JOBS_PER_HOST}'
+    "
+    echo "started; poll with: $0 status"
+}
+
+# Snapshots are the bulk of a run (~120 MB) and are only needed where analysis runs.
+# The default pull is therefore the derived data: observables, summaries, metrics and
+# figures — kilobytes per run. Pass --all to mirror the raw snapshots too.
+fetch() {
+    local all=${1:-}
     mkdir -p "${PROJECT_DIR}/results/raw"
-    for host in $(launched_hosts); do
-        echo "fetching from ${host}"
-        rsync -az --rsh="${RSYNC_RSH}" \
-            "${REMOTE_USER}@${host}.${REMOTE_DOMAIN}:${RUN_ROOT}/raw/" \
-            "${PROJECT_DIR}/results/raw/" 2>/dev/null || echo "  nothing to fetch"
-    done
+    local filters=(--include='*/' --include='analysis/***' --include='figures/***'
+                   --include='metrics.jsonl' --include='events.jsonl'
+                   --include='manifest.json' --exclude='*')
+    [[ "${all}" == "--all" ]] && filters=()
+    echo "fetching ${REMOTE_BASE}/results/raw -> results/raw ${all}"
+    rsync -az --rsh="ssh ${SHELL_OPTS[*]}" "${filters[@]}" \
+        "${JUMP_HOST}:${REMOTE_BASE}/results/raw/" "${PROJECT_DIR}/results/raw/"
     echo "$(ls -d "${PROJECT_DIR}"/results/raw/*/ 2>/dev/null | wc -l) run dirs locally"
 }
 
 stop() {
-    local host
-    for host in $(launched_hosts); do
+    [[ -f "${STATE_DIR}/hosts" ]] || die "nothing launched from here"
+    while read -r host; do
         on_host "${host}" "tmux kill-session -t ${TMUX_SESSION} 2>/dev/null || true"
         echo "stopped ${host}"
-    done
-}
-
-clean() {
-    local host
-    for host in $(launched_hosts); do
-        on_host "${host}" "rm -rf '${RUN_ROOT}'"
-        echo "cleaned ${host}"
-    done
+    done < "${STATE_DIR}/hosts"
 }
 
 case "${1:-help}" in
     probe)  probe ;;
     sync)   sync_repo ;;
     launch) shift; launch "$@" ;;
+    analyse) analyse ;;
     status) status ;;
-    fetch)  fetch ;;
+    fetch)  shift; fetch "$@" ;;
     stop)   stop ;;
-    clean)  clean ;;
-    *) sed -n '2,14p' "$0" | sed 's/^# \?//' ;;
+    *) sed -n '2,15p' "$0" | sed 's/^# \?//' ;;
 esac

@@ -1,6 +1,8 @@
 # R2 — MLP architecture check, same task and recipe.
-+experiment=mlp_mod97_grok seed=0 train.capture_representations=false train.n_snapshots=150
-+experiment=mlp_mod97_grok seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=mlp_mod97_grok seed=2 train.capture_representations=false train.n_snapshots=150
-+experiment=mlp_mod97_grok seed=3 train.capture_representations=false train.n_snapshots=150
-+experiment=mlp_mod97_grok seed=4 train.capture_representations=false train.n_snapshots=150
+# Step budget raised to 60k on 2026-08-24: the measured grokking step for this
+# recipe is 25.7k-34.7k, so a 40k budget leaves no post-transition plateau.
++experiment=mlp_mod97_grok seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=mlp_mod97_grok seed=1 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=mlp_mod97_grok seed=2 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=mlp_mod97_grok seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=mlp_mod97_grok seed=4 train.capture_representations=false train.n_snapshots=150 train.steps=60000

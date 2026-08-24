@@ -1,17 +1,19 @@
 # R5 — train-fraction sweep (0.3 is R1). 0.2 sits near the semi-grokking edge and may
 # not transition inside the step budget; that boundary is itself the result.
-+experiment=tf_mod97_grok data.train_fraction=0.2 seed=0 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.2 seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.2 seed=2 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.2 seed=3 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.2 seed=4 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.4 seed=0 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.4 seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.4 seed=2 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.4 seed=3 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.4 seed=4 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.5 seed=0 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.5 seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.5 seed=2 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.5 seed=3 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.train_fraction=0.5 seed=4 train.capture_representations=false train.n_snapshots=150
+# Step budget raised to 60k on 2026-08-24: the measured grokking step for this
+# recipe is 25.7k-34.7k, so a 40k budget leaves no post-transition plateau.
++experiment=tf_mod97_grok data.train_fraction=0.2 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.2 seed=1 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.2 seed=2 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.2 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.2 seed=4 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.4 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.4 seed=1 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.4 seed=2 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.4 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.4 seed=4 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.5 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.5 seed=1 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.5 seed=2 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.5 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.5 seed=4 train.capture_representations=false train.n_snapshots=150 train.steps=60000

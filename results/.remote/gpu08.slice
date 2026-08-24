@@ -1,0 +1,8 @@
++experiment=mlp_mod97_grok seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_mul_p97 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.2 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data.train_fraction=0.5 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok data=mod_add_p149 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.3 train.steps=60000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 seed=0 train.capture_representations=false train.n_snapshots=150 train.steps=60000

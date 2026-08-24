@@ -77,7 +77,11 @@ def register_configs() -> None:
     cs.store(
         group="data",
         name="s5_composition",
-        node=DataCfg(task="permutation_group", operation="compose", train_fraction=0.5),
+        # modulus carries the group order here, so run names read compose120 rather than
+        # inheriting the meaningless default of 97 from the modular tasks.
+        node=DataCfg(
+            task="permutation_group", operation="compose", modulus=120, train_fraction=0.5
+        ),
     )
     smoke = DataCfg("modular_arithmetic", "add", 11, 0.5)
     cs.store(group="data", name="mod_add_p11_smoke", node=smoke)

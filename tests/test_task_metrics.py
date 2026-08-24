@@ -177,7 +177,7 @@ def test_s5_task_builds_with_the_standard_interface():
     from grokking_tda.config.schema import DataCfg
     from grokking_tda.data import build_data
 
-    data = build_data(DataCfg(task="permutation_group", train_fraction=0.5), seed=0)
+    data = build_data(DataCfg(task="permutation_group", modulus=120, train_fraction=0.5), seed=0)
     assert data.meta.num_classes == 120
     assert data.meta.vocab_size == 121
     assert data.inputs.shape == (14400, 3)
@@ -190,4 +190,13 @@ def test_s5_rejects_abelian_symbol_counts():
     from grokking_tda.data import build_data
 
     with pytest.raises(ValueError, match="abelian"):
-        build_data(DataCfg(task="permutation_group", n_symbols=2), seed=0)
+        build_data(DataCfg(task="permutation_group", n_symbols=2, modulus=2), seed=0)
+
+
+def test_s5_rejects_a_modulus_that_is_not_the_group_order():
+    """The run name is built from modulus, so a wrong one would mislabel the artifacts."""
+    from grokking_tda.config.schema import DataCfg
+    from grokking_tda.data import build_data
+
+    with pytest.raises(ValueError, match="group order"):
+        build_data(DataCfg(task="permutation_group", modulus=97), seed=0)

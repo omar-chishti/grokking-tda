@@ -50,6 +50,11 @@ def build_permutation_data(cfg: DataCfg, seed: int) -> ModularArithmeticData:
     if n < 3:
         raise ValueError("S_n is abelian below n = 3; the point of this task is that it is not")
     order = factorial(n)
+    if cfg.modulus != order:
+        raise ValueError(
+            f"modulus records the group order for this task: expected {order} for S_{n}, "
+            f"got {cfg.modulus}. It is what run names and TaskMeta report."
+        )
 
     table = composition_table(n)
     a = torch.arange(order).repeat_interleave(order)

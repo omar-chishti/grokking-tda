@@ -1,3 +1,0 @@
-+experiment=tf_mod97_grok data=mod_add_p113 train.steps=60000 seed=3 overwrite=true train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s4 seed=4 train.steps=60000 overwrite=true train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_orthograd model=mlp seed=0 train.steps=20000 train.capture_representations=false train.n_snapshots=150

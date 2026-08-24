@@ -1,0 +1,10 @@
+# R9c — the decisive non-cyclic test at its operating point. The R9b sweep found
+# fraction 0.6 groks comfortably (t_g 13,900 and 39,500), 0.5 only at the edge of a
+# 100k budget (86,600 and 100,000), and 0.4 not at all. Five seeds at 0.6, with the
+# dense trajectory recorded because this run set carries Chapter 6 as well as the
+# redundancy argument.
++experiment=tf_s5_grok data.train_fraction=0.6 seed=0 train.steps=100000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=1 train.steps=100000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=2 train.steps=100000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=3 train.steps=100000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=4 train.steps=100000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20

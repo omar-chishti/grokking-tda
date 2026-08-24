@@ -1,4 +1,0 @@
-+experiment=tf_s5_grok data.train_fraction=0.5 seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=150000 seed=3 overwrite=true train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_stablemax overwrite=true seed=4 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_stablemax model=mlp seed=2 train.capture_representations=false train.n_snapshots=150

@@ -1,0 +1,22 @@
+# R7b — Prieto et al. interventions at their published settings, replacing the earlier
+# preset which used lr 1e-3 and beta2 0.98 and did not reproduce. Their reference code
+# (Reference Code/edge-of-stability/run_main_experiments.sh) uses lr 1e-2, no weight
+# decay, train fraction 0.4, beta2 0.999 for StableMax and 0.99 for OrthoGrad, and
+# applies the two separately. Their default architecture is the MLP; the transformer is
+# a flag, so both are run here.
++experiment=tf_mod97_stablemax seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=4 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd seed=0 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd seed=1 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd seed=2 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd seed=3 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd seed=4 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd model=mlp seed=0 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd model=mlp seed=1 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd model=mlp seed=2 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax model=mlp seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax model=mlp seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax model=mlp seed=2 train.capture_representations=false train.n_snapshots=150

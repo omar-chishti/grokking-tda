@@ -1,12 +1,10 @@
 # @package _global_
-# Intervention experiment after Prieto et al.: stablemax at their published settings
+# Intervention experiment after Prieto et al.: orthograd at their published settings
 # (lr 1e-2, no weight decay, train fraction 0.4). Tests whether the topological
 # signature tracks the intervention rather than the slow weight-decay dynamics.
 defaults:
   - override /model: transformer
   - override /data: mod_add_p97_f04
-  - override /train: stablemax
+  - override /train: orthograd
 
 seed: 0
-train:
-  steps: 80000

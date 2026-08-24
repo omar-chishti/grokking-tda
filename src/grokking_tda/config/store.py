@@ -63,6 +63,10 @@ def register_configs() -> None:
 
     # --- data group ---
     cs.store(group="data", name="mod_add_p97", node=DataCfg("modular_arithmetic", "add", 97, 0.3))
+    # Prieto et al. run the interventions at fraction 0.4.
+    cs.store(
+        group="data", name="mod_add_p97_f04", node=DataCfg("modular_arithmetic", "add", 97, 0.4)
+    )
     cs.store(group="data", name="mod_add_p113", node=DataCfg("modular_arithmetic", "add", 113, 0.3))
     cs.store(group="data", name="mod_add_p149", node=DataCfg("modular_arithmetic", "add", 149, 0.3))
     cs.store(group="data", name="mod_sub_p97", node=DataCfg("modular_arithmetic", "sub", 97, 0.3))
@@ -74,12 +78,35 @@ def register_configs() -> None:
 
     # --- train group ---
     cs.store(group="train", name="full_batch_adamw", node=TrainCfg())
+    # Prieto et al. interventions. Their published settings are lr 1e-2 with no weight
+    # decay, train fraction 0.4, and beta2 raised (0.999 for StableMax, 0.99 for OrthoGrad);
+    # they apply the two separately, so each gets its own preset and the combination is a
+    # third condition rather than the default.
+    cs.store(
+        group="train",
+        name="stablemax",
+        node=TrainCfg(
+            loss="stablemax_ce",
+            optimizer=OptimCfg(name="adamw", lr=1e-2, weight_decay=0.0, betas=[0.9, 0.999]),
+        ),
+    )
+    cs.store(
+        group="train",
+        name="orthograd",
+        node=TrainCfg(
+            optimizer=OptimCfg(
+                name="orthograd_adamw", lr=1e-2, weight_decay=0.0, betas=[0.9, 0.99]
+            ),
+        ),
+    )
     cs.store(
         group="train",
         name="stablemax_orthograd",
         node=TrainCfg(
             loss="stablemax_ce",
-            optimizer=OptimCfg(name="orthograd_adamw", weight_decay=0.0),
+            optimizer=OptimCfg(
+                name="orthograd_adamw", lr=1e-2, weight_decay=0.0, betas=[0.9, 0.999]
+            ),
         ),
     )
     cs.store(

@@ -19,18 +19,31 @@ DoC access actually works.
 
 ## One-time setup
 
-Access is public-key only — the shell servers offer `publickey` and `gssapi-with-mic`, and refuse
-passwords. Confirm the key works before anything else:
+Access is public-key only — the shell servers offer `publickey` and `gssapi-with-mic`, and password
+authentication was disabled department-wide in December 2024.
+
+The key is passphrase-protected, so **load it into `ssh-agent` before anything else**. Every script
+here runs non-interactively, and a merely *locked* key fails exactly like a rejected one:
+`Permission denied (publickey)`. Diagnose with `ssh-add -l` before assuming anything is wrong
+server-side.
 
 ```bash
-ssh imperial 'hostname; quota -s | tail -2'
+ssh-add --apple-use-keychain ~/.ssh/id_rsa   # once; persists via Keychain
+ssh-add -l                                   # should list the key
+ssh imperial 'hostname; quota -s | tail -2'  # should now succeed
 ```
 
-`imperial` is a `Host` entry in `~/.ssh/config` pointing at `shell1.doc.ic.ac.uk`. If this returns
-`Permission denied (publickey)`, the public key is no longer in `~/.ssh/authorized_keys` on the DoC
-side; see *Restoring access* below. Nothing else in this document works until it succeeds.
+Add this to the top of `~/.ssh/config` so the agent loads the key automatically after a reboot:
 
-Then push the repo and build the environment:
+```
+Host *
+    AddKeysToAgent yes
+    UseKeychain yes
+    IdentityFile ~/.ssh/id_rsa
+```
+
+`imperial` is a `Host` entry pointing at `shell1.doc.ic.ac.uk`. Then push the repo and build the
+environment:
 
 ```bash
 ./scripts/remote/gtda-remote sync
@@ -99,19 +112,24 @@ the whole ~85-run programme to finish in well under an hour of wall time across 
 Verify this on the first sweep rather than trusting it: `status` reports steps per second from each
 run's `events.jsonl`.
 
-## Restoring access
+## If access genuinely breaks
 
-If `ssh imperial` returns `Permission denied (publickey)`:
+Work through these in order; the first is by far the most likely.
 
-1. Log in to the DoC self-service pages with your college credentials and re-upload
-   `~/.ssh/id_rsa.pub`, or
-2. Obtain a Kerberos ticket and use GSSAPI, which the servers still offer:
-   ```bash
-   /usr/bin/kinit oc525@IC.AC.UK
-   ssh -K imperial
-   ```
-   then append the public key to `~/.ssh/authorized_keys` on the remote side, or
-3. Email CSG (`doc-help@imperial.ac.uk`) with your username and public key.
+1. **The key is not loaded.** `ssh-add -l` reports `The agent has no identities`. Re-run
+   `ssh-add --apple-use-keychain ~/.ssh/id_rsa`. This accounts for most apparent failures, because
+   `BatchMode=yes` and any non-interactive caller turn a locked key into
+   `Permission denied (publickey)`.
+2. **Home directory permissions.** A group-writable home makes `sshd` ignore `authorized_keys`
+   silently. From a working session: `chmod go-w ~ && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys`.
+3. **The key really is absent server-side.** The servers still accept Kerberos, so you can get in
+   without it: `/usr/bin/kinit oc525@IC.AC.UK` (the macOS binary — Anaconda's `kinit` shadows it on
+   `PATH` and needs a config file that is not present), then
+   `ssh -o PreferredAuthentications=gssapi-with-mic oc525@shell1.doc.ic.ac.uk`, and re-add the key
+   with `ssh-copy-id`.
+4. **CSG's own procedure**, which requires being physically at a DoC lab machine in Huxley:
+   `~dcw/bin/setup-ssh --changereal` generates an ed25519 key, appends it to `authorized_keys`, and
+   writes a `~/.ssh/HomeConfig` to copy to the laptop. Otherwise email `doc-help@imperial.ac.uk`.
 
-The laptop remains a complete fallback throughout — `gtda-train` is identical, only slower — so a
-lost afternoon of access delays the sweeps rather than blocking the thesis.
+The laptop remains a complete fallback throughout — `gtda-train` is identical, only slower — so lost
+access delays the sweeps rather than blocking the thesis.

@@ -13,7 +13,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from grokking_tda.plotting.style import GROK_COLOR, use_vector_style
+from grokking_tda.plotting.style import GROK_COLOR, SEQUENTIAL, use_vector_style
 
 
 def plot_crocker(
@@ -29,7 +29,9 @@ def plot_crocker(
     use_vector_style()
     fig, ax = plt.subplots(figsize=(5.5, 3.4))
     vmax = max(int(matrix.max()), 1) if matrix.size else 1
-    mesh = ax.pcolormesh(scales, steps, matrix, shading="nearest", cmap="magma", vmin=0, vmax=vmax)
+    mesh = ax.pcolormesh(
+        scales, steps, matrix, shading="nearest", cmap=SEQUENTIAL, vmin=0, vmax=vmax
+    )
     ax.set_yscale("symlog")
     ax.set(xlabel="filtration scale", ylabel="training step")
     if grokking_step is not None:

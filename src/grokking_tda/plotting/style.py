@@ -14,6 +14,7 @@ import logging
 
 import matplotlib as mpl
 from cycler import cycler
+from matplotlib.colors import LinearSegmentedColormap
 
 # fontTools logs every glyph it subsets at INFO when embedding fonts into PDFs;
 # that floods our console, so quiet it (and matplotlib's own chatter).
@@ -29,6 +30,9 @@ STONE = "#8E8276"  # warm grey (fourth series)
 
 GROK_COLOR = "#96402A"  # burnt sienna: marks the grokking step on time axes
 DIM_COLORS = {0: STONE, 1: ACCENT, 2: SAGE}  # H0 / H1 / H2 in persistence diagrams
+
+# Sequential ramp for heatmaps, in the house palette: paper -> bronze -> ink.
+SEQUENTIAL = LinearSegmentedColormap.from_list("thesis", ["#F5F1EA", ACCENT, INK])
 
 
 def use_vector_style() -> None:

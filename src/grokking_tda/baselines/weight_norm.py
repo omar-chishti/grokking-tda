@@ -11,7 +11,7 @@ import torch
 from grokking_tda.analysis.observable import ObservationContext, register_observable
 
 
-@register_observable("weight_norm")
+@register_observable("weight_norm", direction="falling")
 def weight_norm(ctx: ObservationContext) -> float:
     """L2 norm of all floating-point parameters."""
     total = 0.0

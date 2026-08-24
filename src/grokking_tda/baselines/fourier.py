@@ -67,13 +67,13 @@ def _discrete_log_order(p: int) -> list[int] | None:
     return [pow(g, k, p) for k in range(p - 1)]
 
 
-@register_observable("fourier_concentration")
+@register_observable("fourier_concentration", direction="rising")
 def fourier_concentration(ctx: ObservationContext) -> float:
     """Power fraction in the top-5 Fourier modes of the embedding."""
     return _concentration(ctx.embedding_matrix(), top_k=5)
 
 
-@register_observable("fourier_concentration_group")
+@register_observable("fourier_concentration_group", direction="rising")
 def fourier_concentration_group(ctx: ObservationContext) -> float:
     """Top-5 concentration after discrete-log reordering (multiplicative characters).
 

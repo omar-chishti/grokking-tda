@@ -28,7 +28,7 @@ def two_nn_dimension(points: np.ndarray) -> float:
     return float(mu.size / np.log(mu).sum())
 
 
-@register_observable("lid")
+@register_observable("lid", direction="falling")
 def lid(ctx: ObservationContext) -> float:
     """TwoNN local intrinsic dimension of the analysed point cloud."""
     return two_nn_dimension(ctx.point_cloud())

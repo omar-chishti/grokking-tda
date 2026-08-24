@@ -25,7 +25,7 @@ from grokking_tda.artifacts.reader import Run, Snapshot
 _DATA_CACHE: dict[tuple, object] = {}
 
 
-def _dataset_for(run: Run):
+def dataset_for(run: Run):
     from grokking_tda.config.schema import DataCfg
     from grokking_tda.data import build_data
 
@@ -41,7 +41,7 @@ def _split_rows(run: Run, matrix: np.ndarray, split: str) -> np.ndarray:
         return matrix
     if split not in {"train", "test"}:
         raise ValueError(f"unknown representation split {split!r}; choices: all, train, test")
-    data = _dataset_for(run)
+    data = dataset_for(run)
     mask = data.train_mask.cpu().numpy()
     if split == "test":
         mask = ~mask
@@ -75,7 +75,7 @@ def extract_representation_matrix(
         return _split_rows(run, cached, split)
 
     # Recompute deterministically from weights, on the requested split only.
-    data = _dataset_for(run)
+    data = dataset_for(run)
     if split == "train":
         inputs = data.train_inputs
     elif split == "test":

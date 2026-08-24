@@ -112,12 +112,17 @@ class AnalysisCfg:
         default_factory=lambda: [
             "h1_max_persistence",
             "h1_total_persistence",
+            "h1_max_persistence_normalised",
+            "h1_total_persistence_normalised",
+            "pointcloud_scale",
             "h1_persistence_entropy",
             "h0_total_persistence",
             "weight_norm",
             "fourier_concentration",
             "fourier_concentration_group",
             "lid",
+            "test_acc",
+            "test_acc_novel",
         ]
     )
 

@@ -86,8 +86,11 @@ def random_init_null(
     homology = homology or HomologyCfg(maxdim=max(dim, 1))
     rows = []
     for i in range(n_samples):
-        torch.manual_seed(seed + i)
-        model = build_model(ModelCfg(**run.config["model"]), TaskMeta(**run.task_meta))
+        # A local generator: seeding the global RNG here would perturb any caller
+        # that draws randomness afterwards.
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(seed + i)
+            model = build_model(ModelCfg(**run.config["model"]), TaskMeta(**run.task_meta))
         embedding = model.embedding_matrix().cpu().numpy()
         cloud = build_point_cloud(embedding, pointcloud, seed=seed + i)
         diagram = compute_persistence(cloud, homology, metric).get(dim)

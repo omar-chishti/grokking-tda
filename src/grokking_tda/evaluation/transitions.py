@@ -67,8 +67,11 @@ def all_transitions(
     """Transition step and signed lag for *every* observable column.
 
     The lead-lag forest plot needs ``t_top`` per observable, not only the headline
-    one. Direction is inferred per series (LID falls at grokking; H1 rises).
+    one. Each observable declares which way it moves at registration; only columns
+    with no declaration fall back to inferring it from the series.
     """
+    from grokking_tda.analysis.observable import OBSERVABLE_DIRECTION
+
     t_g = grokking_step(metrics, acc_threshold)
     obs = observables.sort_values("step")
     steps = obs["step"].to_numpy()
@@ -76,7 +79,8 @@ def all_transitions(
     for column in obs.columns:
         if column == "step":
             continue
-        t_top = transition_step(steps, obs[column].to_numpy(dtype=float), direction="auto")
+        direction = OBSERVABLE_DIRECTION.get(column, "auto")
+        t_top = transition_step(steps, obs[column].to_numpy(dtype=float), direction=direction)
         delta = (t_g - t_top) if (t_g is not None and t_top is not None) else None
         out[column] = {"t_top": t_top, "delta": delta}
     return out

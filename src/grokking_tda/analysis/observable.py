@@ -19,7 +19,7 @@ from collections.abc import Callable
 import numpy as np
 import pandas as pd
 
-from grokking_tda.analysis.representations import extract_representation_matrix
+from grokking_tda.analysis.representations import dataset_for, extract_representation_matrix
 from grokking_tda.artifacts.reader import Run, Snapshot
 from grokking_tda.registry import Registry
 from grokking_tda.tda.homology import compute_persistence
@@ -48,6 +48,8 @@ class ObservationContext:
         self._diagrams: dict[int, np.ndarray] | None = None
         self._weights: dict | None = None
         self._embedding: np.ndarray | None = None
+        self._model = None
+        self._dataset = None
 
     def embedding_matrix(self) -> np.ndarray:
         """Always the residue-embedding matrix (the Fourier baseline lives here)."""
@@ -111,20 +113,46 @@ class ObservationContext:
             self._weights = self.snapshot.load_weights()
         return self._weights
 
+    def model(self):
+        """The snapshot's model, rebuilt from weights and cached."""
+        if self._model is None:
+            self._model = self.run.rebuild_model(self.snapshot)
+        return self._model
+
+    def dataset(self):
+        """The run's dataset, rebuilt deterministically from its config and seed."""
+        if self._dataset is None:
+            self._dataset = dataset_for(self.run)
+        return self._dataset
+
 
 # Observables are factories taking a context and returning a scalar.
 Observable = Callable[[ObservationContext], float]
 OBSERVABLES: Registry[float] = Registry("observable")
 
+# Which way an observable moves at the transition. Declared at registration rather
+# than inferred from the series, because inferring it from the first and last value
+# misreads anything non-monotone (weight norm rises then falls under weight decay)
+# and a wrong direction yields a t_top that silently enters the lead-lag results.
+OBSERVABLE_DIRECTION: dict[str, str] = {}
 
-def register_observable(name: str):
-    """Decorator registering an ``(ctx) -> float`` observable under ``name``."""
+
+def register_observable(name: str, *, direction: str = "rising"):
+    """Decorator registering an ``(ctx) -> float`` observable under ``name``.
+
+    ``direction`` is ``rising``, ``falling``, or ``auto`` where the observable is
+    genuinely non-monotone and the series must speak for itself.
+    """
+    if direction not in {"rising", "falling", "auto"}:
+        raise ValueError(f"unknown direction {direction!r}")
+    OBSERVABLE_DIRECTION[name] = direction
     return OBSERVABLES.register(name)
 
 
 def run_observables(run: Run, cfg) -> pd.DataFrame:
     """Compute every observable in ``cfg.observables`` over every snapshot of ``run``."""
     # Ensure the built-in observables are registered.
+    import grokking_tda.analysis.task_metrics  # noqa: F401
     import grokking_tda.baselines  # noqa: F401
     import grokking_tda.tda.observables  # noqa: F401
 

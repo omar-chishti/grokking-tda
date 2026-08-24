@@ -1,0 +1,29 @@
+# R10 — tuning sweep for the three conditions that did not transition in the first pass.
+# Written 2026-08-24 from measured results, not guessed: addition at f0.3/wd1.0 groks at
+# 28.6k, so a harder task under the same recipe plausibly needs a longer budget, more
+# data, or weaker decay. Two seeds per cell to locate a grokking configuration; the
+# winner then gets a full five-seed run.
+
+# poly (a^3 + ab) — the decisive non-cyclic test. Did not grok at f0.5/wd1.0 in 60k.
++experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.5 train.optimizer.weight_decay=0.3 train.steps=150000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.5 train.optimizer.weight_decay=0.3 train.steps=150000 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.7 train.optimizer.weight_decay=1.0 train.steps=150000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.7 train.optimizer.weight_decay=1.0 train.steps=150000 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.7 train.optimizer.weight_decay=0.3 train.steps=150000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.7 train.optimizer.weight_decay=0.3 train.steps=150000 seed=1 train.capture_representations=false train.n_snapshots=150
+
+# sub — did not grok at f0.3 in 60k, while add at the same settings groks at 28.6k. The
+# architecture is permutation-symmetric over the two operand tokens, which helps a
+# commutative operation and hinders a non-commutative one; more data should compensate.
++experiment=tf_mod97_grok data=mod_sub_p97 data.train_fraction=0.4 train.steps=100000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_sub_p97 data.train_fraction=0.4 train.steps=100000 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_sub_p97 data.train_fraction=0.5 train.steps=100000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_sub_p97 data.train_fraction=0.5 train.steps=100000 seed=1 train.capture_representations=false train.n_snapshots=150
+
+# wd 3.0 reached 0.40 and was still climbing when its 40k budget ran out; extend it so
+# the dose-response curve has a right-hand end rather than a censored point.
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 train.steps=120000 seed=0 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 train.steps=120000 seed=1 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 train.steps=120000 seed=2 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 train.steps=120000 seed=3 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 train.steps=120000 seed=4 overwrite=true train.capture_representations=false train.n_snapshots=150

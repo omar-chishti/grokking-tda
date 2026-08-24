@@ -1,8 +1,4 @@
-+experiment=mlp_mod97_grok seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
-+experiment=tf_mod97_grok data=mod_mul_p97 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
-+experiment=tf_mod97_grok data.train_fraction=0.2 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
-+experiment=tf_mod97_grok data.train_fraction=0.5 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
-+experiment=tf_mod97_grok data=mod_add_p149 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
-+experiment=tf_mod97_grok train.optimizer.weight_decay=0.3 train.steps=60000 seed=3 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_stablemax seed=3 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_poly_p97 seed=3 train.capture_representations=false train.n_snapshots=150 train.steps=60000
++experiment=tf_mod97_stablemax seed=4 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd model=mlp seed=2 train.steps=20000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.7 train.optimizer.weight_decay=0.3 train.steps=150000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 train.steps=120000 seed=2 overwrite=true train.capture_representations=false train.n_snapshots=150

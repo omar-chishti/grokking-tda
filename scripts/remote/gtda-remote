@@ -36,6 +36,7 @@ check() {
         read -r free name < <(nvidia-smi --query-gpu=memory.free,name \
             --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ",")
         load=\$(cut -d" " -f1 /proc/loadavg)
+        tmux has-session -t ${TMUX_SESSION} 2>/dev/null && exit 0
         echo "\${free:-0} \${load} \${name:-unknown}"
     ' 2>/dev/null | awk -v h="\$1" -v m=${MIN_FREE_MB} -v l=${MAX_LOAD} \
         '\$1 >= m && \$2 <= l { printf "%s %s %s ", h, \$1, \$2; for(i=3;i<=NF;i++) printf "%s ", \$i; print "" }'
@@ -87,7 +88,8 @@ launch() {
         [[ -n "${host}" ]] && hosts+=("${host}")
     done < <(available_hosts)
     n_hosts=${#hosts[@]}
-    (( n_hosts > 0 )) || die "no idle GPU hosts (relax MIN_FREE_MB / MAX_LOAD, or wait)"
+    (( n_hosts > 0 )) || die "no idle GPU hosts — a batch may still be running ($0 status), \
+or relax MIN_FREE_MB / MAX_LOAD"
     echo "${n_hosts} idle hosts: ${hosts[*]}"
 
     rm -rf "${STATE_DIR}"; mkdir -p "${STATE_DIR}"
@@ -112,7 +114,6 @@ launch() {
         if on_host "${host}" "
             export PATH=\"\$HOME/.local/bin:\$PATH\" UV_CACHE_DIR='${UV_CACHE}'
             cd '${REMOTE_BASE}'
-            tmux kill-session -t ${TMUX_SESSION} 2>/dev/null || true
             tmux new-session -d -s ${TMUX_SESSION} \
                 'bash scripts/remote/worker.sh ${REMOTE_BASE}/slices/${host}.slice ${JOBS_PER_HOST} ${REMOTE_BASE}/results'
         " 2>/dev/null; then

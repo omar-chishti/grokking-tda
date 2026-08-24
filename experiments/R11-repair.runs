@@ -1,0 +1,20 @@
+# R11 — re-runs of everything a second launch interrupted before the probe learned to
+# treat our own running workers as busy. Launch after the current batch drains.
+#   add113/wd1.0: grokked, so t_g is recorded, but the post-transition plateau is missing
+#   wd0.1:        only two of five seeds reached the 100k budget
+#   permuted:     only two of five seeds completed the falsification control
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=60000 seed=0 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=60000 seed=1 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=60000 seed=2 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=60000 seed=3 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=60000 seed=4 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=150000 seed=0 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=150000 seed=1 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=150000 seed=2 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=150000 seed=3 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=150000 seed=4 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s0 seed=0 train.steps=60000 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s1 seed=1 train.steps=60000 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s2 seed=2 train.steps=60000 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s3 seed=3 train.steps=60000 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s4 seed=4 train.steps=60000 overwrite=true train.capture_representations=false train.n_snapshots=150

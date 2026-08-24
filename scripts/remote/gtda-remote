@@ -50,14 +50,17 @@ available_hosts() { probe | sort -k2 -nr | awk '{print $1}'; }
 
 # --- setup -------------------------------------------------------------------
 
-sync_repo() {
-    echo "syncing source -> ${JUMP_HOST}:${REMOTE_BASE}"
+push_source() {
     on_shell "mkdir -p '${REMOTE_BASE}' '${UV_CACHE}'"
-    rsync -az --delete \
-        --rsh="ssh ${SHELL_OPTS[*]}" \
+    rsync -az --rsh="ssh ${SHELL_OPTS[*]}" \
         --exclude '.venv' --exclude 'results' --exclude '.git' \
         --exclude '__pycache__' --exclude '.pytest_cache' --exclude '.ruff_cache' \
         "${PROJECT_DIR}/" "${JUMP_HOST}:${REMOTE_BASE}/"
+}
+
+sync_repo() {
+    echo "syncing source -> ${JUMP_HOST}:${REMOTE_BASE}"
+    push_source
 
     # Build the environment on a GPU host, not the shell server (which forbids
     # heavy processes) — but into bitbucket, so every host shares the result.
@@ -82,6 +85,9 @@ EOF
 launch() {
     local manifest=${1:-} hosts=() n_hosts i=0 host
     [[ -f "${manifest}" ]] || die "manifest not found: ${manifest}"
+
+    echo "pushing current source"
+    push_source
 
     # read into an array without mapfile: macOS ships bash 3.2
     while IFS= read -r host; do
@@ -156,9 +162,11 @@ status() {
 }
 
 analyse() {
-    local host
-    host=$(available_hosts | head -1)
-    [[ -n "${host}" ]] || die "no idle host to analyse on"
+    # Analysis is CPU work and can share a machine with training, so it accepts an
+    # explicit host: during a sweep every GPU is busy but their cores are not.
+    local host=${1:-}
+    [[ -n "${host}" ]] || host=$(available_hosts | head -1)
+    [[ -n "${host}" ]] || die "no idle host; pass one explicitly, e.g. $0 analyse gpu26"
     echo "analysing every run on ${host} (CPU work, on the shared tree)"
     on_host "${host}" "
         export PATH=\"\$HOME/.local/bin:\$PATH\" UV_CACHE_DIR='${UV_CACHE}'
@@ -199,7 +207,7 @@ case "${1:-help}" in
     probe)  probe ;;
     sync)   sync_repo ;;
     launch) shift; launch "$@" ;;
-    analyse) analyse ;;
+    analyse) shift; analyse "$@" ;;
     status) status ;;
     fetch)  shift; fetch "$@" ;;
     stop)   stop ;;

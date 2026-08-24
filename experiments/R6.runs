@@ -1,0 +1,11 @@
+# R6 — prime sweep (p=97 is R1).
++experiment=tf_mod97_grok data=mod_add_p113 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p113 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p113 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p113 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p113 seed=4 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p149 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p149 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p149 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p149 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_add_p149 seed=4 train.capture_representations=false train.n_snapshots=150

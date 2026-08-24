@@ -1,0 +1,6 @@
+# R1 — canonical transformer reproduction, modular addition mod 97 (gate G0/G1).
++experiment=tf_mod97_grok seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok seed=4 train.capture_representations=false train.n_snapshots=150

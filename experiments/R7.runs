@@ -1,0 +1,23 @@
+# R7 — interventions and weight-decay dose-response (wd=1.0 is R1).
+# Low weight decay lengthens grokking sharply, so those arms get a longer budget;
+# a run that still has not transitioned is reported right-censored, not dropped.
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=100000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=100000 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=100000 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=100000 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=100000 seed=4 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.3 train.steps=60000 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.3 train.steps=60000 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.3 train.steps=60000 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.3 train.steps=60000 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.3 train.steps=60000 seed=4 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 seed=4 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax seed=4 train.capture_representations=false train.n_snapshots=150

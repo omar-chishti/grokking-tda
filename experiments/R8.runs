@@ -1,0 +1,8 @@
+# R8 — falsification. Permuted labels destroy the rule: the network memorises and never
+# groks, so the topological signature must vanish. run_name is set explicitly because the
+# default interpolation does not encode label_permutation and would collide with R1.
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s0 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s1 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s2 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s3 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s4 seed=4 train.capture_representations=false train.n_snapshots=150

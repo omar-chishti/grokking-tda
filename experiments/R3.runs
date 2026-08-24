@@ -1,0 +1,6 @@
+# R3 — Tang et al. faithful reproduction: 2-layer GELU transformer, p=113, 60k steps.
++experiment=tang_repro seed=0 train.capture_representations=false
++experiment=tang_repro seed=1 train.capture_representations=false
++experiment=tang_repro seed=2 train.capture_representations=false
++experiment=tang_repro seed=3 train.capture_representations=false
++experiment=tang_repro seed=4 train.capture_representations=false

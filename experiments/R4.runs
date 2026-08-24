@@ -1,0 +1,17 @@
+# R4 — operation sweep. Addition is R1; sub/mul are circle-isomorphic (basis-freeness),
+# div likewise. The genuinely non-cyclic test is R9.
++experiment=tf_mod97_grok data=mod_sub_p97 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_sub_p97 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_sub_p97 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_sub_p97 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_sub_p97 seed=4 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_mul_p97 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_mul_p97 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_mul_p97 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_mul_p97 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_mul_p97 seed=4 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_div_p97 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_div_p97 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_div_p97 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_div_p97 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_div_p97 seed=4 train.capture_representations=false train.n_snapshots=150

@@ -1,0 +1,6 @@
+# R2 — MLP architecture check, same task and recipe.
++experiment=mlp_mod97_grok seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=mlp_mod97_grok seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=mlp_mod97_grok seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=mlp_mod97_grok seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=mlp_mod97_grok seed=4 train.capture_representations=false train.n_snapshots=150

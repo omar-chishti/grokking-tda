@@ -1,0 +1,7 @@
+# R9 — the decisive non-cyclic task: a^3 + ab mod 97 (Power et al.). No circle solution
+# exists, so this asks whether H1 tracks generalisation beyond circle-shaped structure.
++experiment=tf_mod97_grok data=mod_poly_p97 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 seed=3 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data=mod_poly_p97 seed=4 train.capture_representations=false train.n_snapshots=150

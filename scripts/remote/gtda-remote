@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+# Drive grokking_tda runs across the DoC lab GPU workstations.
+#
+# The lab machines have no scheduler: they are shared desktops reached over SSH.
+# This script is the missing scheduler — it finds idle GPUs, splits a run
+# manifest across them, and collects the artifacts back.
+#
+#   ./scripts/remote/gtda-remote sync                       # push the repo, build the env
+#   ./scripts/remote/gtda-remote probe                      # list usable GPU hosts
+#   ./scripts/remote/gtda-remote launch experiments/R1.runs
+#   ./scripts/remote/gtda-remote status
+#   ./scripts/remote/gtda-remote fetch
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck source=config.sh
+source "${SCRIPT_DIR}/config.sh"
+
+RSYNC_RSH="ssh ${SSH_OPTS[*]}"
+STATE_DIR="${PROJECT_DIR}/results/.remote"
+
+die() { echo "error: $*" >&2; exit 1; }
+
+# --- host discovery ----------------------------------------------------------
+
+probe() {
+    local host free total users
+    for host in ${GPU_POOL}; do
+        read -r free total users < <(
+            on_host "${host}" '
+                read -r free total < <(nvidia-smi --query-gpu=memory.free,memory.total \
+                    --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ",")
+                echo "${free:-0} ${total:-0} $(who | wc -l)"
+            ' 2>/dev/null
+        ) || continue
+        [[ -z "${free}" || "${free}" -lt "${MIN_FREE_MB}" ]] && continue
+        # Someone is logged in at the console; leave their machine alone.
+        [[ "${users}" -gt 0 ]] && continue
+        echo "${host} ${free} ${total}"
+    done
+}
+
+available_hosts() { probe | awk '{print $1}'; }
+
+# --- setup -------------------------------------------------------------------
+
+sync_repo() {
+    echo "syncing ${PROJECT_DIR} -> ${REMOTE_USER}@${JUMP_HOST}:~/${REPO_DIR}"
+    rsync -az --delete --rsh="${RSYNC_RSH}" \
+        --exclude '.venv' --exclude 'results' --exclude '.git' \
+        --exclude '__pycache__' --exclude '.pytest_cache' --exclude '.ruff_cache' \
+        "${PROJECT_DIR}/" "${REMOTE_USER}@${JUMP_HOST}:${REPO_DIR}/"
+
+    echo "building the environment (shared over NFS home)"
+    ssh "${SSH_OPTS[@]}" "${REMOTE_USER}@${JUMP_HOST}" bash -s <<EOF
+set -euo pipefail
+command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="\$HOME/.local/bin:\$PATH"
+cd "\$HOME/${REPO_DIR}"
+uv sync --frozen
+uv run python -c "import torch; print('torch', torch.__version__)"
+EOF
+}
+
+# --- launching ---------------------------------------------------------------
+
+launch() {
+    local manifest=${1:-} hosts=() host_list slice n_hosts i=0
+    [[ -f "${manifest}" ]] || die "manifest not found: ${manifest}"
+
+    mapfile -t hosts < <(available_hosts)
+    n_hosts=${#hosts[@]}
+    (( n_hosts > 0 )) || die "no GPU hosts available (try MIN_FREE_MB= or a wider GPU_POOL)"
+    echo "${n_hosts} hosts available: ${hosts[*]}"
+
+    rm -rf "${STATE_DIR}"; mkdir -p "${STATE_DIR}"
+    for host in "${hosts[@]}"; do : > "${STATE_DIR}/${host}.slice"; done
+
+    # Round-robin so a host never lands the whole tail of an ordered manifest.
+    while IFS= read -r line; do
+        [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
+        echo "${line}" >> "${STATE_DIR}/${hosts[i % n_hosts]}.slice"
+        i=$((i + 1))
+    done < "${manifest}"
+    echo "${i} runs across ${n_hosts} hosts, ${JOBS_PER_HOST} at a time each"
+
+    host_list=""
+    for host in "${hosts[@]}"; do
+        slice="${STATE_DIR}/${host}.slice"
+        [[ -s "${slice}" ]] || continue
+        on_host "${host}" "mkdir -p '${RUN_ROOT}'"
+        rsync -az --rsh="${RSYNC_RSH}" "${slice}" \
+            "${REMOTE_USER}@${host}.${REMOTE_DOMAIN}:${RUN_ROOT}/slice.txt"
+        on_host "${host}" "
+            export PATH=\"\$HOME/.local/bin:\$PATH\"
+            cd \"\$HOME/${REPO_DIR}\"
+            tmux kill-session -t ${TMUX_SESSION} 2>/dev/null || true
+            tmux new-session -d -s ${TMUX_SESSION} \
+                'bash scripts/remote/worker.sh ${RUN_ROOT}/slice.txt ${JOBS_PER_HOST} ${RUN_ROOT}'
+        "
+        host_list+="${host} "
+        echo "  ${host}: $(wc -l < "${slice}") runs"
+    done
+    echo "${host_list}" > "${STATE_DIR}/hosts"
+}
+
+launched_hosts() {
+    [[ -f "${STATE_DIR}/hosts" ]] || die "nothing launched from here yet"
+    cat "${STATE_DIR}/hosts"
+}
+
+# --- monitoring and collection ----------------------------------------------
+
+status() {
+    local host
+    for host in $(launched_hosts); do
+        printf '\n=== %s ===\n' "${host}"
+        on_host "${host}" "
+            tmux has-session -t ${TMUX_SESSION} 2>/dev/null \
+                && echo 'worker: running' || echo 'worker: finished'
+            done=\$(ls -d ${RUN_ROOT}/raw/*/ 2>/dev/null | wc -l)
+            echo \"run dirs: \$done / \$(grep -cvE '^\s*(#|\$)' ${RUN_ROOT}/slice.txt)\"
+            [[ -s ${RUN_ROOT}/logs/failures.txt ]] && echo 'FAILURES:' \
+                && cat ${RUN_ROOT}/logs/failures.txt
+            for m in ${RUN_ROOT}/raw/*/metrics.jsonl; do
+                [[ -f \"\$m\" ]] || continue
+                printf '  %-52s %s\n' \"\$(basename \$(dirname \$m))\" \"\$(tail -1 \$m | cut -c1-90)\"
+            done
+        " 2>/dev/null || echo "unreachable"
+    done
+}
+
+fetch() {
+    local host
+    mkdir -p "${PROJECT_DIR}/results/raw"
+    for host in $(launched_hosts); do
+        echo "fetching from ${host}"
+        rsync -az --rsh="${RSYNC_RSH}" \
+            "${REMOTE_USER}@${host}.${REMOTE_DOMAIN}:${RUN_ROOT}/raw/" \
+            "${PROJECT_DIR}/results/raw/" 2>/dev/null || echo "  nothing to fetch"
+    done
+    echo "$(ls -d "${PROJECT_DIR}"/results/raw/*/ 2>/dev/null | wc -l) run dirs locally"
+}
+
+stop() {
+    local host
+    for host in $(launched_hosts); do
+        on_host "${host}" "tmux kill-session -t ${TMUX_SESSION} 2>/dev/null || true"
+        echo "stopped ${host}"
+    done
+}
+
+clean() {
+    local host
+    for host in $(launched_hosts); do
+        on_host "${host}" "rm -rf '${RUN_ROOT}'"
+        echo "cleaned ${host}"
+    done
+}
+
+case "${1:-help}" in
+    probe)  probe ;;
+    sync)   sync_repo ;;
+    launch) shift; launch "$@" ;;
+    status) status ;;
+    fetch)  fetch ;;
+    stop)   stop ;;
+    clean)  clean ;;
+    *) sed -n '2,14p' "$0" | sed 's/^# \?//' ;;
+esac

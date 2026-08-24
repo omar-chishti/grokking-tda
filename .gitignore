@@ -48,3 +48,6 @@ results/figures/*
 *.npy
 *.pkl
 *.joblib
+
+# Local run logs
+logs/

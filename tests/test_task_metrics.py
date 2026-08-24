@@ -119,3 +119,33 @@ def test_task_metric_observables_run_on_a_real_snapshot(tiny_run):
     ctx = ObservationContext(run, run.snapshots()[-1], OmegaConf.structured(AnalysisCfg))
     for value in (test_acc(ctx), test_acc_novel(ctx)):
         assert 0.0 <= value <= 1.0
+
+
+def test_ph_dimension_recovers_a_known_dimension():
+    """Uniform points in the plane should read as roughly two-dimensional."""
+    from grokking_tda.tda.phdim import ph_dimension
+
+    rng = np.random.default_rng(0)
+    plane = ph_dimension(rng.random((400, 2)), seed=0)
+    line = ph_dimension(rng.random((400, 1)), seed=0)
+
+    assert 1.5 < plane < 3.0
+    assert line < plane
+
+
+def test_ph_dimension_is_nan_on_too_few_points():
+    from grokking_tda.tda.phdim import ph_dimension
+
+    assert np.isnan(ph_dimension(np.random.default_rng(0).random((10, 3))))
+
+
+def test_ph_dimension_over_training_is_labelled_without_look_ahead():
+    from grokking_tda.tda.phdim import ph_dimension_over_training
+
+    rng = np.random.default_rng(0)
+    steps = np.arange(0, 1000, 5)
+    frame = ph_dimension_over_training(steps, rng.random((len(steps), 8)), window=100, stride=50)
+
+    assert not frame.empty
+    assert frame["step"].is_monotonic_increasing
+    assert frame["step"].iloc[0] == steps[99]

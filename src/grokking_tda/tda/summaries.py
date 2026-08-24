@@ -10,14 +10,21 @@ from __future__ import annotations
 import numpy as np
 
 
-def finite_lifetimes(diagram: np.ndarray) -> np.ndarray:
-    """Lifetimes (death - birth) of the finite bars in a diagram."""
+def finite_bars(diagram: np.ndarray | None) -> np.ndarray:
+    """The ``(birth, death)`` pairs of a diagram that actually die.
+
+    Essential classes carry an infinite death and are excluded from every summary
+    and distance here, as is conventional.
+    """
     if diagram is None or diagram.size == 0:
-        return np.empty(0)
-    finite = diagram[np.isfinite(diagram[:, 1])]
-    if finite.size == 0:
-        return np.empty(0)
-    return finite[:, 1] - finite[:, 0]
+        return np.empty((0, 2))
+    return diagram[np.isfinite(diagram[:, 1])]
+
+
+def finite_lifetimes(diagram: np.ndarray | None) -> np.ndarray:
+    """Lifetimes (death - birth) of the finite bars in a diagram."""
+    bars = finite_bars(diagram)
+    return bars[:, 1] - bars[:, 0] if bars.size else np.empty(0)
 
 
 def total_persistence(diagram: np.ndarray) -> float:

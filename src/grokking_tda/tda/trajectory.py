@@ -17,6 +17,7 @@ import numpy as np
 
 from grokking_tda.config.schema import HomologyCfg
 from grokking_tda.tda.homology import compute_persistence
+from grokking_tda.tda.summaries import finite_bars
 
 
 def betti_at_scales(diagram: np.ndarray, scales: np.ndarray) -> np.ndarray:
@@ -60,8 +61,7 @@ def crocker_from_diagrams(
     Taking diagrams (rather than clouds) lets callers reuse the per-snapshot diagram
     cache instead of recomputing persistence.
     """
-    finite = [d[np.isfinite(d[:, 1])] for d in diagrams if d is not None and d.size]
-    finite = [f for f in finite if f.size]
+    finite = [bars for bars in map(finite_bars, diagrams) if bars.size]
     lo = min((f[:, 0].min() for f in finite), default=0.0)
     hi = max((f[:, 1].max() for f in finite), default=1.0)
     pad = 0.02 * (hi - lo) if hi > lo else max(hi, 1.0) * 0.02

@@ -16,11 +16,7 @@ import numpy as np
 import pandas as pd
 from persim import bottleneck, sliced_wasserstein
 
-
-def _finite(diagram: np.ndarray | None) -> np.ndarray:
-    if diagram is None or diagram.size == 0:
-        return np.empty((0, 2))
-    return diagram[np.isfinite(diagram[:, 1])]
+from grokking_tda.tda.summaries import finite_bars
 
 
 def diagram_distance(
@@ -32,7 +28,7 @@ def diagram_distance(
     smoother proxy better suited to velocity curves. An empty diagram is treated as
     diagonal-only, so the bottleneck distance to it is half the longest lifetime.
     """
-    a, b = _finite(d1), _finite(d2)
+    a, b = finite_bars(d1), finite_bars(d2)
     if a.size == 0 and b.size == 0:
         return 0.0
     if metric == "bottleneck":

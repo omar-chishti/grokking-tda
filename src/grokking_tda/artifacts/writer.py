@@ -53,20 +53,16 @@ class ArtifactWriter:
         self.metrics_path.write_text("")
         self.events_path.write_text("")
 
-    # --- manifest ------------------------------------------------------------
     def write_manifest(self, manifest: Manifest) -> None:
         self._dump(self.run_dir / "manifest.json", manifest.to_dict())
 
-    # --- metrics -------------------------------------------------------------
     def append_metric(self, record: dict[str, Any]) -> None:
         self._append_jsonl(self.metrics_path, record)
 
-    # --- events (lifecycle / timing / failures; for observability) -----------
     def append_event(self, record: dict[str, Any]) -> None:
         record = {"ts": datetime.now(timezone.utc).isoformat(), **record}
         self._append_jsonl(self.events_path, record)
 
-    # --- snapshots -----------------------------------------------------------
     def write_snapshot(
         self,
         step: int,
@@ -82,7 +78,6 @@ class ArtifactWriter:
         # Written last and atomically: the index only ever lists fully-saved snapshots.
         self._dump(self.snapshots_dir / "index.json", {"steps": sorted(set(self._snapshot_steps))})
 
-    # --- low-level (atomic) --------------------------------------------------
     @staticmethod
     def _append_jsonl(path: Path, record: dict[str, Any]) -> None:
         with path.open("a", encoding="utf-8") as handle:

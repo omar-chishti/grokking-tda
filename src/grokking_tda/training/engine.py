@@ -27,6 +27,7 @@ from grokking_tda.training.callbacks import (
 from grokking_tda.training.losses import build_loss
 from grokking_tda.training.optimizers import build_optimizer
 from grokking_tda.training.schedules import snapshot_steps
+from grokking_tda.training.trajectory import TrajectoryRecorder
 
 
 class Trainer:
@@ -54,7 +55,7 @@ class Trainer:
         self.last_metrics: dict[str, float] = {}
         self._batch_gen = torch.Generator().manual_seed(cfg.seed + 1)
 
-    # --- main loop -----------------------------------------------------------
+    # --- main loop
     def fit(self) -> Trainer:
         self.writer.append_event(
             {"event": "train_start", "total_steps": self.total_steps, "device": str(self.device)}
@@ -92,7 +93,7 @@ class Trainer:
         for callback in self.callbacks:
             getattr(callback, hook)(self)
 
-    # --- responsibilities delegated by callbacks -----------------------------
+    # --- responsibilities delegated by callbacks
     @torch.no_grad()
     def _evaluate(self, inputs: torch.Tensor, targets: torch.Tensor) -> tuple[float, float]:
         self.model.eval()
@@ -138,9 +139,20 @@ class Trainer:
 
 def default_callbacks(cfg: ExperimentCfg) -> list[Callback]:
     """The standard callback stack: metrics, snapshots (log-spaced), console."""
-    steps = snapshot_steps(cfg.train.steps, cfg.train.n_snapshots, cfg.train.snapshot_schedule)
-    return [
+    steps = snapshot_steps(
+        cfg.train.steps,
+        cfg.train.n_snapshots,
+        cfg.train.snapshot_schedule,
+        cfg.train.dense_from,
+        cfg.train.dense_to,
+    )
+    callbacks: list[Callback] = [
         MetricLogger(cfg.train.metric_every),
         SnapshotSaver(steps),
         ConsoleProgress(every=max(cfg.train.metric_every, cfg.train.steps // 20 or 1)),
     ]
+    if cfg.train.trajectory_dim:
+        callbacks.append(
+            TrajectoryRecorder(cfg.train.trajectory_dim, cfg.train.trajectory_every, cfg.seed)
+        )
+    return callbacks

@@ -10,6 +10,7 @@ import pandas as pd
 
 from grokking_tda.plotting.style import DIM_COLORS as _DIM_COLORS
 from grokking_tda.plotting.style import GROK_COLOR, use_vector_style
+from grokking_tda.tda.summaries import finite_bars
 
 
 def plot_observables_over_time(
@@ -44,10 +45,8 @@ def plot_persistence_diagram(diagrams: dict[int, np.ndarray], out_path: str | Pa
     """Birth-death scatter for each homology dimension (infinite bars clamped to top)."""
     use_vector_style()
     fig, ax = plt.subplots(figsize=(4, 4))
-    finite_vals = [
-        d[np.isfinite(d[:, 1])] for d in diagrams.values() if d is not None and d.size
-    ]
-    top = max((fv[:, 1].max() for fv in finite_vals if fv.size), default=1.0) * 1.1
+    bars = [b for b in map(finite_bars, diagrams.values()) if b.size]
+    top = max((b[:, 1].max() for b in bars), default=1.0) * 1.1
     ax.plot([0, top], [0, top], color="grey", lw=0.8, zorder=0)
     for dim, dgm in diagrams.items():
         if dgm is None or dgm.size == 0:

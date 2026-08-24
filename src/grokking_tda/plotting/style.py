@@ -21,7 +21,6 @@ from matplotlib.colors import LinearSegmentedColormap
 logging.getLogger("fontTools").setLevel(logging.WARNING)
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
-# --- the thesis palette -------------------------------------------------------
 INK = "#1F1B16"  # text / primary series
 ACCENT = "#8C6A43"  # warm bronze, secondary series / emphasis
 RULE = "#C8B69B"  # light rule / faint series

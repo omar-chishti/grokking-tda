@@ -10,10 +10,9 @@ of the confound is visible rather than assumed away.
 
 from __future__ import annotations
 
-import numpy as np
-
 from grokking_tda.analysis.observable import ObservationContext, register_observable
 from grokking_tda.tda.summaries import (
+    finite_bars,
     max_persistence,
     n_features,
     persistence_entropy,
@@ -28,11 +27,8 @@ def connectivity_scale(ctx: ObservationContext) -> float:
     computed — and is exactly linear in the cloud's size, which is the property a
     normaliser needs.
     """
-    diagram = ctx.diagrams().get(0)
-    if diagram is None or diagram.size == 0:
-        return 0.0
-    finite = diagram[np.isfinite(diagram[:, 1])]
-    return float(finite[:, 1].max()) if finite.size else 0.0
+    bars = finite_bars(ctx.diagrams().get(0))
+    return float(bars[:, 1].max()) if bars.size else 0.0
 
 
 def _normalised(ctx: ObservationContext, summary) -> float:

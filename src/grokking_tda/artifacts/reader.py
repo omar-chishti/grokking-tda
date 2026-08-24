@@ -81,6 +81,14 @@ class Run:
         records = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
         return pd.DataFrame(records)
 
+    def trajectory(self) -> tuple[np.ndarray, np.ndarray] | None:
+        """The dense projected optimisation path as ``(steps, points)``, if recorded."""
+        path = self.dir / "trajectory.npz"
+        if not path.exists():
+            return None
+        with np.load(path) as data:
+            return data["steps"], data["points"]
+
     def snapshots(self) -> list[Snapshot]:
         index = self.dir / "snapshots" / "index.json"
         steps = json.loads(index.read_text())["steps"] if index.exists() else []

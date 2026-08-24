@@ -93,7 +93,6 @@ class ModularArithmeticData:
         self.test_inputs = self.inputs[~self.train_mask]
         self.test_targets = self.targets[~self.train_mask]
 
-    # --- device handling -----------------------------------------------------
     def to(self, device: torch.device) -> ModularArithmeticData:
         self.inputs = self.inputs.to(device)
         self.targets = self.targets.to(device)

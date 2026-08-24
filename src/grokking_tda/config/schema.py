@@ -72,8 +72,15 @@ class TrainCfg:
     metric_every: int = 100  # cadence (steps) for cheap scalar metrics
     n_snapshots: int = 60  # number of heavy snapshots (weights + representations)
     snapshot_schedule: str = "log"  # log | linear  spacing of snapshots over steps
+    # Optional dense window, for resolving the transition finely enough to time it.
+    dense_from: int = 0
+    dense_to: int = 0
     capture_representations: bool = True  # cache embeddings/activations into snapshots
     keep_optimizer_state: bool = False  # snapshots are for analysis, not resuming
+    # Dense record of the optimisation path, projected (0 => off). Snapshots are far
+    # too sparse to treat the trajectory as a point cloud; see training/trajectory.py.
+    trajectory_dim: int = 0
+    trajectory_every: int = 10
 
 
 @dataclass

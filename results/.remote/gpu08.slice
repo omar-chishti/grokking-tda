@@ -1,4 +1,4 @@
-+experiment=tf_mod97_stablemax seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_orthograd seed=4 train.steps=20000 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.5 train.optimizer.weight_decay=0.3 train.steps=150000 seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_sub_p97 data.train_fraction=0.5 train.steps=100000 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_s5_grok data.train_fraction=0.4 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok train.optimizer.weight_decay=0.1 train.steps=150000 seed=1 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax overwrite=true seed=2 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_stablemax model=mlp seed=0 train.capture_representations=false train.n_snapshots=150

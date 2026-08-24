@@ -1,4 +1,3 @@
-+experiment=tf_mod97_orthograd seed=0 train.steps=20000 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_stablemax model=mlp seed=0 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok data=mod_poly_p97 data.train_fraction=0.7 train.optimizer.weight_decay=0.3 train.steps=150000 seed=1 train.capture_representations=false train.n_snapshots=150
-+experiment=tf_mod97_grok train.optimizer.weight_decay=3.0 train.steps=120000 seed=3 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_s5_grok data.train_fraction=0.6 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_grok data.label_permutation=true run_name=transformer_add97_permuted_s0 seed=0 train.steps=60000 overwrite=true train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd seed=1 train.steps=20000 train.capture_representations=false train.n_snapshots=150

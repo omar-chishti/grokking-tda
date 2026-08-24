@@ -73,6 +73,12 @@ def register_configs() -> None:
     cs.store(group="data", name="mod_mul_p97", node=DataCfg("modular_arithmetic", "mul", 97, 0.5))
     cs.store(group="data", name="mod_div_p97", node=DataCfg("modular_arithmetic", "div", 97, 0.5))
     cs.store(group="data", name="mod_poly_p97", node=DataCfg("modular_arithmetic", "poly", 97, 0.5))
+    # S_5 composition: non-abelian, so no circle can respect the group operation.
+    cs.store(
+        group="data",
+        name="s5_composition",
+        node=DataCfg(task="permutation_group", operation="compose", train_fraction=0.5),
+    )
     smoke = DataCfg("modular_arithmetic", "add", 11, 0.5)
     cs.store(group="data", name="mod_add_p11_smoke", node=smoke)
 

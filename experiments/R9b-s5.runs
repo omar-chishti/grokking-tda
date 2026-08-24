@@ -1,0 +1,12 @@
+# R9b — the decisive non-cyclic test, moved to S_5 composition after the a^3+ab
+# polynomial was measured not to grok (six runs, 150k steps, fractions 0.5/0.7,
+# weight decays 0.3/1.0, test accuracy 0.021-0.026 against 0.0103 chance).
+# S_5 is non-abelian, so no circle respects the group operation. Fraction sweep first,
+# since the grokking threshold for this task is unknown here; the winning cell then
+# gets a full five-seed run.
++experiment=tf_s5_grok data.train_fraction=0.4 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_s5_grok data.train_fraction=0.4 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_s5_grok data.train_fraction=0.5 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_s5_grok data.train_fraction=0.5 seed=1 train.capture_representations=false train.n_snapshots=150
++experiment=tf_s5_grok data.train_fraction=0.6 seed=0 train.capture_representations=false train.n_snapshots=150
++experiment=tf_s5_grok data.train_fraction=0.6 seed=1 train.capture_representations=false train.n_snapshots=150

@@ -149,3 +149,45 @@ def test_ph_dimension_over_training_is_labelled_without_look_ahead():
     assert not frame.empty
     assert frame["step"].is_monotonic_increasing
     assert frame["step"].iloc[0] == steps[99]
+
+
+def test_s5_composition_table_is_a_group():
+    """Closure, an identity, and an inverse for every element."""
+    from grokking_tda.data.permutation import composition_table
+
+    table = composition_table(4)
+    order = table.shape[0]
+    assert order == 24
+    assert int(table.min()) == 0 and int(table.max()) == order - 1
+
+    identity = 0  # lexicographically first permutation is the identity
+    assert all(int(table[identity, j]) == j for j in range(order))
+    assert all(int(table[i, identity]) == i for i in range(order))
+    assert all(identity in {int(table[i, j]) for j in range(order)} for i in range(order))
+
+
+def test_s5_composition_is_not_abelian():
+    from grokking_tda.data.permutation import composition_table
+
+    table = composition_table(4)
+    assert not torch.equal(table, table.T)
+
+
+def test_s5_task_builds_with_the_standard_interface():
+    from grokking_tda.config.schema import DataCfg
+    from grokking_tda.data import build_data
+
+    data = build_data(DataCfg(task="permutation_group", train_fraction=0.5), seed=0)
+    assert data.meta.num_classes == 120
+    assert data.meta.vocab_size == 121
+    assert data.inputs.shape == (14400, 3)
+    assert int(data.train_mask.sum()) == 7200
+    assert (data.inputs[:, 2] == data.meta.equals_token).all()
+
+
+def test_s5_rejects_abelian_symbol_counts():
+    from grokking_tda.config.schema import DataCfg
+    from grokking_tda.data import build_data
+
+    with pytest.raises(ValueError, match="abelian"):
+        build_data(DataCfg(task="permutation_group", n_symbols=2), seed=0)

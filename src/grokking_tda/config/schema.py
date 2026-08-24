@@ -25,6 +25,7 @@ class DataCfg:
     modulus: int = 97  # the prime p; |dataset| = p*p (p*(p-1) for div, which excludes b=0)
     train_fraction: float = 0.3  # fraction of the input pairs used for training
     label_permutation: bool = False  # permute labels (destroys the rule; Tang's control / nulls)
+    n_symbols: int = 5  # symmetric-group tasks only: S_n, order n!
 
 
 @dataclass

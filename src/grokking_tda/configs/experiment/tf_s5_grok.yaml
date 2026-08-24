@@ -1,0 +1,13 @@
+# @package _global_
+# The decisive non-cyclic test: composition in S_5. Non-abelian, so a generalising
+# embedding cannot be a circle — which asks whether the H1 signature tracks
+# generalisation or only circle formation. Replaces the a^3+ab polynomial, which was
+# measured not to grok at all (see data/permutation.py).
+defaults:
+  - override /model: transformer
+  - override /data: s5_composition
+  - override /train: full_batch_adamw
+
+seed: 0
+train:
+  steps: 100000

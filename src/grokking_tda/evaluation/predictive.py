@@ -16,8 +16,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# Pre-registered prediction windows (steps). Fixed in advance in
-# Documentation/Experiment_Design.md §4; do not tune these post hoc.
+# Prediction windows (steps), fixed before any run was analysed and never revised after
+# seeing a result. A window chosen post hoc measures the chooser, not the observable.
 PREREGISTERED_WINDOWS: tuple[int, ...] = (500, 1000, 2000, 5000)
 
 

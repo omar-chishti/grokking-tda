@@ -3,8 +3,9 @@
 # Usage:
 #   gtda-train -m +experiment=tf_mod97_grok seed=0,1,2,3,4 \
 #       hydra/launcher=imperial_slurm
-# Adjust partition/account to the actual Imperial GPU cluster once confirmed
-# (see Open_Questions.md — scheduler is not yet pinned down).
+# Set partition/account to your own scheduler's before use; the values below are a
+# working shape, not a live configuration. The DoC workstation pool this project
+# actually ran on is driven by scripts/remote/ instead (docs/CLUSTER.md).
 _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
 submitit_folder: ${output_root}/_submitit/${now:%Y%m%d_%H%M%S}
 timeout_min: 240

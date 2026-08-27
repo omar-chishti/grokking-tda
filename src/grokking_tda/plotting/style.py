@@ -1,11 +1,10 @@
 """Vector-first matplotlib style for thesis figures, in the thesis house palette.
 
 ``pdf.fonttype = 42`` embeds editable TrueType fonts (not bitmaps), and we keep
-everything vector so figures scale cleanly in the manuscript. Colours mirror the
-LaTeX house palette (``LaTeX/shared/styles/palette.tex``): ThesisInk ``#1F1B16``,
-ThesisAccent (bronze) ``#8C6A43``, ThesisRule ``#C8B69B`` — with two muted
-companions for multi-series plots. Serif font preferences fall back gracefully
-where ETbb is not installed.
+everything vector so figures scale cleanly in the manuscript. Colours mirror its house
+palette — ThesisInk ``#1F1B16``, ThesisAccent (bronze) ``#8C6A43``, ThesisRule
+``#C8B69B`` — with two muted companions for multi-series plots. Serif font
+preferences fall back gracefully where ETbb is not installed.
 """
 
 from __future__ import annotations

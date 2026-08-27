@@ -92,7 +92,10 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 python_version = "3.10"
 packages = ["grokking_tda"]
 ignore_missing_imports = true   # ripser/persim/giotto ship no stubs
-warn_unused_ignores = true
+# Off deliberately: this project pins two torch majors (2.2.2 on macOS, >=2.4 on Linux),
+# so whether a given `type: ignore` is redundant depends on which stubs mypy happens to
+# see. With this on, the same source is clean on one platform and red on the other.
+warn_unused_ignores = false
 
 [tool.pytest.ini_options]
 markers = ["slow: degree-2 homology on a few hundred points (seconds, not milliseconds)"]

@@ -1,0 +1,9 @@
+# R12b — the p=113 wd 1.0 dense set, re-queued. Its first launch died before training
+# started: the worker named each log after the full override string, and this set's
+# line is the only one long enough to exceed the 255-byte filename limit, so the
+# redirect failed and the run looked like a training failure. Fixed in worker.sh.
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s0 seed=0 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s1 seed=1 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s2 seed=2 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s3 seed=3 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s4 seed=4 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000

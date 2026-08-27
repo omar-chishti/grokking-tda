@@ -1,0 +1,43 @@
+# R12 — the re-run the endgame plan pre-registered but never executed: the key regimes
+# recorded with a projected weight trajectory (Chapter 6) and a dense snapshot window
+# through the transition (audit finding A2). Only the five S_5 runs carry a trajectory
+# today, so PH-dimension currently rests on a single task.
+#
+# Windows are set from the *measured* per-seed grokking steps and bracket every seed:
+#   p=113 wd 0.1  t_g 10.5-14.0k -> 8k-18k      p=113 wd 1.0  t_g 16.8-27.5k -> 14k-30k
+#   p=97  wd 1.0  t_g 25.7-34.7k -> 22k-38k     permuted      no transition -> no window
+# With n_snapshots=200 the dense half gives 100-160 step resolution, finally finer than
+# the ~1000-step lag being measured.
+#
+# run_name is explicit throughout: the default interpolation encodes neither the
+# trajectory nor the window, so these would collide with the existing run directories.
+
+# Tang regime (p=113, wd 0.1) — where the H1 signature is present.
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_dense_s0 seed=0 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=8000 train.dense_to=18000
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_dense_s1 seed=1 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=8000 train.dense_to=18000
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_dense_s2 seed=2 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=8000 train.dense_to=18000
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_dense_s3 seed=3 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=8000 train.dense_to=18000
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_dense_s4 seed=4 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=8000 train.dense_to=18000
+
+# Nanda regime (p=97, wd 1.0) — where it is absent.
++experiment=tf_mod97_grok train.steps=50000 run_name=transformer_add97_f0.3_wd1.0_dense_s0 seed=0 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=22000 train.dense_to=38000
++experiment=tf_mod97_grok train.steps=50000 run_name=transformer_add97_f0.3_wd1.0_dense_s1 seed=1 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=22000 train.dense_to=38000
++experiment=tf_mod97_grok train.steps=50000 run_name=transformer_add97_f0.3_wd1.0_dense_s2 seed=2 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=22000 train.dense_to=38000
++experiment=tf_mod97_grok train.steps=50000 run_name=transformer_add97_f0.3_wd1.0_dense_s3 seed=3 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=22000 train.dense_to=38000
++experiment=tf_mod97_grok train.steps=50000 run_name=transformer_add97_f0.3_wd1.0_dense_s4 seed=4 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=22000 train.dense_to=38000
+
+# The weight-decay control at fixed modulus — the run that turns regime dependence
+# from a confound into a claim.
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s0 seed=0 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s1 seed=1 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s2 seed=2 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s3 seed=3 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
++experiment=tf_mod97_grok data=mod_add_p113 train.steps=50000 run_name=transformer_add113_f0.3_wd1.0_dense_s4 seed=4 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20 train.dense_from=14000 train.dense_to=30000
+
+# Permuted labels: memorisation without generalisation. No transition, so no window —
+# but the trajectory is the point, as the negative control for PH-dimension.
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_dense_s0 seed=0 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_dense_s1 seed=1 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_dense_s2 seed=2 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_dense_s3 seed=3 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_dense_s4 seed=4 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=20

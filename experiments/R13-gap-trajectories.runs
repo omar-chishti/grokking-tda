@@ -1,0 +1,60 @@
+# R13 — trajectories for the conditions with an intermediate generalisation gap.
+#
+# Why. Thesis panel D6.3(F) states the Birdal et al. claim — that the PH-dimension of the
+# optimisation path tracks the generalisation gap across models — and cannot state it in
+# the form Birdal states it, because the gap takes two values in the trajectory set and
+# nothing in between. Only 25 runs carry `trajectory.npz`, and every one either groks to
+# test accuracy 1.000 or sits at 0.010: the distinct terminal accuracies are 0.009, 0.010,
+# 0.012, 0.014, 0.998, 1.000. What is drawn as a correlation is a two-group comparison.
+#
+# The bank itself is not the problem. Fourteen of the 125 main-programme runs have a gap
+# between 0.1 and 0.9 — they simply were not among the four conditions chosen for dense
+# re-runs. This set gives those conditions a projected trajectory. Per-seed gaps measured
+# on the existing runs:
+#
+#   f=0.4 wd 0.0 orthograd  0.012 0.026 0.587 0.038 0.263    20k steps
+#   f=0.3 wd 0.0 stablemax  0.698 0.694 0.694 0.699 0.701    40k steps
+#   f=0.2 wd 1.0            0.795 0.796 0.800 0.804 0.799    60k steps
+#   f=0.3 wd 0.1            0.127 0.009 0.000 0.642 0.000   150k steps
+#
+# Together with the 25 existing trajectories (gap 0.00 and gap ~0.99) that covers the
+# whole range continuously, and the last two conditions are the interesting ones: the same
+# recipe produces seeds at both ends, so the gap varies with recipe held fixed.
+#
+# Configs are reconstructed from the originals' manifests, not from the presets, because
+# two of the four were built by overriding `full_batch_adamw` rather than by a preset.
+# Only `run_name` and the trajectory settings differ from the runs they repeat, so the
+# gaps above are what these should reproduce.
+#
+# Cheapest first: the 20k set is ~20 minutes a seed and gives two intermediate points on
+# its own, so the panel is unblocked long before the 150k set lands.
+
+# --- f=0.4, orthograd lr 1e-2 (20k steps; gaps 0.01-0.59) --------------------------
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_traj_s0 seed=0 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_traj_s1 seed=1 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_traj_s2 seed=2 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_traj_s3 seed=3 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_traj_s4 seed=4 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
+
+# --- f=0.3, stablemax + orthograd at lr 1e-3 (40k steps; gap ~0.70) ----------------
+# Built from full_batch_adamw, not the stablemax_orthograd preset: that preset carries
+# lr 1e-2 and betas [0.9, 0.999], and these runs are lr 1e-3 with betas [0.9, 0.98].
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_traj_s0 seed=0 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_traj_s1 seed=1 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_traj_s2 seed=2 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_traj_s3 seed=3 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_traj_s4 seed=4 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
+
+# --- f=0.2, wd 1.0 (60k steps; gap ~0.80, the semi-grokking edge of section 4.1) ---
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_traj_s0 seed=0 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_traj_s1 seed=1 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_traj_s2 seed=2 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_traj_s3 seed=3 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_traj_s4 seed=4 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
+
+# --- f=0.3, wd 0.1 (150k steps; gaps 0.00-0.64, split within one recipe) -----------
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.1_traj_s0 seed=0 train.optimizer.weight_decay=0.1 train.steps=150000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.1_traj_s1 seed=1 train.optimizer.weight_decay=0.1 train.steps=150000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.1_traj_s2 seed=2 train.optimizer.weight_decay=0.1 train.steps=150000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.1_traj_s3 seed=3 train.optimizer.weight_decay=0.1 train.steps=150000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.1_traj_s4 seed=4 train.optimizer.weight_decay=0.1 train.steps=150000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20

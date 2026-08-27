@@ -30,23 +30,27 @@ def alpha_weighted_lifetime_sum(points: np.ndarray, alpha: float = 1.0) -> float
     return float((lifetimes**alpha).sum()) if lifetimes.size else 0.0
 
 
-def ph_dimension(
+def ph_dimension_fit(
     points: np.ndarray,
     *,
     alpha: float = 1.0,
     n_subsets: int = 8,
     min_points: int = 40,
     seed: int = 0,
-) -> float:
-    """PH-dimension of ``points``, from the growth of ``E_alpha`` with sample size.
+) -> dict[str, float]:
+    """The fit behind the dimension, not only its value.
 
-    Returns ``nan`` when the window is too small to fit a slope, or when the fitted
-    slope leaves the admissible range (a degenerate window rather than a dimension).
+    ``dim = alpha / (1 - slope)`` is very stiff in ``slope`` near the ends of the
+    admissible range: a dimension near 1.15 is a slope near 0.13, where a small error in
+    the regression moves the dimension a long way. The slope and the fit's ``r2`` are
+    therefore returned beside the dimension, so that proximity to the edge is visible
+    rather than hidden inside a ``nan``.
     """
     x = np.asarray(points, dtype=np.float64)
     n_total = x.shape[0]
+    blank = {"ph_dim": float("nan"), "slope": float("nan"), "r2": float("nan"), "n_sizes": 0.0}
     if n_total < min_points * 2:
-        return float("nan")
+        return blank
 
     rng = np.random.default_rng(seed)
     sizes = np.unique(np.linspace(min_points, n_total, n_subsets, dtype=int))
@@ -58,12 +62,29 @@ def ph_dimension(
             logs_n.append(np.log(size))
             logs_e.append(np.log(energy))
     if len(logs_n) < 3:
-        return float("nan")
+        return blank
 
-    slope = float(np.polyfit(logs_n, logs_e, 1)[0])
-    if not 0.0 < slope < 1.0:
-        return float("nan")
-    return alpha / (1.0 - slope)
+    slope, intercept = np.polyfit(logs_n, logs_e, 1)
+    predicted = intercept + slope * np.asarray(logs_n)
+    residual = np.asarray(logs_e) - predicted
+    total = np.asarray(logs_e) - np.mean(logs_e)
+    r2 = 1.0 - float(residual @ residual) / float(total @ total) if total.any() else float("nan")
+    admissible = 0.0 < slope < 1.0
+    return {
+        "ph_dim": alpha / (1.0 - slope) if admissible else float("nan"),
+        "slope": float(slope),
+        "r2": r2,
+        "n_sizes": float(len(logs_n)),
+    }
+
+
+def ph_dimension(points: np.ndarray, **kwargs) -> float:
+    """PH-dimension of ``points``, from the growth of ``E_alpha`` with sample size.
+
+    Returns ``nan`` when the window is too small to fit a slope, or when the fitted slope
+    leaves the admissible range (a degenerate window rather than a dimension).
+    """
+    return ph_dimension_fit(points, **kwargs)["ph_dim"]
 
 
 def ph_dimension_over_training(

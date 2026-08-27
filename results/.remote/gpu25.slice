@@ -1,1 +1,0 @@
-+experiment=tf_s5_grok data.train_fraction=0.6 seed=4 train.steps=100000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20

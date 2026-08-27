@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Shared configuration for the remote-execution scripts. Override any value from
-# the environment: REMOTE_USER=abc123 ./scripts/remote/gtda-remote probe
+# Shared configuration for the remote-execution scripts. Every value is overridable
+# from the environment:  REMOTE_USER=abc123 ./scripts/remote/gtda-remote probe
 
-REMOTE_USER="${REMOTE_USER:-oc525}"
+: "${REMOTE_USER:?set REMOTE_USER to your login on the GPU pool}"
 REMOTE_DOMAIN="${REMOTE_DOMAIN:-doc.ic.ac.uk}"
 JUMP_HOST="${JUMP_HOST:-imperial}"           # a Host entry in ~/.ssh/config
 
@@ -35,6 +35,11 @@ MUX_OPTS=(
     -o ControlPersist=300
 )
 
+# Host keys on the lab pool change whenever a machine is re-imaged, and a rejected key
+# stalls a non-interactive launch across a dozen of them. Trust here is carried by the
+# jump host, which *is* pinned in ~/.ssh/config; these are machines behind that boundary,
+# on the department's own network, and nothing secret crosses the hop. Do not copy this
+# block for a host reached directly from the open internet.
 SSH_OPTS=(
     "${MUX_OPTS[@]}"
     -o BatchMode=yes
@@ -45,12 +50,12 @@ SSH_OPTS=(
 )
 [[ -n "${JUMP_HOST}" ]] && SSH_OPTS+=(-J "${JUMP_HOST}")
 
-# The shell server; reached by its ~/.ssh/config alias, without the -J hop.
+# The shell server; reached by its ~/.ssh/config alias, without the -J hop. This one is
+# the boundary, so its key is checked normally.
 SHELL_OPTS=(
     "${MUX_OPTS[@]}"
     -o BatchMode=yes
     -o ConnectTimeout="${SSH_TIMEOUT}"
-    -o StrictHostKeyChecking=no
     -o LogLevel=ERROR
 )
 

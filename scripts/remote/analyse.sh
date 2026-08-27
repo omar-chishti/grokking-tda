@@ -9,13 +9,17 @@ export PATH="${HOME}/.local/bin:${PATH}"
 # permit the duplicate runtime, or a CPU analysis process can deadlock.
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 KMP_DUPLICATE_LIB_OK=TRUE
 
+# Analysis is re-run as new runs land, so completed runs are skipped; FORCE=1
+# redoes everything, which is what a change to an observable requires.
 analyse_one() {
     local run=$1
+    [[ -z "${FORCE:-}" && -f "${run}/analysis/summary.json" ]] && return 0
     uv run gtda-analyse "${run}" > "${run}/analysis.log" 2>&1 \
         && uv run gtda-plot "${run}" >> "${run}/analysis.log" 2>&1 \
         || echo "FAILED ${run}" >> "$(dirname "${run}")/../logs/analysis_failures.txt"
 }
 export -f analyse_one
+export FORCE
 
 find "${root}" -mindepth 1 -maxdepth 1 -type d -print0 \
     | xargs -0 -P "${jobs}" -I RUN bash -c 'analyse_one "RUN"'

@@ -12,6 +12,7 @@
 #   ./scripts/remote/gtda-remote launch experiments/R1.runs
 #   ./scripts/remote/gtda-remote status
 #   ./scripts/remote/gtda-remote analyse                    # observables + figures, remotely
+#   FORCE=1 ./scripts/remote/gtda-remote analyse gpu27      # ... redoing completed runs too
 #   ./scripts/remote/gtda-remote fetch                      # pull artifacts back
 set -euo pipefail
 
@@ -174,7 +175,7 @@ analyse() {
         cd '${REMOTE_BASE}'
         tmux kill-session -t ${TMUX_SESSION}-an 2>/dev/null || true
         tmux new-session -d -s ${TMUX_SESSION}-an \
-            'bash scripts/remote/analyse.sh ${REMOTE_BASE}/results/raw ${JOBS_PER_HOST}'
+            'FORCE=${FORCE:-} bash scripts/remote/analyse.sh ${REMOTE_BASE}/results/raw ${JOBS_PER_HOST}'
     "
     echo "started; poll with: $0 status"
 }

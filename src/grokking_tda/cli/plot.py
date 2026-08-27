@@ -70,7 +70,7 @@ def main() -> None:
         if args.steps:
             available = [s.step for s in snapshots]
             for wanted in (int(s) for s in str(args.steps).split(",") if s.strip()):
-                nearest = min(range(len(available)), key=lambda i, w=wanted: abs(available[i] - w))
+                nearest = min(range(len(available)), key=lambda i: abs(available[i] - wanted))
                 snap = snapshots[nearest]
                 stage_ctx = ObservationContext(run, snap, cfg)
                 plot_persistence_diagram(

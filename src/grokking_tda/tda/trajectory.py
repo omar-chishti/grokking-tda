@@ -20,7 +20,7 @@ from grokking_tda.tda.homology import compute_persistence
 from grokking_tda.tda.summaries import finite_bars
 
 
-def betti_at_scales(diagram: np.ndarray, scales: np.ndarray) -> np.ndarray:
+def betti_at_scales(diagram: np.ndarray | None, scales: np.ndarray) -> np.ndarray:
     """Number of bars in ``diagram`` alive at each scale (birth <= s < death)."""
     scales = np.asarray(scales)
     if diagram is None or diagram.size == 0:

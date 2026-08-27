@@ -14,11 +14,13 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from grokking_tda.artifacts import ArtifactWriter, Manifest, prepare_run_dir
+from grokking_tda.config.schema import ExperimentCfg
 from grokking_tda.config.store import register_configs
 from grokking_tda.data import build_data
 from grokking_tda.models import build_model
@@ -31,6 +33,8 @@ register_configs()
 logger = get_logger(__name__)
 
 
+# Hydra hands back a DictConfig backed by the ExperimentCfg schema; the casts below say
+# so once, rather than threading OmegaConf's union types through the whole call graph.
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
 def main(cfg: DictConfig) -> None:
     seed_everything(cfg.seed, deterministic=cfg.train.deterministic)
@@ -47,7 +51,7 @@ def main(cfg: DictConfig) -> None:
     writer.write_manifest(
         Manifest(
             run_name=cfg.run_name,
-            config=OmegaConf.to_container(cfg, resolve=True),
+            config=cast(dict, OmegaConf.to_container(cfg, resolve=True)),
             env=collect_env_info().to_dict(),
             task_meta=asdict(data.meta),
             created_at=datetime.now(timezone.utc).isoformat(),
@@ -55,7 +59,7 @@ def main(cfg: DictConfig) -> None:
     )
 
     try:
-        Trainer(model, data, cfg, device, writer).fit()
+        Trainer(model, data, cast(ExperimentCfg, cfg), device, writer).fit()
     except Exception as exc:
         # Leave a traceable outcome in the artifact before propagating.
         writer.append_event({"event": "train_end", "status": "failed", "error": repr(exc)})

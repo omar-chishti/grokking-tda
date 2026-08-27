@@ -29,7 +29,7 @@ class OrthoGrad(Optimizer):
         self.defaults = base_optimizer.defaults
 
     @torch.no_grad()
-    def step(self, closure=None):  # type: ignore[override]
+    def step(self, closure=None):
         for group in self.param_groups:
             for p in group["params"]:
                 if p.grad is None:
@@ -42,20 +42,24 @@ class OrthoGrad(Optimizer):
                 p.grad.copy_(g_orth.view_as(p.grad))
         return self.base.step(closure)
 
-    def zero_grad(self, set_to_none: bool = True) -> None:  # type: ignore[override]
+    def zero_grad(self, set_to_none: bool = True) -> None:
         self.base.zero_grad(set_to_none=set_to_none)
 
-    def state_dict(self):  # type: ignore[override]
+    def state_dict(self):
         return self.base.state_dict()
 
-    def load_state_dict(self, state_dict):  # type: ignore[override]
+    def load_state_dict(self, state_dict):
         self.base.load_state_dict(state_dict)
 
 
 def _build_base(name: str, params: Iterable[torch.nn.Parameter], cfg: OptimCfg) -> Optimizer:
     if name == "adamw":
         return AdamW(
-            params, lr=cfg.lr, betas=tuple(cfg.betas), eps=cfg.eps, weight_decay=cfg.weight_decay
+            params,
+            lr=cfg.lr,
+            betas=(cfg.betas[0], cfg.betas[1]),
+            eps=cfg.eps,
+            weight_decay=cfg.weight_decay,
         )
     if name == "sgd":
         return SGD(params, lr=cfg.lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)

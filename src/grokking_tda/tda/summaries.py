@@ -27,23 +27,23 @@ def finite_lifetimes(diagram: np.ndarray | None) -> np.ndarray:
     return bars[:, 1] - bars[:, 0] if bars.size else np.empty(0)
 
 
-def total_persistence(diagram: np.ndarray) -> float:
+def total_persistence(diagram: np.ndarray | None) -> float:
     lifetimes = finite_lifetimes(diagram)
     return float(lifetimes.sum()) if lifetimes.size else 0.0
 
 
-def max_persistence(diagram: np.ndarray) -> float:
+def max_persistence(diagram: np.ndarray | None) -> float:
     lifetimes = finite_lifetimes(diagram)
     return float(lifetimes.max()) if lifetimes.size else 0.0
 
 
-def n_features(diagram: np.ndarray, min_persistence: float = 0.0) -> int:
+def n_features(diagram: np.ndarray | None, min_persistence: float = 0.0) -> int:
     """Number of finite bars with lifetime strictly above ``min_persistence``."""
     lifetimes = finite_lifetimes(diagram)
     return int((lifetimes > min_persistence).sum())
 
 
-def persistence_entropy(diagram: np.ndarray) -> float:
+def persistence_entropy(diagram: np.ndarray | None) -> float:
     """Shannon entropy of the normalised lifetime distribution (nats).
 
     A single robust scalar for how *organised* a diagram is: one dominant bar gives

@@ -12,6 +12,8 @@ Writes into ``<run_dir>/analysis/``:
   ``early_window_features`` at the pre-registered windows (plus ``tc``);
 - ``trajectory_distance.csv`` — distance between consecutive snapshots' H1 diagrams
   (the topological velocity of the trajectory), when >= 3 snapshots exist;
+- ``ph_dimension.csv`` — PH-dimension in a sliding window along the optimisation
+  path, for runs that recorded a dense projected trajectory;
 - ``diagrams/`` — cached per-snapshot persistence diagrams (reused by plotting).
 """
 
@@ -21,6 +23,7 @@ import argparse
 import json
 from pathlib import Path
 
+import numpy as np
 from omegaconf import OmegaConf
 
 from grokking_tda.analysis import ObservationContext, run_observables
@@ -29,10 +32,13 @@ from grokking_tda.config.schema import AnalysisCfg
 from grokking_tda.evaluation import (
     all_transitions,
     early_window_feature_grid,
+    grokking_step_sensitivity,
     lead_lag,
 )
 from grokking_tda.evaluation.predictive import PREREGISTERED_WINDOWS
+from grokking_tda.evaluation.transitions import transition_step
 from grokking_tda.tda.distances import trajectory_velocity
+from grokking_tda.tda.phdim import ph_dimension_over_training
 from grokking_tda.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -85,6 +91,14 @@ def main() -> None:
 
     summary = lead_lag(run.metrics, observables, args.observable, args.acc_threshold)
     summary["transitions"] = all_transitions(run.metrics, observables, args.acc_threshold)
+    summary["grokking_step_sensitivity"] = grokking_step_sensitivity(run.metrics, observables)
+    # Divergence under an intervention is a reported result, so it is recorded here
+    # rather than inferred later from a run's absence from a table.
+    summary["diverged"] = any(
+        not np.isfinite(run.metrics[column].to_numpy(dtype=float)).all()
+        for column in ("train_loss", "test_loss")
+        if column in run.metrics
+    )
     windows = tuple(int(w) for w in str(args.windows).split(",") if w.strip())
     summary["early_window_features"] = early_window_feature_grid(
         observables, windows=windows, train_convergence=summary["train_convergence_step"]
@@ -105,6 +119,29 @@ def main() -> None:
         trajectory_velocity(steps, diagrams).to_csv(
             out_dir / "trajectory_distance.csv", index=False
         )
+
+    # PH-dimension of the optimisation path itself (Birdal et al., NeurIPS 2021).
+    # Only runs that recorded a dense projected trajectory can support this: the
+    # snapshot schedule gives ~10^2 iterates where the estimator needs ~10^3.
+    trajectory = run.trajectory()
+    if trajectory is not None:
+        traj_steps, traj_points = trajectory
+        ph_dim = ph_dimension_over_training(
+            traj_steps, traj_points, seed=int(run.config.get("seed", 0))
+        )
+        ph_dim.to_csv(out_dir / "ph_dimension.csv", index=False)
+        # PH-dimension falls as the model generalises, so the transition is a fall.
+        t_ph = transition_step(
+            ph_dim["step"].to_numpy(), ph_dim["ph_dim"].to_numpy(), direction="falling"
+        )
+        t_g = summary["grokking_step"]
+        summary["ph_dimension"] = {
+            "t_ph": t_ph,
+            "delta": (t_g - t_ph) if (t_g is not None and t_ph is not None) else None,
+            "first": float(ph_dim["ph_dim"].iloc[0]) if len(ph_dim) else None,
+            "last": float(ph_dim["ph_dim"].iloc[-1]) if len(ph_dim) else None,
+            "min": float(ph_dim["ph_dim"].min()) if len(ph_dim) else None,
+        }
 
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
 

@@ -128,6 +128,10 @@ class AnalysisCfg:
             "weight_norm",
             "fourier_concentration",
             "fourier_concentration_group",
+            # The k sweep: a redundancy claim against Fourier must hold against the
+            # strongest member of the family, not against an arbitrary default.
+            *[f"fourier_concentration_k{k}" for k in (1, 2, 3, 5, 10, 20)],
+            *[f"fourier_concentration_group_k{k}" for k in (1, 2, 3, 5, 10, 20)],
             "lid",
             "test_acc",
             "test_acc_novel",

@@ -73,3 +73,27 @@ def test_orthograd_makes_gradients_orthogonal_to_weights() -> None:
     opt.step()
     assert torch.dot(p.grad, p.detach()).abs() < 1e-6  # orthogonal to weights
     assert abs(p.grad.norm().item() - 1.0) < 1e-6  # norm preserved
+
+
+def test_every_configured_observable_is_registered() -> None:
+    """A typo in the default list would otherwise surface only mid-sweep, as NaN."""
+    import grokking_tda.analysis.task_metrics  # noqa: F401
+    import grokking_tda.baselines  # noqa: F401
+    import grokking_tda.tda.observables  # noqa: F401
+    from grokking_tda.analysis.observable import OBSERVABLES
+    from grokking_tda.config.schema import AnalysisCfg
+
+    for name in AnalysisCfg().observables:
+        assert name in OBSERVABLES, name
+
+
+def test_fourier_concentration_increases_with_k() -> None:
+    """Concentration is monotone in k, which is why the strongest competitor must be
+    chosen on the series downstream rather than by maximising the scalar."""
+    from grokking_tda.baselines.fourier import FOURIER_K_SWEEP, _concentration
+
+    rng = np.random.default_rng(0)
+    embedding = rng.normal(size=(97, 16))
+    values = [_concentration(embedding, top_k=k) for k in FOURIER_K_SWEEP]
+    assert values == sorted(values)
+    assert values[-1] <= 1.0 + 1e-12

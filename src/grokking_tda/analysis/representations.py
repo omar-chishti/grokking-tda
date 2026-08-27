@@ -26,10 +26,21 @@ _DATA_CACHE: dict[tuple, object] = {}
 
 
 def dataset_for(run: Run):
+    from math import factorial
+
     from grokking_tda.config.schema import DataCfg
     from grokking_tda.data import build_data
 
     data_cfg = dict(run.config["data"])
+    # For the permutation-group task ``modulus`` records the group order, and
+    # ``build_permutation_data`` refuses a config where the two disagree. An early batch of
+    # S_5 runs was launched before that guard existed and carries the default 97, so
+    # rebuilding their dataset raises and every observable that needs it comes back NaN.
+    # The order is what the data actually is, so it is recomputed here: the guard stays in
+    # place for new runs, where a mismatch is a real config error, and the analysis layer
+    # can still read the artefacts that predate it.
+    if data_cfg.get("task") == "permutation_group":
+        data_cfg["modulus"] = factorial(int(data_cfg["n_symbols"]))
     key = (tuple(sorted(data_cfg.items())), int(run.config["seed"]))
     if key not in _DATA_CACHE:
         _DATA_CACHE[key] = build_data(DataCfg(**data_cfg), int(run.config["seed"]))

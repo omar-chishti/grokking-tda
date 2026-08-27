@@ -277,3 +277,52 @@ def test_aggregate_runs_joins_config_and_summary(tiny_run, tmp_path) -> None:
     assert row["grokking_step"] == 20
     assert row["t_top__h1_max_persistence"] == 30
     assert row["delta__h1_max_persistence"] == -10
+
+
+def test_transition_step_reports_nothing_for_a_series_that_only_decays() -> None:
+    """Raw H1 decays across training in the strongly-decayed regime; the midpoint
+    proxy used to answer with a step near zero, which reads as a huge lead."""
+    steps = np.arange(0, 100, 10)
+    decaying = np.linspace(1.0, 0.0, steps.size)
+    assert transition_step(steps, decaying, direction="rising") is None
+
+
+def test_transition_step_measures_the_rise_from_its_trough() -> None:
+    """A high initial value must not satisfy the crossing before the rise happens."""
+    steps = np.array([0, 10, 20, 30, 40])
+    values = np.array([0.9, 0.1, 0.2, 0.7, 1.1])  # starts high, dips, then rises
+    # Measured from the trough the midpoint is 0.6, first reached at step 30; the
+    # initial 0.9 would otherwise satisfy it at step 0, before any rise occurred.
+    assert transition_step(steps, values, direction="rising") == 30
+
+
+def test_transition_step_survives_an_initialisation_transient() -> None:
+    """Raw H1 starts high at random init, collapses, then rises across the transition.
+
+    The initial value is the global maximum, so requiring the global peak to follow
+    the trough would discard a real rise; the comparison is against the highest
+    value *after* the trough.
+    """
+    steps = np.array([0, 10, 20, 30, 40, 50])
+    values = np.array([0.82, 0.10, 0.02, 0.03, 0.06, 0.09])
+    assert transition_step(steps, values, direction="rising") == 40
+
+
+def test_grokking_step_sensitivity_spans_the_reported_definitions() -> None:
+    """The midpoint of the raw curve is biased early by the commutativity plateau;
+    the leak-free midpoint is what shows how large that bias is."""
+    from grokking_tda.evaluation import grokking_step_sensitivity
+
+    step = np.arange(0, 1100, 100)
+    raw = np.array([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.5, 0.85, 0.93, 0.99, 1.0])
+    novel = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.79, 0.90, 0.99, 1.0])
+    metrics = pd.DataFrame({"step": step, "test_acc": raw, "train_acc": np.ones_like(raw)})
+    observables = pd.DataFrame({"step": step, "test_acc_novel": novel})
+
+    out = grokking_step_sensitivity(metrics, observables)
+    assert out["threshold_0.8"] == 700
+    assert out["threshold_0.9"] == 800
+    assert out["threshold_0.95"] == 900
+    # The raw midpoint (halfway from 0.3 to 1.0 => 0.65) fires before the 0.9 threshold.
+    assert out["midpoint"] < out["threshold_0.9"]
+    assert out["midpoint_novel"] is not None

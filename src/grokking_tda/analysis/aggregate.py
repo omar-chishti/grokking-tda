@@ -69,3 +69,35 @@ def aggregate_runs(root: str | Path) -> pd.DataFrame:
                 row[f"delta__{name}"] = tr.get("delta")
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def early_window_table(root: str | Path, window: str) -> pd.DataFrame:
+    """One row per run of early-window features, ready for the predictive comparison.
+
+    ``group`` is the run name without its seed suffix, so that folds can be split by
+    configuration rather than by run: seeds of one configuration are near-duplicates and
+    splitting across them would leak.
+    """
+    rows: list[dict] = []
+    for manifest_path in sorted(Path(root).rglob("manifest.json")):
+        run_dir = manifest_path.parent
+        summary_path = run_dir / "analysis" / "summary.json"
+        if not summary_path.exists():
+            continue
+        try:
+            run = Run(run_dir)
+            summary = json.loads(summary_path.read_text())
+        except Exception as exc:
+            logger.warning("skipping %s: %s", run_dir, exc)
+            continue
+        features = (summary.get("early_window_features") or {}).get(window)
+        if not features:
+            continue
+        name = run.run_name
+        row = _config_row(run)
+        row["group"] = name.rsplit("_s", 1)[0]
+        row["grokking_step"] = summary.get("grokking_step")
+        row["diverged"] = summary.get("diverged", False)
+        row.update(features)
+        rows.append(row)
+    return pd.DataFrame(rows)

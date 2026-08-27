@@ -67,6 +67,13 @@ def _discrete_log_order(p: int) -> list[int] | None:
     return [pow(g, k, p) for k in range(p - 1)]
 
 
+def _group_concentration(ctx: ObservationContext, top_k: int) -> float:
+    order = _discrete_log_order(ctx.modulus)
+    if order is None:
+        return float("nan")
+    return _concentration(ctx.embedding_matrix()[order], top_k=top_k)
+
+
 @register_observable("fourier_concentration", direction="rising")
 def fourier_concentration(ctx: ObservationContext) -> float:
     """Power fraction in the top-5 Fourier modes of the embedding."""
@@ -81,7 +88,19 @@ def fourier_concentration_group(ctx: ObservationContext) -> float:
     under the residue-axis DFT but periodic in this ordering. Residue 0 is excluded
     (it sits outside the multiplicative group). NaN if the modulus is not prime.
     """
-    order = _discrete_log_order(ctx.modulus)
-    if order is None:
-        return float("nan")
-    return _concentration(ctx.embedding_matrix()[order], top_k=5)
+    return _group_concentration(ctx, top_k=5)
+
+
+# A claim that topology beats Fourier must not turn on an arbitrary k, so the whole
+# family is recorded and the comparison is made against whichever member tracks the
+# transition best. Concentration rises monotonically with k, so the strongest
+# competitor cannot be picked per snapshot — it is chosen downstream, on the series.
+FOURIER_K_SWEEP = (1, 2, 3, 5, 10, 20)
+
+for _k in FOURIER_K_SWEEP:
+    register_observable(f"fourier_concentration_k{_k}", direction="rising")(
+        lambda ctx, k=_k: _concentration(ctx.embedding_matrix(), top_k=k)
+    )
+    register_observable(f"fourier_concentration_group_k{_k}", direction="rising")(
+        lambda ctx, k=_k: _group_concentration(ctx, top_k=k)
+    )

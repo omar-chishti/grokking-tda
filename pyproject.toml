@@ -24,7 +24,7 @@ description = "A research framework for studying grokking through topological da
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 license = { text = "MIT" }
-authors = [{ name = "Omar" }]
+authors = [{ name = "Omar Chishti" }]
 
 dependencies = [
   # --- numerics / DL core ----------------------------------------------------
@@ -46,6 +46,7 @@ dependencies = [
   "pandas>=2.0",             # tabular analysis outputs / Fourier tables
   # --- io / ux ---------------------------------------------------------------
   "matplotlib>=3.8",         # vector-first figures
+  "fonttools>=4.40",         # derives the small-capitals face used in figure labels
   "tqdm>=4.66",
   "rich>=13.0",              # structured console logging
 ]
@@ -60,6 +61,7 @@ gtda-train     = "grokking_tda.cli.train:main"
 gtda-analyse   = "grokking_tda.cli.analyse:main"
 gtda-plot      = "grokking_tda.cli.plot:main"
 gtda-aggregate = "grokking_tda.cli.aggregate:main"
+gtda-compare   = "grokking_tda.cli.compare:main"
 
 # --- uv: dev tools + PyTorch index pinning -----------------------------------
 [dependency-groups]
@@ -93,5 +95,11 @@ ignore_missing_imports = true   # ripser/persim/giotto ship no stubs
 warn_unused_ignores = true
 
 [tool.pytest.ini_options]
+markers = ["slow: degree-2 homology on a few hundred points (seconds, not milliseconds)"]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = [
+  # torch (Intel OpenMP) and sklearn (LLVM OpenMP) load two runtimes in one process;
+  # benign at teardown, and KMP_DUPLICATE_LIB_OK is already set at package import.
+  "ignore:(?s).*Found Intel OpenMP.*:RuntimeWarning",
+]

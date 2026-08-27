@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: "grokking-tda: a framework for studying grokking through topological data analysis"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: Chishti
+    given-names: Omar
+    affiliation: "Department of Computing, Imperial College London"
+license: MIT
+repository-code: "https://github.com/omar-chishti/grokking-tda"
+abstract: >-
+  A research framework for measuring topological signatures of grokking. It trains small
+  models on modular arithmetic, records each training trajectory as an immutable artifact,
+  and computes persistent homology over training alongside Fourier, weight-norm and local
+  intrinsic dimension baselines, so that the question of what topology adds over cheaper
+  diagnostics is built into the design rather than argued after the fact.
+keywords:
+  - grokking
+  - topological data analysis
+  - persistent homology
+  - deep learning
+  - modular arithmetic

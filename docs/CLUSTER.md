@@ -1,5 +1,11 @@
 # Running on the DoC GPU workstations
 
+> Site-specific. These scripts drive a pool of shared lab workstations at Imperial's
+> Department of Computing over SSH. Everything is parameterised through
+> `scripts/remote/config.sh`, so the shape transfers to any similar pool, but the
+> defaults (domain, jump host, `/vol/bitbucket`) do not. For a scheduler instead of a
+> pool, use the SLURM/PBS templates in `src/grokking_tda/orchestration/templates/`.
+
 The Department of Computing has no batch scheduler for its GPU machines. Lab 210 holds
 `gpu01`–`gpu36` — ordinary Linux desktops with Nvidia cards (Titan XP, GTX 1080, Quadro P4000,
 RTX 2080 Ti) — reached over SSH through a departmental shell server. There is no queue, no
@@ -94,7 +100,7 @@ GPU_POOL="gpu05 gpu06 gpu07" JOBS_PER_HOST=2 ./scripts/remote/gtda-remote launch
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `REMOTE_USER` | `oc525` | DoC username |
+| `REMOTE_USER` | *(required)* | your login on the GPU pool |
 | `JUMP_HOST` | `imperial` | `~/.ssh/config` entry for the shell server |
 | `GPU_POOL` | `gpu01`–`gpu36` | candidate hosts |
 | `JOBS_PER_HOST` | `3` | concurrent runs per GPU |
@@ -123,13 +129,12 @@ Work through these in order; the first is by far the most likely.
 2. **Home directory permissions.** A group-writable home makes `sshd` ignore `authorized_keys`
    silently. From a working session: `chmod go-w ~ && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys`.
 3. **The key really is absent server-side.** The servers still accept Kerberos, so you can get in
-   without it: `/usr/bin/kinit oc525@IC.AC.UK` (the macOS binary — Anaconda's `kinit` shadows it on
+   without it: `/usr/bin/kinit $REMOTE_USER@IC.AC.UK` (the macOS binary — Anaconda's `kinit` shadows it on
    `PATH` and needs a config file that is not present), then
-   `ssh -o PreferredAuthentications=gssapi-with-mic oc525@shell1.doc.ic.ac.uk`, and re-add the key
+   `ssh -o PreferredAuthentications=gssapi-with-mic $REMOTE_USER@shell1.doc.ic.ac.uk`, and re-add the key
    with `ssh-copy-id`.
 4. **CSG's own procedure**, which requires being physically at a DoC lab machine in Huxley:
    `~dcw/bin/setup-ssh --changereal` generates an ed25519 key, appends it to `authorized_keys`, and
    writes a `~/.ssh/HomeConfig` to copy to the laptop. Otherwise email `doc-help@imperial.ac.uk`.
 
-The laptop remains a complete fallback throughout — `gtda-train` is identical, only slower — so lost
-access delays the sweeps rather than blocking the thesis.
+The laptop remains a complete fallback throughout: `gtda-train` is identical there, only slower.

@@ -13,11 +13,12 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - run: uv run ruff check src tests
+      - run: uv run ruff check src tests analysis scripts
+      - run: uv run mypy
       - name: pytest
         # ripser/scikit-learn and torch each load their own OpenMP runtime; without
         # this the analysis tests can deadlock on a shared runner.
         env:
           OMP_NUM_THREADS: 1
           KMP_DUPLICATE_LIB_OK: TRUE
-        run: uv run pytest -q
+        run: uv run pytest

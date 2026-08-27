@@ -30,33 +30,49 @@ src/grokking_tda/
   registry.py        Generic typed Registry (name -> factory) used everywhere.
   config/            Typed dataclass schema (schema.py) + Hydra ConfigStore presets (store.py).
   configs/           The Hydra YAML tree: config.yaml + experiment/ + hydra/launcher/.
-  data/              modular.py: add/sub/mul tasks, full tensors, deterministic split.
+  data/              modular.py: add/sub/mul/div/poly tasks, full tensors, deterministic split;
+                     permutation.py: composition in S_n, the non-cyclic control task.
   models/            hooks.py (HookPoint capture) + transformer.py + mlp.py; all expose
                      forward(tokens)->logits and embedding_matrix().
   training/          engine.py (step loop) + callbacks.py + losses.py (float64 / StableMax)
-                     + optimizers.py (AdamW/SGD/OrthoGrad) + schedules.py (log-spaced snapshots).
+                     + optimizers.py (AdamW/SGD/OrthoGrad) + schedules.py (log-spaced snapshots,
+                     with an optional dense window) + trajectory.py (projected iterate recorder).
   artifacts/         schema.py (Manifest) + writer.py (+ prepare_run_dir overwrite guard)
                      + reader.py (Run/Snapshot). THE contract.
   analysis/          observable.py (Observable interface + ObservationContext + runner;
                      per-snapshot diagrams disk-cached under analysis/diagrams/)
                      + representations.py (embedding/hidden/logits extraction, train/test split)
+                     + task_metrics.py (commutativity-corrected accuracy)
                      + aggregate.py (many runs -> one tidy robustness table).
   tda/               pointcloud.py (normalise, drop_first, random/maxmin landmarks)
                      + homology.py (ripser) + summaries.py (max/total/entropy) + observables.py
+                     (raw and scale-normalised) + betti.py (dominance-gap Betti counts)
+                     + phdim.py (PH-dimension of the optimisation path)
                      + distances.py (bottleneck/sliced-Wasserstein + trajectory velocity)
                      + significance.py (bootstrap CIs + random-init null models)
                      + trajectory.py (CROCKER — topology of the trajectory).
   baselines/         fourier.py (residue-axis + discrete-log "group" variant)
                      + weight_norm.py + lid.py  (registered as observables).
   evaluation/        transitions.py (t_g, t_top per observable, lead/lag)
-                     + predictive.py (pre-registered early windows — never the run's own t_g).
+                     + changepoint.py (a second, independent detector)
+                     + predictive.py (pre-registered early windows — never the run's own t_g)
+                     + headtohead.py (nested, grouped predictive contest between feature sets)
+                     + multiplicity.py (Benjamini-Hochberg / Benjamini-Yekutieli)
+                     + pid.py (redundancy/synergy decomposition; MMI and Gaussian).
   plotting/          style.py (vector-first, thesis bronze/ink palette) + curves.py
                      + persistence.py + trajectory.py (CROCKER heatmap of the trajectory).
   orchestration/     SLURM/PBS templates + analyse stage script.
-  cli/               train.py (Hydra app) + analyse.py + plot.py + aggregate.py (argparse).
+  cli/               train.py (Hydra app) + analyse.py + plot.py + aggregate.py + compare.py.
   utils/             seeding.py + env.py (provenance) + logging.py
-                     + precision.py (device-aware float64) + io.py (atomic JSON).
+                     + precision.py (device-aware float64).
 ```
+
+### 2b. The fourth layer: `analysis/`, beside the package
+
+`src/grokking_tda/` is the **method** — observables, detectors, estimators — installed, imported
+and unit tested. `analysis/` is the **reduction**: how a bank of runs becomes the tables and
+claims a write-up quotes. It imports the method and never reimplements it, so the two cannot
+drift. Method code has tests; reduction code has a committed output. See `analysis/README.md`.
 
 ## 3. The four patterns that keep it modular
 
@@ -119,6 +135,8 @@ hidden states and logits are *recomputed deterministically* from weights when ne
 ## 6. Local vs cluster
 
 - **Laptop (Intel Mac, MPS/CPU):** `device=auto` resolves to MPS; use `+experiment=smoke`.
+  MPS has no float64, so it silently degrades the loss to float32 — fine for a smoke run,
+  wrong for a measured one. Pass `train.device=cpu` for anything whose numbers are reported.
   torch is pinned to 2.2.2 (last x86-mac wheel) via per-platform markers in `pyproject.toml`.
 - **Cluster (Linux/CUDA):** the same lockfile resolves CUDA wheels. Sweeps run either as a
   Hydra+submitit multirun (`hydra/launcher=imperial_slurm`) or via the scheduler-agnostic

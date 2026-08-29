@@ -1,0 +1,16 @@
+panel,run,t_g,t_change,delta,relative,step_size,n_points
+reference,transformer_add113_f0.3_wd0.1_softmax_ce_s0,13000.0,14622.0,1622.0,1.1247692307692307,9.560482851228794,119
+reference,transformer_add113_f0.3_wd0.1_softmax_ce_s1,12000.0,29244.0,17244.0,2.437,2.824014405207222,119
+reference,transformer_add113_f0.3_wd0.1_softmax_ce_s2,14000.0,39832.0,25832.0,2.845142857142857,2.985525480718104,119
+reference,transformer_add113_f0.3_wd0.1_softmax_ce_s3,11500.0,16639.0,5139.0,1.4468695652173913,4.047613621585294,119
+reference,transformer_add113_f0.3_wd0.1_softmax_ce_s4,10500.0,13613.0,3113.0,1.2964761904761906,5.7208314449113224,119
+canonical,transformer_add97_f0.3_wd1.0_softmax_ce_s0,27600.0,27.0,-27573.0,0.0009782608695652175,0.131571239459453,125
+canonical,transformer_add97_f0.3_wd1.0_softmax_ce_s1,28600.0,2.0,-28598.0,6.993006993006993e-05,0.08859008724931565,125
+canonical,transformer_add97_f0.3_wd1.0_softmax_ce_s2,30000.0,,,,,125
+canonical,transformer_add97_f0.3_wd1.0_softmax_ce_s3,34700.0,2.0,-34698.0,5.7636887608069166e-05,0.11416837429106556,125
+canonical,transformer_add97_f0.3_wd1.0_softmax_ce_s4,25700.0,15.0,-25685.0,0.0005836575875486381,0.1356301236544941,125
+permuted,transformer_add97_permuted_s0,,17.0,,,0.12636151115096583,126
+permuted,transformer_add97_permuted_s1,,16.0,,,0.10054163957667672,126
+permuted,transformer_add97_permuted_s2,,2.0,,,0.08721963021870334,126
+permuted,transformer_add97_permuted_s3,,16.0,,,0.12811642644842655,126
+permuted,transformer_add97_permuted_s4,,17.0,,,0.11402788743683788,126

@@ -1,0 +1,33 @@
+{
+  "extreme_group_held_out": "transformer_add97_f0.3_wd0.1_softmax_ce",
+  "winsor_quantiles": [
+    0.1,
+    0.9
+  ],
+  "best_regression_by_variant": {
+    "full": {
+      "window": "tc",
+      "feature_set": "lid",
+      "r2": -0.11224821229555951,
+      "fold_sd": 0.5999788512434278,
+      "n_runs": 99,
+      "n_groups": 26
+    },
+    "holdout": {
+      "window": "tc",
+      "feature_set": "lid",
+      "r2": 0.06936190084384333,
+      "fold_sd": 0.3189536002128516,
+      "n_runs": 96,
+      "n_groups": 25
+    },
+    "winsorised": {
+      "window": "tc",
+      "feature_set": "lid",
+      "r2": -0.2358234628814365,
+      "fold_sd": 0.44273380236492293,
+      "n_runs": 99,
+      "n_groups": 26
+    }
+  }
+}

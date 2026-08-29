@@ -1,0 +1,18 @@
+{
+  "window_rule": {
+    "baseline": [
+      0.5,
+      0.9
+    ],
+    "plateau_from": 1.2
+  },
+  "figures": [
+    {
+      "figure": "6.3",
+      "name": "phdim",
+      "claim": "The geometry of the search turns after the network begins to generalise.",
+      "file": "fig-6-3-phdim.csv",
+      "rows": 2715
+    }
+  ]
+}

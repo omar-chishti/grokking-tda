@@ -3,8 +3,8 @@
 Section 6.4 reports that the persistent-homology dimension of the projected optimisation
 path is flat in training time, identical in a run that memorises noise and one that learns a
 rule, and unable to separate a generalisation gap of one from a gap of zero. It then names
-three things that could each account for that and separates none of them. Two are settled
-here from stored trajectories; the third can only be settled halfway, and this says which
+things that could each account for that and separates none of them. Three are settled here
+from stored trajectories; the projection can only be settled halfway, and this says which
 half.
 
 **Window length.** The reported series reads two hundred iterates at a stride of twenty
@@ -27,6 +27,9 @@ to the conditions in between, so the correlation is computed here over a gap tha
 The gap is ``train - test`` and not ``1 - test``: a run that never fits its training set has a
 gap of about zero rather than of one, and is excluded, because the claim is about models that fit.
 
+**Subsamples per size.** The reported series draws one subsample at each size where Birdal
+et al. average, so regression noise is a fourth candidate. Swept by ``--draw-sweep``.
+
 **The estimator's floor.** ``dim = alpha / (1 - slope)`` is stiff near the bottom of its
 range: a dimension of $1.15$ is a slope of $0.13$, and the fitted slope is now reported
 beside the dimension. More decisive is a calibration --- run the same estimator on synthetic
@@ -38,6 +41,7 @@ Usage (from ``Code/``)::
 
     uv run python -m analysis.phdim
     uv run python -m analysis.phdim --windows 100 200 400
+    uv run python -m analysis.phdim --draw-sweep
 """
 
 from __future__ import annotations
@@ -98,6 +102,31 @@ def condition_of(name: str) -> str:
     return name.rsplit("_s", 1)[0]
 
 
+DRAW_SWEEP = (1, 4, 8)
+
+
+def draw_sweep(runs: list, window: int = 200, seed: int = 0) -> pd.DataFrame:
+    """Terminal dimension when ``E_alpha`` is averaged over several subsamples per size.
+
+    The reported series takes one subsample at each size, where Birdal et al. average; a single
+    draw is noisier, and noise in the regression is a fourth explanation for the null that
+    section 6.4 does not otherwise eliminate.
+    """
+    rows = []
+    for run_dir in runs:
+        run = Run(run_dir)
+        trajectory = run.trajectory()
+        if trajectory is None:
+            continue
+        steps, points = trajectory
+        for draws in DRAW_SWEEP:
+            for end in range(len(steps), max(window, len(steps) - 5 * STRIDE), -STRIDE):
+                fit = ph_dimension_fit(points[end - window : end], n_draws=draws, seed=seed)
+                rows.append({"run": run.run_name, "condition": condition_of(run.run_name),
+                             "n_draws": draws, "step": int(steps[end - 1]), **fit})
+    return pd.DataFrame(rows)
+
+
 def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim: int) -> dict:
     """Terminal PH-dimension against the generalisation gap, across runs.
 
@@ -119,7 +148,20 @@ def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim
     gap, dimension = merged.generalisation_gap.to_numpy(), merged.ph_dim.to_numpy()
     rho = stats.spearmanr(gap, dimension)
     pearson = stats.pearsonr(gap, dimension)
+    # Tan et al.'s comparator: the norm of the final parameter vector, which they report
+    # beating the dimension across architectures and datasets.
+    comparator: dict = {}
+    if "weight_norm__final" in merged:
+        norm = merged[["generalisation_gap", "weight_norm__final"]].dropna()
+        if len(norm) >= 8:
+            r = stats.spearmanr(norm.generalisation_gap, norm.weight_norm__final)
+            comparator = {
+                "n": int(len(norm)),
+                "spearman_rho": float(r.statistic),
+                "spearman_p": float(r.pvalue),
+            }
     return {
+        "weight_norm_vs_gap": comparator,
         "n": int(len(merged)),
         "window": window,
         "projection_dim": dim,
@@ -140,11 +182,25 @@ def main() -> None:
     ap.add_argument("--windows", type=int, nargs="*", default=list(WINDOWS))
     ap.add_argument("--projections", type=int, nargs="*", default=list(PROJECTIONS))
     ap.add_argument("--projection-seeds", type=int, default=2)
+    ap.add_argument("--draw-sweep", action="store_true",
+                    help="only sweep the number of subsamples per size, and stop")
     args = ap.parse_args()
 
     runs = sorted(p.parent for p in args.root.glob("*/trajectory.npz"))
     if not runs:
         raise SystemExit(f"no trajectory.npz under {args.root}")
+
+    if args.draw_sweep:
+        table = draw_sweep(runs)
+        args.out.mkdir(parents=True, exist_ok=True)
+        table.to_csv(args.out / "phdim_draws.csv", index=False)
+        print(f"subsamples per size, terminal dimension over {table.run.nunique()} runs:\n")
+        pivot = table.groupby(["condition", "n_draws"]).ph_dim.median().unstack()
+        r2 = table.groupby("n_draws").r2.median()
+        print(pivot.round(3).to_string())
+        print("\nmedian fit r2 by draws: " + "  ".join(f"{k}: {v:.3f}" for k, v in r2.items()))
+        print(f"\nwritten to {args.out}/phdim_draws.csv")
+        return
 
     frames = []
     for run_dir in runs:

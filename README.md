@@ -38,7 +38,9 @@ uv run gtda-train +experiment=tf_mod97_grok train.device=cpu
 ```
 
 Configs compose from typed Hydra presets, and every field is overridable from the command line.
-Each run records its resolved config, git commit, library versions and hardware in `manifest.json`.
+Each run records its resolved config, library versions, platform and hardware in
+`manifest.json`, and the git commit where one is available: the bank in `results/` was
+trained from a synced worktree with no `.git`, so those runs carry a null commit.
 
 ```bash
 uv run gtda-train +experiment=mlp_mod97_grok                    # MLP track

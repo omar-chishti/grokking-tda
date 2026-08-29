@@ -77,6 +77,8 @@ def gaussian_pid(
         "unique_b": unique_b,
         "synergistic": synergistic,
         "total": mi_joint,
+        "mi_a": mi_a,
+        "mi_b": mi_b,
         "n": float(keep.sum()),
     }
 

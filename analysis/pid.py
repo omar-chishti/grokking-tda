@@ -48,11 +48,22 @@ N_BOOT = 2_000
 N_PERMUTATIONS = 2_000
 ATOMS = ("redundant", "unique_a", "unique_b", "synergistic", "total")
 
-SOURCE_A = "h1_max_persistence_normalised__ratio"
 SOURCE_B = "circularity"
 TARGET = "log10 t_g"
 
+# The reported pairing sets a ratio across the transition against a terminal level, which are not
+# the same kind of quantity, so the decomposition is also run with both sources terminal.
+SOURCE_A = "h1_max_persistence_normalised__ratio"
+SOURCES_A = {
+    "ratio": SOURCE_A,
+    "terminal": "h1_max_persistence_normalised__plateau",
+}
+
 ESTIMATORS = {"gaussian_mmi": gaussian_pid, "williams_beer": williams_beer_pid}
+# Resampling with replacement creates ties, and a binned estimator reads ties as dependence, so a
+# bootstrap interval on the Williams-Beer atoms is biased upward -- far enough that a point estimate
+# can fall outside its own interval. Only the permutation null is reported for it.
+BOOTSTRAPPED = {"gaussian_mmi"}
 
 # The regimes section 4.5 separates; "pooled" keeps the whole bank for comparison.
 REGIMES = {
@@ -92,9 +103,31 @@ def design_effect(groups: np.ndarray, values: np.ndarray) -> dict:
     }
 
 
-def decompose(frame: pd.DataFrame, estimator, *, seed: int = 0) -> dict:
-    """Atoms, a cluster bootstrap interval on each, and a permutation null."""
-    a = frame[SOURCE_A].to_numpy(float)
+def permute_within_clusters(
+    target: np.ndarray, groups: np.ndarray, rng: np.random.Generator
+) -> np.ndarray:
+    """Shuffle target values between configurations, leaving the clustering intact.
+
+    A free permutation breaks the source-target association *and* the near-duplication of seeds
+    within a recipe, so its null is tighter than the data support by roughly the design effect.
+    Permuting whole configurations destroys only the association, which is what is under test.
+    """
+    unique = np.unique(groups)
+    pools = {g: target[groups == g] for g in unique}
+    out = np.empty_like(target)
+    for source, destination in zip(unique, rng.permutation(unique), strict=True):
+        rows = np.flatnonzero(groups == destination)
+        pool = pools[source]
+        out[rows] = pool[rng.integers(pool.size, size=rows.size)]
+    return out
+
+
+def decompose(
+    frame: pd.DataFrame, estimator, *, source_a: str = SOURCE_A,
+    bootstrap: bool = True, seed: int = 0,
+) -> dict:
+    """Atoms, a cluster bootstrap interval on each, and a cluster permutation null."""
+    a = frame[source_a].to_numpy(float)
     b = frame[SOURCE_B].to_numpy(float)
     t = np.log10(frame["t_g"].to_numpy(float))
     groups = frame["group"].to_numpy()
@@ -108,14 +141,15 @@ def decompose(frame: pd.DataFrame, estimator, *, seed: int = 0) -> dict:
     index = {g: np.flatnonzero(groups == g) for g in unique_groups}
 
     draws, null = [], []
-    for _ in range(N_BOOT):
-        picked = rng.choice(unique_groups, size=unique_groups.size, replace=True)
-        rows = np.concatenate([index[g] for g in picked])
-        draws.append(estimator(a[rows], b[rows], t[rows]))
+    if bootstrap:
+        for _ in range(N_BOOT):
+            picked = rng.choice(unique_groups, size=unique_groups.size, replace=True)
+            rows = np.concatenate([index[g] for g in picked])
+            draws.append(estimator(a[rows], b[rows], t[rows]))
     for _ in range(N_PERMUTATIONS):
-        null.append(estimator(a, b, rng.permutation(t)))
+        null.append(estimator(a, b, permute_within_clusters(t, groups, rng)))
 
-    out = {"atoms": {}, **design_effect(groups, a)}
+    out = {"atoms": {}, "bootstrapped": bootstrap, **design_effect(groups, a)}
     for atom in ATOMS:
         boot = np.array([d.get(atom, np.nan) for d in draws], dtype=float)
         boot = boot[np.isfinite(boot)]
@@ -143,9 +177,9 @@ def main() -> None:
 
     bank, _ = load_bank(args.root)
     grokked = bank[bank.grokked & bank.t_g.notna()]
-    if "dense" in grokked:
-        grokked = grokked[~grokked.dense]
-    grokked = grokked.dropna(subset=[SOURCE_A, SOURCE_B]).copy()
+    if "replicate" in grokked:
+        grokked = grokked[~grokked.replicate]
+    grokked = grokked.dropna(subset=[*SOURCES_A.values(), SOURCE_B]).copy()
     grokked["group"] = grokked[CONDITION_KEYS].astype(str).agg("|".join, axis=1)
 
     subsets = {"pooled": grokked}
@@ -155,6 +189,7 @@ def main() -> None:
     results = {
         "target": TARGET,
         "source_a": SOURCE_A,
+        "sources_a": SOURCES_A,
         "source_b": SOURCE_B,
         "n_bootstrap": N_BOOT,
         "n_permutations": N_PERMUTATIONS,
@@ -165,25 +200,32 @@ def main() -> None:
             print(f"  {name:10s} skipped ({len(frame)} runs)")
             continue
         results["regimes"][name] = {
-            estimator_name: decompose(frame, estimator)
+            f"{estimator_name}__{pairing}": decompose(
+                frame, estimator, source_a=column,
+                bootstrap=estimator_name in BOOTSTRAPPED,
+            )
             for estimator_name, estimator in ESTIMATORS.items()
+            for pairing, column in SOURCES_A.items()
         }
-        block = results["regimes"][name]
-        eff = block["gaussian_mmi"]
+        block = results["regimes"][name]["gaussian_mmi__ratio"]
         print(
-            f"\n{name} — {eff['n']} runs across {eff['n_configurations']} configurations, "
-            f"ICC {eff['icc']:.2f}, effective n {eff['n_effective']:.1f}"
+            f"\n{name} — {block['n']} runs across {block['n_configurations']} configurations, "
+            f"ICC {block['icc']:.2f}, effective n {block['n_effective']:.1f}"
         )
-        for estimator_name, block in results["regimes"][name].items():
+        for key, block in results["regimes"][name].items():
             atoms = block.get("atoms", {})
             if "redundant" not in atoms or not isinstance(atoms["redundant"], dict):
                 continue
             parts = " ".join(
                 f"{atom[:4]} {atoms[atom]['estimate']:+.3f}"
-                f"[{atoms[atom]['ci'][0]:+.3f},{atoms[atom]['ci'][1]:+.3f}]"
+                + (
+                    f"[{atoms[atom]['ci'][0]:+.3f},{atoms[atom]['ci'][1]:+.3f}]"
+                    if block.get("bootstrapped")
+                    else f" p={atoms[atom]['null_p']:.3f}"
+                )
                 for atom in ("redundant", "unique_a", "unique_b", "synergistic")
             )
-            print(f"  {estimator_name:14s} {parts}")
+            print(f"  {key:26s} {parts}")
 
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "pid.json").write_text(json.dumps(results, indent=2))

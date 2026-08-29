@@ -142,14 +142,26 @@ def figure(width_mm: float, ratio: float, variant: Variant = THESIS):
     )
 
 
-def range_frame(ax, x=None, y=None) -> None:
-    """Trim the spines to the extent of the data, so the axis reports the range."""
+def range_frame(ax, x=None, y=None, *, join: bool = True) -> None:
+    """Trim the spines to the extent of the data, so the axis reports the range.
+
+    ``join`` seats each spine at the other's lower bound so the two meet at one origin.
+    Without it a range frame drawn inside padded limits leaves the corner open, and two
+    rules that do not touch read as two unrelated axes.
+    """
     if x is None:
         x = ax.get_xlim()
     if y is None:
         y = ax.get_ylim()
-    ax.spines["bottom"].set_bounds(*sorted(x))
-    ax.spines["left"].set_bounds(*sorted(y))
+    x, y = sorted(x), sorted(y)
+    ax.spines["bottom"].set_bounds(*x)
+    ax.spines["left"].set_bounds(*y)
+    if join:
+        # seat each spine at whichever end of the trimmed range lies nearer the axis's own
+        # origin, so an inverted axis puts its rule at the foot of the panel and not the top
+        x0, y0 = ax.get_xlim()[0], ax.get_ylim()[0]
+        ax.spines["bottom"].set_position(("data", min(y, key=lambda v: abs(v - y0))))
+        ax.spines["left"].set_position(("data", min(x, key=lambda v: abs(v - x0))))
     ax.spines["bottom"].set_color(RULE)
     ax.spines["left"].set_color(RULE)
 
@@ -194,6 +206,11 @@ def panel_letter(ax, letter: str, *, dx_mm: float = 7.5, dy_mm: float = 2.0) -> 
     every letter in a multi-panel figure aligns to the same optical position whether or not
     its panel carries a y-label. Small capitals rather than weight: a panel letter is a
     label on the object and should not compete with the data for the eye.
+
+    ``dx_mm`` belongs to the *column*, never to the panel: a letter whose offset is chosen
+    to clear its own y-label lands somewhere its neighbour's does not, and a plate of
+    letters on a ragged left edge reads as carelessness before it reads as anything else.
+    Every letter in a column takes the largest offset that column needs.
     """
     fig = ax.get_figure()
     box = ax.get_position()

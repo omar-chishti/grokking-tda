@@ -117,7 +117,6 @@ def _main_programme(table: pd.DataFrame) -> pd.DataFrame:
         & (table.operation != "poly")
         & (~table.label_permutation)
         & (table.n_grokked > 0)
-        & ~((table.operation == "compose") & (table.n_runs < 5))
     ]
 
 
@@ -136,7 +135,7 @@ def fig_hero(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     return frame.merge(novel, on="step", how="outer").sort_values("step")
 
 
-@builder("4.1", "reproduction", "Both architectures and both recipes grok on all five seeds.")
+@builder("4.1", "reproduction", "Both architectures and both recipes grok; the null does not.")
 def fig_reproduction(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     panels = {
         "canonical transformer": dict(
@@ -148,10 +147,16 @@ def fig_reproduction(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
         "canonical MLP": dict(model="mlp", operation="add", modulus=97, weight_decay=1.0),
     }
     rows = []
-    # the permuted-label nulls match the canonical panel on every other key
-    main = bank[(bank.loss == "softmax_ce") & (~bank.dense) & (~bank.label_permutation)]
+    # the permuted-label null is the fourth panel: the same measurement on the condition
+    # that must not grok, so the claim and its control share one field
+    main = bank[(bank.loss == "softmax_ce") & (~bank.replicate) & (~bank.label_permutation)]
+    null = bank[(bank.loss == "softmax_ce") & (~bank.replicate) & bank.label_permutation]
+    sources = {p: main for p in panels}
+    panels["permuted labels"] = dict(model="transformer", operation="add", modulus=97,
+                                     train_fraction=0.3, weight_decay=1.0)
+    sources["permuted labels"] = null
     for panel, conditions in panels.items():
-        for run in _pick(main, **conditions):
+        for run in _pick(sources[panel], **conditions):
             summ = _summary(root, run)
             metrics = _metrics(root, run)[["step", "train_acc", "test_acc"]]
             metrics = metrics.assign(
@@ -183,7 +188,7 @@ def fig_signature(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
         "test_acc",
     ]
     rows = []
-    main = bank[(bank.loss == "softmax_ce") & (~bank.dense)]
+    main = bank[(bank.loss == "softmax_ce") & (~bank.replicate)]
     for panel, conditions in panels.items():
         for run in _pick(main, **conditions):
             obs = _observables(root, run)
@@ -259,7 +264,7 @@ def fig_crocker(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-@builder("4.4", "robustness", "Four of fifteen conditions clear the null; one runs below it.")
+@builder("4.4", "robustness", "Five of sixteen conditions clear the null; one runs below it.")
 def fig_robustness(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     """The rows of thesis table 4.2, plus the two pooled null rows beneath them.
 
@@ -296,7 +301,7 @@ def fig_robustness(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     arms["block"] = "intervention"
     out = pd.concat([out, arms], ignore_index=True)
 
-    main = bank[~bank.dense]
+    main = bank[~bank.replicate]
     nulls = {"permuted": main[main.label_permutation], "poly": main[main.operation == "poly"]}
     out["lr"] = np.nan
     for name, runs in nulls.items():
@@ -319,7 +324,10 @@ def fig_robustness(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("4.6", "circularity", "Circularity predicts the signature; generalisation does not.")
 def fig_circularity(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    m = bank[bank.grokked & (bank.operation != "compose")]
+    # the dense re-runs repeat conditions the main programme already holds, so they are
+    # excluded here for the same reason analysis/circularity.py excludes them: the panel and
+    # the association section 4.5 quotes have to be computed over one set of runs
+    m = bank[bank.grokked & (bank.operation != "compose") & (~bank.replicate)]
     keep = [
         "run",
         "model",
@@ -394,7 +402,7 @@ def fig_interventions(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     baseline = bank[
         (bank.operation == "add") & (bank.modulus == 97) & (bank.train_fraction == 0.3)
         & (bank.weight_decay == 1.0) & (bank.loss == "softmax_ce") & (bank.optimizer == "adamw")
-        & (~bank.label_permutation) & (~bank.dense)
+        & (~bank.label_permutation) & (~bank.replicate)
     ]
     rows = []
     for run in sorted(set(m.run) | set(baseline.run)):
@@ -491,14 +499,31 @@ def fig_torus(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-@builder("6.4", "depth", "Betti profile along depth: the torus survives until the readout.")
+@builder("6.4", "depth", "The torus appears at the operand layer, and only after the transition.")
 def fig_depth(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """The same measurement as 4.7, read along depth at the post-transition snapshot."""
+    """The same measurement as 4.7, crossed over depth and training stage.
+
+    4.7 asks where in *depth* the structure lives at one stage; this asks the same of every
+    stage at once, which is the pair of axes section 6.5 exists to cross. Only the plane the
+    structure is legible in is kept --- section 4.6 establishes that it is nowhere else ---
+    and the cell is the mean over seeds and landmark draws, so a cell of exactly 2 means
+    every draw agreed.
+    """
     frame = fig_torus(root, bank)
-    after = frame[frame.stage == "after"]
-    if after.empty:
-        raise Missing("torus.csv has no post-transition stage")
-    return after
+    plane = frame[frame.pca_dim == 2]
+    if plane.empty:
+        raise Missing("torus.csv has no top-two-plane rows")
+    return (
+        plane.groupby(["regime", "condition", "stage", "depth", "layer"], as_index=False)
+        .agg(
+            cells=("betti_1", "size"),
+            betti_1=("betti_1", "mean"),
+            betti_2=("betti_2", "mean"),
+            torus_frac=("betti_2", lambda s: float((s == 1).mean())),
+            life_1=("life_1", "median"),
+            life_2=("life_2", "median"),
+        )
+    )
 
 
 @builder("5.5", "lag", "Topology follows generalisation, and leads nowhere.")
@@ -514,7 +539,7 @@ def fig_lag(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
         "h1_max_persistence",
     )
     rows = []
-    for run in bank[~bank.dense].run:
+    for run in bank[~bank.replicate].run:
         summ = _summary(root, run)
         transitions = summ.get("transitions") or {}
         info = bank[bank.run == run].iloc[0]
@@ -564,7 +589,7 @@ def fig_velocity(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
         "permuted": dict(model="transformer", operation="add", modulus=97,
                          label_permutation=True),
     }
-    main = bank[(bank.loss == "softmax_ce") & (~bank.dense)]
+    main = bank[(bank.loss == "softmax_ce") & (~bank.replicate)]
     rows = []
     for panel, conditions in panels.items():
         pick = main if panel == "permuted" else main[~main.label_permutation]
@@ -598,7 +623,8 @@ def fig_phdim(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
         rows.append(
             pd.read_csv(path).assign(
                 run=run, t_g=info.t_g, operation=info.operation,
-                weight_decay=info.weight_decay, label_permutation=info.label_permutation
+                weight_decay=info.weight_decay, label_permutation=info.label_permutation,
+                generalisation_gap=info.generalisation_gap, fits_train_set=info.fits_train_set,
             )
         )
     if not rows:

@@ -18,23 +18,29 @@ analysis/
   normalisation.py     is the contraction a similarity, and does the verdict survive a
                        different denominator?                            (thesis 3.3.1, 4.4)
   torus.py             degree-two homology of the joint-input cloud, by stage, depth and
-                       ambient dimension                                 (thesis 4.6, 6.5)
-  circularity.py       a non-spectral circularity measure, the residual after circularity,
-                       and a null at the level of the observable         (thesis 4.5)
+                       projected dimension                               (thesis 4.6, 6.5)
+  circularity.py       two non-spectral circularity measures, the residual after circularity,
+                       a column-shuffle null, and the recipe's share of
+                       the variance in it                                (thesis 4.5)
   predictive.py        the head-to-head with the extreme condition held out and the target
                        winsorised                                        (thesis 5.4)
-  pid.py               information decomposition per regime, two redundancy functions,
-                       cluster bootstrap, permutation null, effective n  (thesis 5.5)
-  redundancy.py        permutation p-values across the grid, BH and BY side by side
-                                                                         (thesis 3.7, 4.4)
-  detector.py          what the transition detector does to a step of known location
-                                                                         (thesis 5.6)
+  pid.py               information decomposition per regime, two redundancy functions, two
+                       source pairings, cluster bootstrap and null       (thesis 5.5)
+  redundancy.py        resampled-null p-values across the grid, drawn one null configuration
+                       at a time, BH and BY side by side                 (thesis 3.7, 4.4)
+  detector.py          what the transition detector does to a step of known location, and
+                       what its unrepaired form did                      (thesis 5.6)
   velocity.py          changepoint on the topological velocity, with its controls
                                                                          (thesis 6.3)
   phdim.py             window x projection sweep, and the estimator on known dimensions
                                                                          (thesis 6.4)
   instability.py       do the transient collapses reach the analysed checkpoints?
                                                                          (thesis 7.4)
+  windows.py           how much does the window rule decide the answer?  (thesis 4.2, A.2)
+  collapse.py          the ratio as a function of dimensional collapse, and where the
+                       non-cyclic task exceeds it                        (thesis 4.5, 5.3)
+  shape.py             is there one dominant cycle? two scale-free statistics
+                                                                         (thesis 3.3, 4.3)
 ```
 
 Each module past `figures/build.py` is a CLI in the same shape,
@@ -49,11 +55,28 @@ uv run python -m analysis.figures.build         # -> results/processed/thesis/fi
 uv run python -m analysis.figures.build --only 4.2 4.6
 uv run python -m analysis.figures.render        # -> results/figures/generated/*.pdf
 uv run python -m analysis.figures.conceptual    # -> .../tikz-methodology-data.tex
+uv run python -m analysis.figures.dial          # -> .../tikz-dial-data.tex
 ```
 
 Both figure commands write to `results/figures/generated/` unless `--out` (or
 `GTDA_FIGURE_DIR`) says otherwise; when a manuscript tree sits beside the repository they
 default to its `figures/generated/` instead, so the build stays one command.
+
+**Use the project interpreter.** `uv run` or `.venv/bin/python`, never a bare `python`: the system
+one may be old enough to reject `zip(..., strict=True)` and, worse, may carry a different matplotlib
+and render a figure that differs from the rest of the set without failing.
+
+The drawing rules the renderers are held to are `Documentation/Figures/00-Master.md` — §4.6 for the
+shared devices (seed comb, null band, sparkline column, key block, named value, **seed tally**,
+**condition column block**) and §4.7 for precision: axes joined at one origin, leaders that reach
+their target and do not cross, panel-letter offsets that belong to the column rather than the panel.
+`style.py` implements all of them; `panel_letter`'s docstring carries the column rule where it is
+used.
+
+`dial` reads three terminal embeddings straight from `results/raw/`, takes the top-two principal
+plane of each, and emits the ring coordinates, the winding, the mean radius and the residues at the
+quarter turns. It is the only figure module that touches the raw snapshots rather than the tidy
+tables, because what it draws is the embedding itself and not a summary of it.
 
 `conceptual` is the odd one out: it computes a point set, its Vietoris--Rips complex and that
 complex's barcode, and emits them as TikZ coordinates for the Chapter 2 teaching figure. Drawing
@@ -170,6 +193,10 @@ chapters quote. Method code has tests; reduction code has a committed output.
 | PID atoms, and the marginals behind them | `evaluation.pid.gaussian_pid`, `analysis.pid` | `thesis/pid.json` |
 | Predictive head-to-head, AUC / R² per feature set | `evaluation.headtohead`, `analysis.predictive` | `thesis/head_to_head.csv` |
 | Betti profile, torus test | `tda.betti`, `analysis.torus` | `thesis/torus.csv` |
+| Betti profile across depth and stage | `analysis.figures.build` (6.4) | `thesis/figures/fig-6-4-depth.csv` |
+| Window-rule sensitivity | `analysis.windows` | `thesis/window_sensitivity.csv` |
+| The collapse law, and excess over it by condition | `analysis.collapse` | `thesis/collapse_conditions.csv` |
+| Dominance and share of the leading bar | `analysis.shape` | `thesis/diagram_shape_conditions.csv` |
 
 ## Things that will bite
 

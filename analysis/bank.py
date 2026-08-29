@@ -128,13 +128,30 @@ def circularity_column(operation: str, columns, k: int | None = CIRCULARITY_K) -
 
     Multiplication and division arrange the grokked circle by discrete logarithm, so the
     residue-axis transform is blind to it and the group variant is the fair competitor.
+    The permutation group has no such basis, so none is reported for it.
     """
+    if operation == "compose":
+        return None
     variants = fourier_variants(columns)
     group = operation in {"mul", "div"}
     for key in ((group, k), (group, None), (False, k), (False, None)):
         if key in variants:
             return variants[key]
     return None
+
+
+def is_replicate(run: Run) -> bool:
+    """A re-run of a condition the main programme already covers.
+
+    Both batches exist for the trajectory analysis of chapter 6: the dense set on a different
+    snapshot schedule, which changes every window median, and the trajectory set on the same
+    seeds. Pooling either into a condition would count five runs as ten.
+    """
+    return (
+        "_dense_" in run.name
+        or "_traj_" in run.name
+        or run.config["train"].get("dense_to", 0) > 0
+    )
 
 
 def _window(obs: pd.DataFrame, column: str, tg: float | None) -> tuple[float, float]:
@@ -192,10 +209,7 @@ def summarise(run: Run, fourier_k: int | None) -> dict:
         "steps": cfg["train"]["steps"],
         "seed": cfg["seed"],
         "n_snapshots": len(obs),
-        # The dense re-runs repeat existing conditions on a different snapshot schedule,
-        # which changes every window median; they belong to the trajectory analysis and
-        # must not be pooled with the main programme.
-        "dense": "_dense_" in run.name or cfg["train"].get("dense_to", 0) > 0,
+        "replicate": is_replicate(run),
         # passed through from the pipeline, never recomputed here
         "t_c": summ.get("train_convergence_step"),
         "t_g": tg,
@@ -227,7 +241,8 @@ def summarise(run: Run, fourier_k: int | None) -> dict:
     col = circularity_column(row["operation"], obs.columns)
     row["circularity_column"] = col
     row["circularity"] = float(obs[col].iloc[-1]) if col else float("nan")
-    for column in ("test_acc", "test_acc_novel"):
+    # Terminal weight norm: Tan et al.'s comparator to the trajectory dimension (section 6.4).
+    for column in ("test_acc", "test_acc_novel", "weight_norm"):
         if column in obs:
             row[f"{column}__final"] = float(obs[column].iloc[-1])
     row.update(final_accuracies(run.directory))
@@ -312,12 +327,12 @@ def condition_table(
     bank: pd.DataFrame,
     *,
     seed: int = 0,
-    include_dense: bool = False,
+    include_replicates: bool = False,
     observables: Sequence[str] = RATIO_OBSERVABLES,
 ) -> pd.DataFrame:
     """One row per experimental condition, with bootstrap intervals over seeds."""
-    if not include_dense and "dense" in bank:
-        bank = bank[~bank.dense]
+    if not include_replicates and "replicate" in bank:
+        bank = bank[~bank.replicate]
     rows = []
     for key, sub in bank.groupby(CONDITION_KEYS, dropna=False):
         grokked = sub[sub.grokked]
@@ -347,7 +362,7 @@ def null_runs(bank: pd.DataFrame) -> pd.DataFrame:
     rule the network memorises completely and never generalises on). Dense re-runs are
     excluded for the same reason they are excluded from the condition table.
     """
-    bank = bank[~bank.dense] if "dense" in bank else bank
+    bank = bank[~bank.replicate] if "replicate" in bank else bank
     return bank[(bank.label_permutation) | (bank.operation == "poly")]
 
 

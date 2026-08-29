@@ -36,6 +36,7 @@ def ph_dimension_fit(
     alpha: float = 1.0,
     n_subsets: int = 8,
     min_points: int = 40,
+    n_draws: int = 1,
     seed: int = 0,
 ) -> dict[str, float]:
     """The fit behind the dimension, not only its value.
@@ -45,6 +46,11 @@ def ph_dimension_fit(
     the regression moves the dimension a long way. The slope and the fit's ``r2`` are
     therefore returned beside the dimension, so that proximity to the edge is visible
     rather than hidden inside a ``nan``.
+
+    ``n_draws`` averages ``E_alpha`` over that many subsamples at each size before the
+    regression, which is what Birdal et al. do and what the reported series does not: the
+    default of one keeps the series as it was measured, and ``analysis/phdim.py`` sweeps the
+    parameter to show what the single draw costs.
     """
     x = np.asarray(points, dtype=np.float64)
     n_total = x.shape[0]
@@ -56,8 +62,12 @@ def ph_dimension_fit(
     sizes = np.unique(np.linspace(min_points, n_total, n_subsets, dtype=int))
     logs_n, logs_e = [], []
     for size in sizes:
-        idx = rng.choice(n_total, size=size, replace=False)
-        energy = alpha_weighted_lifetime_sum(x[idx], alpha)
+        draws = 1 if size >= n_total else n_draws  # the full set has one subsample
+        energies = [
+            alpha_weighted_lifetime_sum(x[rng.choice(n_total, size=size, replace=False)], alpha)
+            for _ in range(draws)
+        ]
+        energy = float(np.mean(energies))
         if energy > 0:
             logs_n.append(np.log(size))
             logs_e.append(np.log(energy))

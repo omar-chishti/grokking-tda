@@ -129,7 +129,7 @@ def intervention_timing(bank: pd.DataFrame) -> dict:
     test --- and the arm with no signature is the control that says what the detector does
     when there is nothing to time.
     """
-    arms = bank[(bank.weight_decay == 0) & (~bank.dense) & (~bank.diverged)]
+    arms = bank[(bank.weight_decay == 0) & (~bank.replicate) & (~bank.diverged)]
     out = {}
     for key, sub in arms.groupby(["model", "loss", "optimizer", "lr"], dropna=False):
         timed = sub[sub.t_g.notna() & sub.t_top.notna()]
@@ -164,7 +164,7 @@ def dose_response(bank: pd.DataFrame) -> dict:
         & (bank.loss == "softmax_ce")
         & (bank.optimizer == "adamw")
         & (~bank.label_permutation)
-        & (~bank.dense)
+        & (~bank.replicate)
         & (bank.weight_decay > 0)
     ]
     paired = dose[dose.t_g.notna() & dose.t_top.notna()]
@@ -193,7 +193,7 @@ def circularity_association(bank: pd.DataFrame) -> dict:
     is excluded: it is non-abelian, so no basis exists in which concentration could
     measure circularity, and the residue-axis statistic is meaningless there.
     """
-    m = bank[bank.grokked & (bank.operation != "compose") & (~bank.dense)].copy()
+    m = bank[bank.grokked & (bank.operation != "compose") & (~bank.replicate)].copy()
     out = {"n_runs": int(len(m))}
     for target in (
         "h1_max_persistence_normalised__ratio",
@@ -220,7 +220,7 @@ def circularity_k_sensitivity(root: Path, bank: pd.DataFrame) -> dict:
     Reported because the choice of k is a free parameter and the claim should not
     depend on it.
     """
-    m = bank[bank.grokked & (bank.operation != "compose") & (~bank.dense)]
+    m = bank[bank.grokked & (bank.operation != "compose") & (~bank.replicate)]
     out = {}
     for k in (1, 2, 3, 5, 10, 20):
         values = []
@@ -317,7 +317,7 @@ def build(root: Path, out: Path) -> dict:
     bank.to_csv(out / "bank.csv", index=False)
     conditions.to_csv(out / "conditions.csv", index=False)
     mde_by_seed_count(bank).to_csv(out / "mde_by_seed_count.csv", index=False)
-    bank[bank.grokked & (bank.operation != "compose") & (~bank.dense)][
+    bank[bank.grokked & (bank.operation != "compose") & (~bank.replicate)][
         ["run", "model", "operation", "modulus", "weight_decay", "circularity"]
         + [c for c in bank.columns if c.endswith("__ratio")]
     ].to_csv(out / "circularity.csv", index=False)
@@ -329,7 +329,7 @@ def build(root: Path, out: Path) -> dict:
         (bank.operation == "compose") & (bank.modulus == 120) & (bank.train_fraction == 0.6)
     ]
     s5_runs = sorted(s5.run)
-    main = bank[~bank.dense]
+    main = bank[~bank.replicate]
     canonical = bank[
         (bank.operation == "add")
         & (bank.modulus == 97)
@@ -345,8 +345,8 @@ def build(root: Path, out: Path) -> dict:
     claims = {
         "generated_from": str(root.resolve()),
         "n_runs_loaded": int(len(bank)),
-        "n_main_programme": int((~bank.dense).sum()),
-        "n_dense": int(bank.dense.sum()),
+        "n_main_programme": int((~bank.replicate).sum()),
+        "n_dense": int(bank.replicate.sum()),
         "n_grokked": int(bank.grokked.sum()),
         "fourier_k_selected": fourier_k,
         "scale_collapse": {

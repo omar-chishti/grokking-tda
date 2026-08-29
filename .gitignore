@@ -35,6 +35,10 @@ results/figures/*
 !results/raw/.gitkeep
 !results/processed/.gitkeep
 !results/figures/.gitkeep
+# The tidy tables behind every number and figure in the thesis are small and are the only
+# way a reader without the raw store can check one, so they are tracked.
+!results/processed/thesis/
+!results/processed/thesis/**
 
 # Checkpoints and large artifacts
 *.pt

@@ -73,6 +73,42 @@ def null_series(root: Path) -> list[tuple[str, np.ndarray, np.ndarray]]:
     return out
 
 
+def unrepaired(root: Path) -> dict:
+    """What the proxy did before it was made to measure the rise from the trough.
+
+    Raw persistence is largest on the random initial embedding, so the series opens above the
+    midpoint of its own global extremes, the first crossing is step zero and the lag is the
+    whole of ``t_g``. Section 5.6 quotes the counts from here rather than asserting them.
+    """
+    n_runs = n_located = n_zero = n_grokking = n_lead = 0
+    for run in iter_runs(root):
+        obs = run.observables
+        if "h1_max_persistence" not in obs:
+            continue
+        n_runs += 1
+        found = transition_step(
+            obs["step"].to_numpy(float),
+            obs["h1_max_persistence"].to_numpy(float),
+            direction="rising",
+            compare="global",
+        )
+        if found is None:
+            continue
+        n_located += 1
+        n_zero += found == 0
+        t_g = run.summary.get("grokking_step")
+        if t_g is not None:
+            n_grokking += 1
+            n_lead += (t_g - found) == t_g
+    return {
+        "n_runs": n_runs,
+        "n_located": n_located,
+        "n_at_step_zero": n_zero,
+        "n_grokking": n_grokking,
+        "n_lead_is_tg": n_lead,
+    }
+
+
 def main() -> None:
     ap = cli.parser(__doc__)
     args = ap.parse_args()
@@ -132,6 +168,14 @@ def main() -> None:
             f"  {amplitude:6.2f}x     {located:5.0%}     {bias:+10.0f}    {iqr:10.0f}"
             f"        {relative:8.1%}"
         )
+
+    summary["unrepaired_detector"] = unrepaired(args.root)
+    u = summary["unrepaired_detector"]
+    print(
+        f"\nunrepaired detector on the raw series: located a transition on {u['n_located']} of "
+        f"{u['n_runs']} runs, {u['n_at_step_zero']} of them at step 0; on the "
+        f"{u['n_grokking']} that grok it reported a lead of exactly t_g on {u['n_lead_is_tg']}"
+    )
 
     (args.out / "detector_calibration.json").write_text(json.dumps(summary, indent=2))
     print(f"\nwritten to {args.out}/detector_calibration.csv and .json")

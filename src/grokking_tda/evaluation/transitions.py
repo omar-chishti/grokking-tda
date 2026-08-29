@@ -36,7 +36,10 @@ def train_convergence_step(metrics: pd.DataFrame, acc_threshold: float = 0.99) -
 
 
 def transition_step(
-    steps: np.ndarray, values: np.ndarray, direction: str = "rising"
+    steps: np.ndarray,
+    values: np.ndarray,
+    direction: str = "rising",
+    compare: str = "trough",
 ) -> int | None:
     """Midpoint-crossing step of a rising observable, measured from its trough.
 
@@ -46,6 +49,11 @@ def transition_step(
     report, and inventing one for it corrupts the lead-lag comparison.
     ``direction="falling"`` negates the series first (LID falls at grokking);
     ``"auto"`` infers the direction from the first and last finite values.
+
+    ``compare="global"`` restores the unrepaired proxy, which takes the midpoint between the
+    series' global extremes without requiring the peak to follow the trough. It is kept so
+    that the size of the artefact can be measured rather than asserted; nothing reported
+    uses it.
     """
     steps = np.asarray(steps)
     values = np.asarray(values, dtype=float)
@@ -58,6 +66,13 @@ def transition_step(
         values = -values
     elif direction != "rising":
         raise ValueError(f"unknown direction {direction!r}; choices: rising, falling, auto")
+    if compare == "global":
+        lo, hi = float(np.nanmin(values)), float(np.nanmax(values))
+        if hi <= lo:
+            return None
+        return _first_crossing(steps, values, lo + 0.5 * (hi - lo))
+    if compare != "trough":
+        raise ValueError(f"unknown compare {compare!r}; choices: trough, global")
     # The midpoint proxy crosses *something* whenever max > min, so a series that only
     # decays still yields a step — and one near zero, which reads as a large topological
     # lead. Measure the rise from the trough to the highest value that follows it: the

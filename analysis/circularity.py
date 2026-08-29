@@ -170,13 +170,43 @@ def column_shuffle_null(run_dir: Path, *, seed: int = 0) -> dict | None:
     }
 
 
+def recipe_variance_share(bank: pd.DataFrame, min_seeds: int = 3) -> dict:
+    """How much of terminal circularity the recipe fixes and how much the seed is left.
+
+    Section 4.5 attributes the boundary to the recipe as a whole. Zhong et al. report that
+    hyperparameters *and initialisation* select among algorithms on this task, so the seed is
+    a live alternative, and a bank that replicates every condition five times can measure the
+    split rather than assume it.
+    """
+    frame = bank.dropna(subset=["circularity"]).copy()
+    frame["condition"] = frame.run.str.replace(r"_s\d+$", "", regex=True)
+    frame = frame[frame.groupby("condition").circularity.transform("size") >= min_seeds]
+    if frame.condition.nunique() < 2:
+        return {}
+    grand = frame.circularity.mean()
+    groups = list(frame.groupby("condition").circularity)
+    between = sum(len(g) * (g.mean() - grand) ** 2 for _, g in groups)
+    within = sum(((g - g.mean()) ** 2).sum() for _, g in groups)
+    medians = frame.groupby("condition").circularity.median()
+    spreads = frame.groupby("condition").circularity.agg(lambda s: s.max() - s.min())
+    return {
+        "n_runs": int(len(frame)),
+        "n_conditions": int(frame.condition.nunique()),
+        "between_share": float(between / (between + within)),
+        "median_min": float(medians.min()),
+        "median_max": float(medians.max()),
+        "within_spread_median": float(spreads.median()),
+        "within_spread_max": float(spreads.max()),
+    }
+
+
 def main() -> None:
     ap = cli.parser(__doc__)
     ap.add_argument("--permutation-runs", type=int, default=20)
     args = ap.parse_args()
 
     bank, _ = load_bank(args.root)
-    bank = bank[~bank.dense] if "dense" in bank else bank
+    bank = bank[~bank.replicate] if "replicate" in bank else bank
 
     geometry = []
     for run in iter_runs(args.root):
@@ -247,8 +277,24 @@ def main() -> None:
                 f"   cyclic order {r.cyclic_order:.3f} -> {r.cyclic_order_null_median:.3f}"
             )
 
+    variance = recipe_variance_share(merged)
+    print(
+        f"\nrecipe against seed, over {variance['n_conditions']} conditions with three or more "
+        f"seeds: the recipe accounts for {variance['between_share']:.2f} of the variance in "
+        f"terminal circularity, condition medians running from {variance['median_min']:.3f} to "
+        f"{variance['median_max']:.3f} against a within-condition spread with median "
+        f"{variance['within_spread_median']:.3f}"
+    )
+
     (args.out / "circularity_measures.json").write_text(
-        json.dumps({"associations": associations, "residual": residual}, indent=2)
+        json.dumps(
+            {
+                "associations": associations,
+                "residual": residual,
+                "recipe_variance": variance,
+            },
+            indent=2,
+        )
     )
     print(f"\nwritten to {args.out}/circularity_measures.csv and .json")
 

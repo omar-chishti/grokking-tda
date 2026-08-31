@@ -4,6 +4,25 @@
   "n_main_programme": 125,
   "n_dense": 40,
   "n_grokked": 99,
+  "plateau_relaxed": {
+    "n_runs": 13,
+    "n_main_programme": 10,
+    "runs": [
+      "transformer_add97_f0.3_wd0.1_softmax_ce_s1",
+      "transformer_add97_f0.3_wd0.1_softmax_ce_s2",
+      "transformer_add97_f0.3_wd0.1_softmax_ce_s4",
+      "transformer_add97_f0.3_wd0.1_traj_s1",
+      "transformer_add97_f0.3_wd0.1_traj_s2",
+      "transformer_add97_f0.3_wd0.1_traj_s4",
+      "transformer_add97_f0.3_wd0.3_softmax_ce_s0",
+      "transformer_add97_f0.3_wd0.3_softmax_ce_s3",
+      "transformer_add97_f0.3_wd1.0_softmax_ce_s3",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s2",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s3",
+      "transformer_compose97_f0.5_wd1.0_softmax_ce_s0",
+      "transformer_compose97_f0.5_wd1.0_softmax_ce_s1"
+    ]
+  },
   "fourier_k_selected": 20,
   "scale_collapse": {
     "min_with_decay": 6.842824248874547,

@@ -59,6 +59,18 @@
       "median_absolute_relative_error": 0.09035714285714286
     }
   },
+  "changepoint": {
+    "observable": "h1_max_persistence_normalised",
+    "n_grokking_runs": 80,
+    "n_located_proxy": 80,
+    "n_located_changepoint": 63,
+    "n_located_by_both": 63,
+    "median_separation_steps": 828.0,
+    "median_separation_over_t_g": 0.08104683195592287,
+    "sign_agreement": 0.8253968253968254,
+    "n_lagging_proxy": 56,
+    "n_lagging_changepoint": 42
+  },
   "unrepaired_detector": {
     "n_runs": 165,
     "n_located": 165,

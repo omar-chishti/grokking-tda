@@ -1,18 +1,4 @@
-"""Recompute every number the thesis quotes, and print it as a ledger.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.thesis_numbers
-    uv run python -m analysis.thesis_numbers --root results/raw --out results/processed/thesis
-
-Writes ``bank.csv`` (one row per run), ``conditions.csv`` (one row per condition, with
-bootstrap intervals over seeds), ``circularity.csv`` (the association behind thesis
-section 4.5) and ``claims.json`` (the ledger, keyed by where each number appears).
-
-Timing quantities are passed through from each run's summary and are only as current as
-the last analysis pass; anything derived here depends on the observable series and on
-``t_g``, which is a threshold crossing on test accuracy.
-"""
+"""Recompute every number the thesis quotes and print it as a ledger; write the tidy tables."""
 
 from __future__ import annotations
 
@@ -28,6 +14,7 @@ from analysis.bank import (
     CIRCULARITY_K,
     RATIO_OBSERVABLES,
     circularity_column,
+    condition_label,
     condition_table,
     load_bank,
     null_band,
@@ -44,19 +31,10 @@ def minimum_detectable_effect(
     n_draws: int = 20_000,
     seed: int = 0,
 ) -> dict:
-    """The smallest ratio a condition of ``n_seeds`` could have cleared (thesis section 4.4).
+    """The smallest ratio ``n_seeds`` could have cleared (§4.4).
 
-    Ten conditions "sit inside the band", and the chapter reads that as evidence of absence.
-    It only is if an effect of reasonable size *would* have been detected. The verdict rule
-    is that the whole bootstrap interval over seeds must exceed the largest ratio any null
-    run produced, so the question has an exact answer rather than a searched one.
-
-    Scale-equivariance is what makes it exact. Multiplying a condition's ratios by ``m``
-    multiplies the bootstrap lower bound by ``m`` too, since a median and its percentiles
-    are homogeneous. So for a null draw whose lower bound is ``L``, the condition clears
-    precisely when ``m > ceiling / L``, and the multiplier reaching the required power is
-    the corresponding quantile of ``ceiling / L`` across draws. No search, no bisection on
-    a noisy objective, and monotone in ``n_seeds`` up to the resolution of the draws.
+    Exact rather than searched: the bootstrap bound is homogeneous, so a condition clears a
+    null draw of lower bound ``L`` precisely when its multiplier exceeds ``ceiling / L``.
     """
     nulls = null_runs(bank)
     rng = np.random.default_rng(seed)
@@ -72,7 +50,6 @@ def minimum_detectable_effect(
             continue
         ceiling = float(values.max())
         draws = rng.choice(values, size=(n_draws, n_seeds))
-        # The bootstrap lower bound of each draw, vectorised: resample within the draw.
         picks = rng.integers(0, n_seeds, size=(n_draws, 1_000, n_seeds))
         medians = np.median(np.take_along_axis(draws[:, None, :], picks, axis=2), axis=2)
         lower = np.quantile(medians, 0.025, axis=1)
@@ -90,13 +67,7 @@ SEED_COUNTS = tuple(range(2, 13))
 
 
 def mde_by_seed_count(bank: pd.DataFrame, counts=SEED_COUNTS) -> pd.DataFrame:
-    """The detection floor as a function of replication, for thesis section 7.4.
-
-    Section 4.4 quotes the floor at the replication the protocol actually used. The small-N
-    paragraph of section 7.4 needs the curve instead: what the design could and could not
-    have detected at any seed count is a property of the null bands, not of a chosen point
-    on them, and reading it off says how much a longer run programme would have bought.
-    """
+    """The detection floor as a function of replication, for §7.4."""
     rows = []
     for n in counts:
         effect = minimum_detectable_effect(bank, n_seeds=n)
@@ -107,9 +78,8 @@ def mde_by_seed_count(bank: pd.DataFrame, counts=SEED_COUNTS) -> pd.DataFrame:
                     {
                         "n_seeds": n,
                         "observable": column,
-                        # The band, carried on every row: it is the binding quantity. The
-                        # floor is set by how wide the null is and by how many null runs
-                        # define it, far more than by how many seeds a condition has.
+                        # the band is repeated on every row: the floor is set by its width
+                        # and how many runs define it, not by a condition's seed count
                         "n_null_runs": cell["n_null_runs"],
                         "null_min": cell["null_min"],
                         "null_max": cell["null_max"],
@@ -121,14 +91,7 @@ def mde_by_seed_count(bank: pd.DataFrame, counts=SEED_COUNTS) -> pd.DataFrame:
 
 
 def intervention_timing(bank: pd.DataFrame) -> dict:
-    """Does the signature still lag when the transition is moved by an intervention? (5.7)
-
-    The observational lag of section 5.6 could be an artefact of how long these runs take.
-    The interventions move the grokking step by more than an order of magnitude without
-    touching the task, so the sign of the lag under them is the timing half of the causal
-    test --- and the arm with no signature is the control that says what the detector does
-    when there is nothing to time.
-    """
+    """Does the signature still lag when an intervention moves the transition? (§5.7)"""
     arms = bank[(bank.weight_decay == 0) & (~bank.replicate) & (~bank.diverged)]
     out = {}
     for key, sub in arms.groupby(["model", "loss", "optimizer", "lr"], dropna=False):
@@ -149,13 +112,7 @@ def intervention_timing(bank: pd.DataFrame) -> dict:
 
 
 def dose_response(bank: pd.DataFrame) -> dict:
-    """Does the topological transition track the generalisation transition as ``t_g`` moves?
-
-    Weight decay drags ``t_g`` over a factor of five at fixed task and architecture. A tight
-    relation through the diagonal would be good evidence of coupling. Section 5.7.1 already
-    names the limitation this runs into --- the dose axis sits inside the regime where no
-    signature exists --- so a null result here is expected and is reported as a null.
-    """
+    """Does the topological transition track ``t_g`` as weight decay drags it? (§5.7.1)"""
     dose = bank[
         (bank.model == "transformer")
         & (bank.operation == "add")
@@ -187,12 +144,7 @@ def dose_response(bank: pd.DataFrame) -> dict:
 
 
 def circularity_association(bank: pd.DataFrame) -> dict:
-    """Does the signature track how circular the solution is? (thesis section 4.5)
-
-    Restricted to runs that grokked and have a circularity measure. Composition in S_n
-    is excluded: it is non-abelian, so no basis exists in which concentration could
-    measure circularity, and the residue-axis statistic is meaningless there.
-    """
+    """Does the signature track circularity? (§4.5) S_n is excluded: no basis measures it there."""
     m = bank[bank.grokked & (bank.operation != "compose") & (~bank.replicate)].copy()
     out = {"n_runs": int(len(m))}
     for target in (
@@ -215,11 +167,6 @@ def circularity_association(bank: pd.DataFrame) -> dict:
 
 
 def circularity_k_sensitivity(root: Path, bank: pd.DataFrame) -> dict:
-    """The association at every member of the swept Fourier family.
-
-    Reported because the choice of k is a free parameter and the claim should not
-    depend on it.
-    """
     m = bank[bank.grokked & (bank.operation != "compose") & (~bank.replicate)]
     out = {}
     for k in (1, 2, 3, 5, 10, 20):
@@ -239,7 +186,7 @@ def circularity_k_sensitivity(root: Path, bank: pd.DataFrame) -> dict:
 
 
 def instability(root: Path) -> dict:
-    """Runs that reach train accuracy 0.99 and later collapse below 0.5 (thesis section 4.1)."""
+    """Runs that reach train accuracy 0.99 and later collapse below 0.5 (§4.1)."""
     converged = collapsed = total = 0
     for d in sorted(p for p in root.iterdir() if p.is_dir()):
         path = d / "metrics.jsonl"
@@ -261,7 +208,7 @@ def instability(root: Path) -> dict:
 
 
 def commutativity_prediction(n_symbols: int = 5, train_fraction: float = 0.6) -> dict:
-    """Fraction of S_n pairs that commute, and the plateau it predicts (thesis section 3.5)."""
+    """Fraction of S_n pairs that commute, and the plateau it predicts (§3.5)."""
     from itertools import permutations
 
     elements = list(permutations(range(n_symbols)))
@@ -284,7 +231,6 @@ def commutativity_prediction(n_symbols: int = 5, train_fraction: float = 0.6) ->
 
 
 def measured_plateau(root: Path, runs: list[str], lo: float = 0.3, hi: float = 0.8) -> dict:
-    """Median test accuracy between ``lo`` and ``hi`` of each run's grokking step."""
     values = []
     for name in runs:
         obs_path = root / name / "analysis" / "observables.csv"
@@ -324,7 +270,7 @@ def build(root: Path, out: Path) -> dict:
 
     bands = {f"{c}__ratio": null_band(bank, f"{c}__ratio") for c in RATIO_OBSERVABLES
              if f"{c}__ratio" in bank}
-    # The five-seed S_5 set, not the two-seed fraction sweep that located it.
+    # the five-seed set, not the two-seed fraction sweep that located it
     s5 = bank[
         (bank.operation == "compose") & (bank.modulus == 120) & (bank.train_fraction == 0.6)
     ]
@@ -348,10 +294,14 @@ def build(root: Path, out: Path) -> dict:
         "n_main_programme": int((~bank.replicate).sum()),
         "n_dense": int(bank.replicate.sum()),
         "n_grokked": int(bank.grokked.sum()),
+        "plateau_relaxed": {
+            "n_runs": int(bank.plateau_relaxed.sum()),
+            "n_main_programme": int(main.plateau_relaxed.sum()),
+            "runs": sorted(bank.loc[bank.plateau_relaxed, "run"]),
+        },
         "fourier_k_selected": fourier_k,
         "scale_collapse": {
-            # Runs trained without weight decay barely contract, so the range that matters
-            # is over the runs the thesis discusses.
+            # runs without weight decay barely contract
             "min_with_decay": float(decayed.scale_collapse.min()),
             "max_with_decay": float(decayed.scale_collapse.max()),
             "min_all": float(bank.scale_collapse.min()),
@@ -392,6 +342,11 @@ def report(claims: dict, conditions: pd.DataFrame) -> None:
         f"({claims['n_main_programme']} main programme + {claims['n_dense']} dense re-runs), "
         f"{claims['n_grokked']} grokked"
     )
+    pr = claims["plateau_relaxed"]
+    print(
+        f"plateau relaxed to t_g (too few snapshots past 1.2 t_g): {pr['n_runs']} runs, "
+        f"{pr['n_main_programme']} in the main programme"
+    )
     print(f"Fourier k selected on the time series: {claims['fourier_k_selected']}")
     sc = claims["scale_collapse"]
     print(
@@ -405,7 +360,7 @@ def report(claims: dict, conditions: pd.DataFrame) -> None:
             f"observed [{nb['observed_min']:.2f}, {nb['observed_max']:.2f}]"
         )
     print("conditions against those bands:", claims["verdicts"])
-    print("\nintervention timing (section 5.7): negative lag means topology follows")
+    print("\nintervention timing (§5.7): negative lag means topology follows")
     for arm, v in claims["intervention_timing"].items():
         print(
             f"  {arm:44s} {v['n_lagging']}/{v['n_seeds']} lag  "
@@ -415,7 +370,7 @@ def report(claims: dict, conditions: pd.DataFrame) -> None:
     dr = claims["dose_response"]
     if "slope" in dr:
         print(
-            f"\ndose-response (section 5.7.1): log t_top on log t_g over {dr['n']} runs at "
+            f"\ndose-response (§5.7.1): log t_top on log t_g over {dr['n']} runs at "
             f"weight decays {dr['doses']} — slope {dr['slope']:+.2f} "
             f"(se {dr['slope_stderr']:.2f}), R^2 {dr['r2']:.2f}, p {dr['p']:.3g}, "
             f"Spearman {dr['spearman_rho']:+.2f}"
@@ -473,13 +428,7 @@ def report(claims: dict, conditions: pd.DataFrame) -> None:
     print(" ".join(f"{c:{'<' if i == 0 else '>'}{w}s}"
                    for i, (c, w) in enumerate(zip(columns, widths, strict=True))))
     for _, row in table.iterrows():
-        label = (
-            f"{row.model} {row.operation}{int(row.modulus)} f{row.train_fraction} "
-            f"wd{row.weight_decay} lr{row.lr:g}"
-            + (" PERM" if row.label_permutation else "")
-            + ("" if row.loss == "softmax_ce" else " stablemax")
-            + ("" if row.optimizer == "adamw" else " ortho")
-        )
+        label = condition_label(row)
         tg = "—" if not np.isfinite(row.t_g_median) else f"{row.t_g_median:,.0f}"
         print(
             f"{label[:52]:52s} {int(row.n_grokked)}/{int(row.n_runs):<4d} {tg:>9s} "

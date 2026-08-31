@@ -1,38 +1,4 @@
-"""How much of the circularity association is mechanical, and does it need Fourier at all?
-
-Section 4.5 reports $\\rho = 0.705$ between the normalised $H_1$ ratio and terminal Fourier
-concentration, then concedes that the correlation is "partly mechanical" because both come
-off the same embedding matrix. In an assessed document *partly* is doing a lot of work, and
-the concession can be converted into numbers. Three of them.
-
-**What the residual carries.** Regressing $\\log$ ratio on circularity and asking whether
-what is left over says anything about $\\log \\tg$ is the sharpest available form of RQ3:
-if the residual carries nothing, the topological observable is circularity plus noise; if
-it carries something, that something is what persistent homology adds.
-
-**A circularity measure that owes nothing to Fourier.** Everything in section 4.5 rests on
-one statistic, and that statistic is the competitor the thesis is trying to beat. Two
-geometric alternatives are added here, computed from positions in the top-two principal
-plane rather than from any spectrum: the uniformity of the radius, which says the points
-lie on a circle at all, and the resultant length of the angular gaps between consecutive
-residues, which says they go round it *in order*. If an independently constructed measure
-gives the same association, section 4.5 stops being a comparison of one statistic with its
-own cousin.
-
-**A null at the level of the observable.** The two existing nulls are *task* nulls: they
-change the data and retrain. A third is nearly free and stronger for internal validity, but
-not the one that suggests itself. Permuting the **rows** of a trained embedding cannot work:
-persistent homology reads the distance matrix alone, a row permutation conjugates that
-matrix by a permutation, and every diagram comes back bit-identical --- which is exactly the
-invariance section 5.2 is built on. What does work is shuffling each **column**
-independently, which preserves every coordinate's marginal distribution exactly and destroys
-the joint arrangement, so a statistic that responds to the circle must collapse and one that
-responds to the scale of a trained matrix will not.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.circularity
-"""
+"""How much of the circularity association is mechanical, and does it need Fourier? (§4.5)"""
 
 from __future__ import annotations
 
@@ -52,11 +18,10 @@ from grokking_tda.tda.homology import compute_persistence
 from grokking_tda.tda.pointcloud import build_point_cloud
 from grokking_tda.tda.summaries import finite_lifetimes, max_persistence, total_persistence
 
-N_PERMUTATIONS = 20  # row shuffles per run; the effect is large, so few are needed
+N_PERMUTATIONS = 20  # column shuffles per run; the effect is large, so few are needed
 
 
 def geometric_circularity(embedding: np.ndarray) -> dict[str, float]:
-    """Two spectral-basis-free measures of how circular a residue embedding is."""
     x = np.asarray(embedding, dtype=np.float64)
     x = x - x.mean(axis=0, keepdims=True)
     u, s, _ = np.linalg.svd(x, full_matrices=False)
@@ -67,13 +32,11 @@ def geometric_circularity(embedding: np.ndarray) -> dict[str, float]:
     if mean_radius <= 0:
         return {"circle_fit": 0.0, "cyclic_order": 0.0}
 
-    # 1 - (coefficient of variation of the radius): 1 on a circle, 0 on a blob.
+    # 1 - CV of the radius: 1 on a circle, 0 on a blob
     circle_fit = float(max(0.0, 1.0 - radius.std() / mean_radius))
 
-    # Do consecutive residues sit at a constant angular step? On a circle traversed in
-    # residue order the increments are all 2*pi/p, so their circular resultant is 1;
-    # scramble the arrangement and the increments are uniform and it falls to ~1/sqrt(p).
-    # Rotation and reflection leave the increments alone, so nothing has to be searched.
+    # Do consecutive residues sit at a constant angular step? In residue order the increments
+    # are 2*pi/p and their resultant is 1; scrambled it falls to ~1/sqrt(p)
     angle = np.arctan2(plane[:, 1], plane[:, 0])
     increment = np.diff(np.concatenate([angle, angle[:1]]))
     cyclic_order = float(np.abs(np.exp(1j * increment).mean()))
@@ -112,13 +75,10 @@ def residual_analysis(bank: pd.DataFrame) -> dict:
 
 
 def column_shuffle_null(run_dir: Path, *, seed: int = 0) -> dict | None:
-    """H1 of a trained embedding, against the same matrix with each column shuffled.
+    """H1 against the same matrix column-shuffled: marginals kept, correspondence gone.
 
-    Shuffling within columns preserves each coordinate's marginal distribution exactly --- so
-    the cloud keeps its extent, its per-dimension variances and its overall scale --- while
-    destroying every correspondence between coordinates, and with it the circle. What
-    survives is a null with the same univariate statistics and no geometry, which is the
-    comparison that isolates arrangement from magnitude.
+    Columns and not rows. A row permutation conjugates the distance matrix, which persistent
+    homology reads alone, so every diagram would come back bit-identical.
     """
     run = Run(run_dir)
     snapshots = run.snapshots()
@@ -171,13 +131,7 @@ def column_shuffle_null(run_dir: Path, *, seed: int = 0) -> dict | None:
 
 
 def recipe_variance_share(bank: pd.DataFrame, min_seeds: int = 3) -> dict:
-    """How much of terminal circularity the recipe fixes and how much the seed is left.
-
-    Section 4.5 attributes the boundary to the recipe as a whole. Zhong et al. report that
-    hyperparameters *and initialisation* select among algorithms on this task, so the seed is
-    a live alternative, and a bank that replicates every condition five times can measure the
-    split rather than assume it.
-    """
+    """How much of terminal circularity the recipe fixes and how much is left to the seed."""
     frame = bank.dropna(subset=["circularity"]).copy()
     frame["condition"] = frame.run.str.replace(r"_s\d+$", "", regex=True)
     frame = frame[frame.groupby("condition").circularity.transform("size") >= min_seeds]
@@ -225,8 +179,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     merged.to_csv(args.out / "circularity_measures.csv", index=False)
 
-    # The same population thesis section 4.5 quotes: composition in S_n is non-abelian, so
-    # no basis exists in which spectral concentration could measure circularity there.
+    # §4.5's population: S_n is non-abelian, so no basis measures circularity there
     grokked = merged[
         merged.grokked & merged.circularity.notna() & (merged.operation != "compose")
     ]
@@ -254,7 +207,7 @@ def main() -> None:
     residual = residual_analysis(merged)
     if residual:
         print(
-            f"\nresidual (section 2.2): circularity explains "
+            f"\nresidual (§2.2): circularity explains "
             f"{residual['ratio_on_circularity_r2']:.2f} of the log ratio's variance; "
             f"the ratio tracks log t_g at rho={residual['ratio_vs_t_g']['rho']:+.3f}, "
             f"what is left of it at rho={residual['residual_vs_t_g']['rho']:+.3f} "
@@ -270,7 +223,7 @@ def main() -> None:
     if nulls:
         nulls = pd.DataFrame(nulls)
         nulls.to_csv(args.out / "column_shuffle_null.csv", index=False)
-        print(f"\ncolumn-shuffle null (section 2.8), {len(nulls)} trained embeddings:")
+        print(f"\ncolumn-shuffle null (§2.8), {len(nulls)} trained embeddings:")
         for _, r in nulls.iterrows():
             print(
                 f"  {r.run:46s} H1 max {r.h1_max:.4f} -> {r.h1_max_null_median:.4f}"

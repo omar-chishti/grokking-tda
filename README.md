@@ -6,9 +6,8 @@
 
 A framework for measuring topological signatures of **grokking**. It trains small models on
 modular arithmetic, records each training trajectory as an immutable artifact, and computes
-persistent homology over training alongside the cheap baselines it would have to beat — Fourier
-concentration, weight norm, local intrinsic dimension — so that *what topology adds* is a
-measurement rather than an argument.
+persistent homology over training beside the cheap baselines it would have to beat — Fourier
+concentration, weight norm, local intrinsic dimension — so that what topology adds is measured.
 
 ![A transformer memorises modular addition at step 200 and generalises at step 28,600.](docs/assets/grokking.png)
 
@@ -20,8 +19,8 @@ uv sync     # CUDA wheels on Linux, MPS/CPU on macOS, from the committed lockfil
 
 ## Usage
 
-Training is expensive and runs once, writing a self-describing artifact; analysis is cheap and
-runs off that artifact, never touching a GPU. The two talk only through the artifact store.
+Training runs once and writes a self-describing artifact; analysis runs off that artifact, many
+times, never touching a GPU. The two layers meet only at the artifact store.
 
 ```bash
 uv run gtda-train +experiment=smoke          # ~10 s end to end
@@ -29,18 +28,15 @@ uv run gtda-train +experiment=smoke          # ~10 s end to end
 RUN=results/raw/transformer_add11_f0.5_wd1.0_softmax_ce_s0
 uv run gtda-analyse $RUN                     # observables, transitions, lead/lag
 uv run gtda-plot    $RUN                     # vector PDFs
-```
 
-A real grokking run is minutes on a GPU, about an hour on a laptop CPU:
-
-```bash
+# a real grokking run: minutes on a GPU, about an hour on a laptop CPU
 uv run gtda-train +experiment=tf_mod97_grok train.device=cpu
 ```
 
-Configs compose from typed Hydra presets, and every field is overridable from the command line.
-Each run records its resolved config, library versions, platform and hardware in
-`manifest.json`, and the git commit where one is available: the bank in `results/` was
-trained from a synced worktree with no `.git`, so those runs carry a null commit.
+Configs compose from typed Hydra presets and every field is overridable from the command line.
+Each run records its resolved config, library versions, platform, hardware and git commit in
+`manifest.json`; the runs behind `results/` were trained from a synced worktree with no `.git`, so
+they carry a null commit.
 
 ```bash
 uv run gtda-train +experiment=mlp_mod97_grok                    # MLP track
@@ -80,7 +76,7 @@ uv run python -m analysis.figures.render     # vector PDFs from those CSVs
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design and
-[`analysis/README.md`](analysis/README.md) for the analysis layer.
+[`analysis/README.md`](analysis/README.md) for the reduction layer.
 
 ## Development
 

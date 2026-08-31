@@ -1,20 +1,4 @@
-"""The house drawing style for generated thesis figures.
-
-The palette, the type scale, the millimetre geometry, the line weights, and the helpers
-that make range frames and direct labelling cheap enough that nobody reaches for a legend.
-
-The body serif is ETbb and matplotlib can see it, so figure type matches the manuscript
-exactly. That single fact is most of the difference between a designed figure and a
-screenshot of a plotting library. ``fonts`` adds the one thing matplotlib cannot ask an
-OpenType face for: real small capitals, for panel letters and panel titles. Figures inside
-those labels come out old-style to sit with the small caps, as they do on the author's
-plates; everywhere a number is a *measurement* --- ticks, values, annotations --- the type
-stays lining, because a column of tick labels has to align and a reader has to compare
-digits.
-
-Two variants share one code path: ``thesis`` at 158/105/76 mm column widths, and ``slide``
-at the same geometry with the type scaled and the ground made explicit.
-"""
+"""The house drawing style for generated thesis figures (master §4)."""
 
 from __future__ import annotations
 
@@ -31,17 +15,15 @@ from . import fonts
 
 SMALLCAPS = fonts.install()
 
-# Write beside the manuscript when the manuscript is there, and into the repository
-# otherwise. The rule matters because the previous unconditional default *created*
-# ``../LaTeX/Final Thesis/`` — a clone with no thesis beside it wrote into its own
-# parent directory. Overridable with ``--out`` or GTDA_FIGURE_DIR.
+# Beside the manuscript when it is there, into the repository otherwise: an unconditional
+# default once *created* ``../LaTeX/Final Thesis/`` in a clone with no thesis beside it
 _THESIS = Path("../LaTeX/Final Thesis/figures/generated")
 OUTPUT_ROOT = Path(
     os.environ.get("GTDA_FIGURE_DIR")
     or (_THESIS if _THESIS.parent.parent.is_dir() else Path("results/figures/generated"))
 )
 
-# --- palette (master §4.1) --------------------------------------------------------------
+# the palette, series encodings and geometry every figure in the set is drawn to
 INK = "#1F1B16"
 BRONZE = "#8C6A43"
 RULE = "#C8B69B"
@@ -67,12 +49,10 @@ SERIES = {
     "combined": (RULE, (None, None), None),
 }
 
-# --- geometry (master §4.3) -------------------------------------------------------------
 MM = 1 / 25.4
-FULL, TWO_THIRDS, HALF = 158.0, 105.0, 76.0
+FULL, TWO_THIRDS, HALF = 158.0, 105.0, 76.0  # column widths, in millimetres
 RATIOS = {"wide": 0.5, "standard": 2 / 3, "square": 1.0, "portrait": 5 / 4}
 
-# --- line weights -----------------------------------------------------------------------
 HAIRLINE, SECONDARY, DATA, EMPHASIS = 0.4, 0.7, 1.0, 1.2
 
 
@@ -85,10 +65,13 @@ class Variant:
 
 THESIS = Variant("thesis", 1.0, None)
 SLIDE = Variant("slide", 1.65, PAGE)
+# The talk canvas is the slide's figure box itself, so a rendered figure is placed at 1:1 and
+# its type lands at the size it was drawn. Widths in millimetres; see analysis/figures/talk.py.
+TALK = Variant("talk", 1.25, PAGE)
+TALK_W, TALK_PLATE_W = 148.0, 152.0
 
 
 def use(variant: Variant = THESIS) -> Variant:
-    """Install the house style. Call once at the top of every figure function."""
     s = variant.scale
     mpl.rcParams.update(
         {
@@ -135,7 +118,6 @@ def use(variant: Variant = THESIS) -> Variant:
 
 
 def figure(width_mm: float, ratio: float, variant: Variant = THESIS):
-    """A figure of an exact millimetre width. Never ``bbox_inches='tight'`` (master §5.1)."""
     return plt.figure(
         figsize=(width_mm * MM, width_mm * ratio * MM),
         facecolor=variant.ground or "none",
@@ -143,12 +125,6 @@ def figure(width_mm: float, ratio: float, variant: Variant = THESIS):
 
 
 def range_frame(ax, x=None, y=None, *, join: bool = True) -> None:
-    """Trim the spines to the extent of the data, so the axis reports the range.
-
-    ``join`` seats each spine at the other's lower bound so the two meet at one origin.
-    Without it a range frame drawn inside padded limits leaves the corner open, and two
-    rules that do not touch read as two unrelated axes.
-    """
     if x is None:
         x = ax.get_xlim()
     if y is None:
@@ -157,8 +133,8 @@ def range_frame(ax, x=None, y=None, *, join: bool = True) -> None:
     ax.spines["bottom"].set_bounds(*x)
     ax.spines["left"].set_bounds(*y)
     if join:
-        # seat each spine at whichever end of the trimmed range lies nearer the axis's own
-        # origin, so an inverted axis puts its rule at the foot of the panel and not the top
+        # seat each spine at whichever end of the other's range lies nearer that axis's
+        # origin, so an inverted axis puts its rule at the foot of the panel
         x0, y0 = ax.get_xlim()[0], ax.get_ylim()[0]
         ax.spines["bottom"].set_position(("data", min(y, key=lambda v: abs(v - y0))))
         ax.spines["left"].set_position(("data", min(x, key=lambda v: abs(v - x0))))
@@ -168,7 +144,6 @@ def range_frame(ax, x=None, y=None, *, join: bool = True) -> None:
 
 def direct_label(ax, x, y, text, colour=INK, *, dx=2.0, dy=0.0, size=None, style="normal",
                  va="center", ha="left"):
-    """Name a series where it terminates, in its own colour. Offsets are in points."""
     ax.annotate(
         text,
         xy=(x, y),
@@ -186,12 +161,6 @@ def direct_label(ax, x, y, text, colour=INK, *, dx=2.0, dy=0.0, size=None, style
 
 def annotate(ax, x, y, text, *, colour=BRONZE, size=None, ha="left", va="bottom",
              style="italic", transform=None, rotation=0):
-    """The one number a reader should take away, set on the drawing at the thing it refers to.
-
-    Coordinates are axes fractions by default, so a value just outside ``[0, 1]`` places the
-    text just outside the panel. Pass ``transform=ax.get_xaxis_transform()`` to anchor to a
-    data position on x and an axes fraction on y.
-    """
     ax.text(
         x, y, text, transform=transform if transform is not None else ax.transAxes,
         color=colour, ha=ha, va=va, style=style, rotation=rotation, clip_on=False,
@@ -200,18 +169,7 @@ def annotate(ax, x, y, text, *, colour=BRONZE, size=None, ha="left", va="bottom"
 
 
 def panel_letter(ax, letter: str, *, dx_mm: float = 7.5, dy_mm: float = 2.0) -> None:
-    """A parenthesised small capital, set outside the panel's upper-left corner.
-
-    Placed in *figure* coordinates from the axes bounding box, not in axes coordinates, so
-    every letter in a multi-panel figure aligns to the same optical position whether or not
-    its panel carries a y-label. Small capitals rather than weight: a panel letter is a
-    label on the object and should not compete with the data for the eye.
-
-    ``dx_mm`` belongs to the *column*, never to the panel: a letter whose offset is chosen
-    to clear its own y-label lands somewhere its neighbour's does not, and a plate of
-    letters on a ragged left edge reads as carelessness before it reads as anything else.
-    Every letter in a column takes the largest offset that column needs.
-    """
+    """A parenthesised small capital outside the panel. ``dx_mm`` belongs to the column."""
     fig = ax.get_figure()
     box = ax.get_position()
     w, h = fig.get_size_inches()
@@ -228,23 +186,11 @@ def panel_letter(ax, letter: str, *, dx_mm: float = 7.5, dy_mm: float = 2.0) -> 
 
 
 def panel_title(ax, text: str, *, pad: float = 8.0, colour: str = BRONZE) -> None:
-    """Name a panel of a small multiple, above its data area, in the accent.
-
-    Small capitals, so that a title naming a condition reads as a label rather than as the
-    start of a sentence --- which is the failure §4.5 of the master document is about.
-    """
     ax.set_title(text, color=colour, pad=pad, loc="center", family=SMALLCAPS)
 
 
 def value(ax, x, y, number: str, name: str = "", *, colour=BRONZE, ha="left", va="bottom",
           transform=None, gap: float = 1.35) -> None:
-    """A measured number with the quantity it measures set beneath it.
-
-    A value alone in a panel corner is decoration: the reader has to go to the caption to
-    learn what was measured, and by then the number has left the figure. The name is set
-    smaller and lighter than the number, but not so light that it stops being readable ---
-    a name nobody can read is worse than no name, since it still spends the ink.
-    """
     axes = transform if transform is not None else ax.transAxes
     size = mpl.rcParams["font.size"]
     ax.text(x, y, number, transform=axes, color=colour, ha=ha, va=va, style="italic",
@@ -256,13 +202,6 @@ def value(ax, x, y, number: str, name: str = "", *, colour=BRONZE, ha="left", va
 
 
 def key(fig, rect, entries, *, heading: str = "", note: str = "") -> None:
-    """The hairline legend block (device 6): a ruled rectangle, a small-caps heading, rows.
-
-    Used only where direct labelling genuinely cannot work --- a glyph family that recurs
-    across every point of a scatter, or four series that all terminate in the same corner.
-    Each entry is ``(label, draw)``, where ``draw`` receives an axes spanning the swatch
-    column and the row's vertical centre in axes coordinates.
-    """
     ax = fig.add_axes(rect)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
@@ -289,14 +228,7 @@ def key(fig, rect, entries, *, heading: str = "", note: str = "") -> None:
 
 
 def sequential(zero_as_page: bool = True, floor: float = 0.0):
-    """The house ramp, with absence rendered as paper rather than as the palest stop.
-
-    Pair with ``vmin`` just above zero so that ``set_under`` catches the empty cells:
-    a count of none and a count of one must not differ by a shade. ``floor`` drops the
-    palest stops, which is what a field of mostly small values needs --- the ramp's first
-    fifth is within a few percent of the page, so a surface that lives there reads as
-    blank paper however carefully the data was computed.
-    """
+    """The house ramp, absence as paper: pair with ``vmin`` above zero so ``set_under`` fires."""
     cmap = SEQUENTIAL
     if floor > 0.0:
         cmap = LinearSegmentedColormap.from_list(
@@ -309,7 +241,6 @@ def sequential(zero_as_page: bool = True, floor: float = 0.0):
 
 
 def null_band(ax, lo: float, hi: float, *, horizontal: bool = True) -> None:
-    """The range a statistic takes when nothing is happening (device 3)."""
     span = ax.axhspan if horizontal else ax.axvspan
     span(lo, hi, facecolor=RULE, alpha=0.18, edgecolor="none", zorder=0)
     line = ax.axhline if horizontal else ax.axvline
@@ -317,7 +248,6 @@ def null_band(ax, lo: float, hi: float, *, horizontal: bool = True) -> None:
 
 
 def seed_comb(ax, steps, *, height=0.045, colour=SIENNA) -> None:
-    """Each seed's transition as a short hairline along the axis (device 1)."""
     for s in steps:
         ax.axvline(s, ymin=0.0, ymax=height, color=colour, lw=0.6, zorder=3, clip_on=False)
 
@@ -325,14 +255,7 @@ def seed_comb(ax, steps, *, height=0.045, colour=SIENNA) -> None:
 def sparkline(ax, values, *, colours=None, band=None, log: bool = False, kind: str = "bar",
               ticks=(0.0, 1.0), label: str = "", height: float = 0.42, offset: float = 0.0,
               size: float = 11.0) -> None:
-    """A narrow column beside a forest, carrying one variable per row (device 5).
-
-    Bars where the quantity has a meaningful zero, dots where it does not: a bar drawn
-    from the left edge of a logarithmic axis encodes its own axis limit, not its value.
-
-    No y-axis of its own: the rows are the forest's rows, so a second set of labels
-    would be a second reading of the same thing.
-    """
+    """A narrow column beside a forest (device 5): bars where zero means something, else dots."""
     n = len(values)
     rows = np.arange(n) + offset
     if band is not None:
@@ -356,15 +279,13 @@ def sparkline(ax, values, *, colours=None, band=None, log: bool = False, kind: s
                 color=INK, family=SMALLCAPS, fontsize=mpl.rcParams["font.size"] * 0.86)
 
 
-def save(fig, name: str, variant: Variant = THESIS, out_dir=None, svg: bool = True) -> str:
-    """Write vector output, text kept as text.
-
-    PDF for the manuscript; SVG alongside it for the talk and for any web use, where the
-    text stays live (``svg.fonttype = "none"``) so it re-renders in the viewer's ETbb.
-    """
+def save(fig, name: str, variant: Variant = THESIS, out_dir=None, svg: bool = True,
+         suffix: str | None = None) -> str:
+    """``suffix`` overrides the variant tag, for a set whose names already carry the variant."""
     root = Path(out_dir) if out_dir else OUTPUT_ROOT
     root.mkdir(parents=True, exist_ok=True)
-    suffix = "" if variant.name == "thesis" else f"-{variant.name}"
+    if suffix is None:
+        suffix = "" if variant.name == "thesis" else f"-{variant.name}"
     path = root / f"{name}{suffix}.pdf"
     fig.savefig(path, format="pdf", transparent=variant.ground is None)
     if svg:

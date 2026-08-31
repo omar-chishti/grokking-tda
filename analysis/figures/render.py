@@ -1,15 +1,4 @@
-"""Render the generated thesis figures from the tidy CSVs.
-
-One function per figure, each drawing one stated claim. Reads only
-``results/processed/thesis/figures/`` — never the artefact store directly — so a panel can
-be checked as a table before it is drawn.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.figures.render                 # everything buildable
-    uv run python -m analysis.figures.render --only 4.2
-    uv run python -m analysis.figures.render --variant slide
-"""
+"""Render the generated thesis figures from the tidy CSVs, one function per figure."""
 
 from __future__ import annotations
 
@@ -19,6 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -29,11 +19,7 @@ from analysis.figures import style as S
 
 
 def _spearman(x, y) -> tuple[float, float]:
-    """Rank correlation on the rows a panel actually draws.
-
-    Annotating a figure with a number typed by hand invites it to drift from the data
-    beside it; this reads the frame the panel was built from.
-    """
+    """Rank correlation on the rows a panel actually draws, so it cannot drift from them."""
     from scipy import stats
 
     m = np.isfinite(x) & np.isfinite(y)
@@ -61,13 +47,6 @@ def _load(stem: str) -> pd.DataFrame:
 
 
 def _condition_label(key) -> tuple[str, ...]:
-    """One condition as its fields, not as a sentence.
-
-    A forest of twenty rows labelled ``tf $a+b$ p97 f0.3 wd1`` gives the eye nothing to
-    scan: the fields start at different places on every row, so finding all the runs at
-    one modulus means reading twenty strings. Returned as columns, the field names move
-    into a header and each column aligns down the plate.
-    """
     model, op, mod, frac, wd, loss, opt = key
     name = {"add": "$a+b$", "sub": "$a-b$", "mul": r"$a \times b$", "div": r"$a \div b$",
             "compose": r"$S_5$"}.get(op, op)
@@ -77,15 +56,13 @@ def _condition_label(key) -> tuple[str, ...]:
             "" if op == "compose" else f"{int(mod)}", f"{frac:g}", f"{wd:g}", extra)
 
 
-# x in axes fractions left of the panel, and the alignment each column is set to
 CONDITION_COLUMNS = ((-0.566, "left"), (-0.480, "left"), (-0.336, "right"),
                      (-0.258, "right"), (-0.182, "right"), (-0.150, "left"))
 CONDITION_HEADERS = ("arch", "op", "$p$", "$f$", "wd", "")
 
 
-def _condition_columns(ax, fields, *, size, columns=CONDITION_COLUMNS, header=True,
-                       y0=None) -> None:
-    """Set the condition fields as aligned columns down the left of a forest."""
+def _condition_columns(ax, fields, *, size, columns=CONDITION_COLUMNS,
+                       headers=CONDITION_HEADERS, header=True, y0=None) -> None:
     trans = ax.get_yaxis_transform()
     for row, values in enumerate(fields):
         for value, (x, ha) in zip(values, columns, strict=False):
@@ -94,24 +71,21 @@ def _condition_columns(ax, fields, *, size, columns=CONDITION_COLUMNS, header=Tr
                         fontsize=size, clip_on=False)
     if header:
         top = ax.get_ylim()[1] if y0 is None else y0
-        for name, (x, ha) in zip(CONDITION_HEADERS, columns, strict=False):
+        for name, (x, ha) in zip(headers, columns, strict=False):
             if name:
                 ax.text(x, top, name, transform=trans, ha=ha, va="bottom", color=S.INK,
                         alpha=0.68, family=S.SMALLCAPS, fontsize=size, clip_on=False)
 
 
 def _claims_json(name: str) -> dict:
-    """Any ledger file beside claims.json, so a panel and the prose share one source."""
     return json.loads((DATA.parent / name).read_text())
 
 
 def _claims() -> dict:
-    """The ledger of quoted numbers, so a figure and the prose cannot disagree."""
     return json.loads((DATA.parent / "claims.json").read_text())
 
 
 def _condition_row(**conditions):
-    """One row of the robustness table, so a figure and the table cannot drift apart."""
     frame = _load("fig-4-4-robustness.csv")
     for key, value in conditions.items():
         frame = frame[frame[key] == value]
@@ -132,12 +106,6 @@ def _logx(ax, lo: float = 1.0) -> None:
 
 def _seed_tally(ax, n_runs: int, n_grokked: int, *, size, name: str = "", x=0.034,
                 y=0.945, pitch=0.028) -> None:
-    """How many seeds grokked, as a picture: one glyph per seed, filled where it did.
-
-    In the comb's colour, so the tally and the comb below it read as one device. The
-    words are spent once per figure; the same sentence printed in every panel is not a
-    legend, it is a refrain.
-    """
     for k in range(n_runs):
         ax.scatter(x + k * pitch, y, transform=ax.transAxes, clip_on=False, s=8.0,
                    marker="o", zorder=6, linewidths=0.6, edgecolor=S.SIENNA,
@@ -148,16 +116,9 @@ def _seed_tally(ax, n_runs: int, n_grokked: int, *, size, name: str = "", x=0.03
                     alpha=0.62, annotation_clip=False, fontsize=size)
 
 
-# ---------------------------------------------------------------------------- D1.1
-
-
 @renders("1.1", "hero")
 def hero(variant: S.Variant) -> str:
-    """Grokking, in one run. Spec: D1-1-hero.md.
-
-    The emptiest figure in the thesis, deliberately: the reader does not yet know what
-    grokking is, and every mark that is not the phenomenon competes with it.
-    """
+    """Grokking, in one run. Spec: D1-1-hero.md."""
     S.use(variant)
     d = _load("fig-1-1-hero.csv")
     t_c, t_g = float(d.t_c.dropna().iloc[0]), float(d.t_g.dropna().iloc[0])
@@ -183,9 +144,6 @@ def hero(variant: S.Variant) -> str:
     ax.set_ylabel("accuracy")
     S.range_frame(ax, y=(0, 1))
 
-    # named on the plateau, where the three series are furthest apart, rather than at the
-    # right-hand edge, where all three have converged on one and a label column would be
-    # needed to tell them apart
     S.direct_label(ax, 1150, 1.00, "train accuracy", S.BRONZE, dy=-4, va="top")
     S.direct_label(ax, 1150, 0.305, "test accuracy", S.INK, dy=4, va="bottom")
     S.direct_label(ax, 1150, 0.010, "novel pairs only", S.INK, dy=4, va="bottom")
@@ -196,8 +154,6 @@ def hero(variant: S.Variant) -> str:
     ax.text(t_g * 0.62, 0.048, r"$t_g$ = 28,600", transform=trans, ha="right", va="bottom",
             color=S.SIENNA, fontsize=7.0 * variant.scale, zorder=6)
 
-    # the span the thesis is about, measured on the drawing rather than asserted beside it.
-    # The multiple sits in a break in its own rule, so neither has to dodge the other.
     y = 0.685
     ax.annotate("", xy=(t_c, y), xytext=(t_g, y), xycoords=trans, textcoords=trans,
                 arrowprops=dict(arrowstyle="<->", color=S.BRONZE, lw=S.HAIRLINE,
@@ -208,16 +164,9 @@ def hero(variant: S.Variant) -> str:
     return S.save(fig, "fig-1-1-hero", variant)
 
 
-# ---------------------------------------------------------------------------- D4.1
-
-
 @renders("4.1", "reproduction")
 def reproduction(variant: S.Variant) -> str:
-    """It reproduces, three ways, five seeds each. Spec: D4-1-reproduction.md.
-
-    The seed comb is the design idea: it turns "five of five grokked" into a picture and
-    shows the spread in transition time without spending a second panel on it.
-    """
+    """It reproduces, three ways, five seeds each. Spec: D4-1-reproduction.md."""
     S.use(variant)
     d = _load("fig-4-1-reproduction.csv")
     panels = ["canonical transformer", "reference transformer", "canonical MLP",
@@ -237,7 +186,7 @@ def reproduction(variant: S.Variant) -> str:
         row, ci = divmod(pi, 2)
         ax = fig.add_subplot(gs[row, ci])
         sub = d[d.panel == panel]
-        # one entry per run, not per distinct value: two seeds may share a grokking step
+        # one entry per run: two seeds may share a grokking step
         tg = sorted(sub.groupby("run").t_g.first().dropna())
         end = sub.step.max()
 
@@ -269,8 +218,6 @@ def reproduction(variant: S.Variant) -> str:
         _seed_tally(ax, sub.run.nunique(), len(tg), size=6.7 * variant.scale,
                     name="seeds grokked" if pi == 0 else "")
         if tg:
-            # set beside the comb, on whichever side leaves room; a range label that runs
-            # off the panel is worse than one that changes side between panels
             past_middle = max(tg) > 0.45 * end
             S.direct_label(ax, min(tg) if past_middle else max(tg), 0.030,
                            f"{min(tg) / 1000:.1f}\u2013{max(tg) / 1000:.1f}k", S.SIENNA,
@@ -283,16 +230,9 @@ def reproduction(variant: S.Variant) -> str:
     return S.save(fig, "fig-4-1-reproduction", variant)
 
 
-# ---------------------------------------------------------------------------- D4.2
-
-
 @renders("4.2", "signature")
 def signature(variant: S.Variant) -> str:
-    """Raw versus normalised, both regimes. Spec: D4-2-signature.md.
-
-    The connectivity scale is drawn in the raw row only: its presence above and absence
-    below is the argument.
-    """
+    """Raw versus normalised, both regimes. Spec: D4-2-signature.md."""
     S.use(variant)
     d = _load("fig-4-2-signature.csv")
     fig = S.figure(S.FULL, S.RATIOS["standard"], variant)
@@ -327,7 +267,6 @@ def signature(variant: S.Variant) -> str:
             ax = fig.add_subplot(gs[ri, ci])
             axes[(ri, ci)] = ax
 
-            # the window rule of §4.2, drawn so the ratio is checkable rather than asserted
             ax.axvspan(0.5 * tg_med, 0.9 * tg_med, facecolor=S.INK, alpha=0.045, lw=0, zorder=0)
             ax.axvspan(1.2 * tg_med, sub.step.max(), facecolor=S.INK, alpha=0.045, lw=0, zorder=0)
 
@@ -338,7 +277,6 @@ def signature(variant: S.Variant) -> str:
             ax.plot(med.index, med.values, color=S.INK,
                     lw=S.EMPHASIS if rowname == "normalised" else S.DATA, zorder=4)
 
-            # the connectivity scale — raw row only; its absence below is the argument
             if rowname == "raw":
                 sc = sub.groupby("step").pointcloud_scale.median()
                 axs = ax.twinx()
@@ -353,12 +291,7 @@ def signature(variant: S.Variant) -> str:
             S.seed_comb(ax, tg)
             ax.set_xlim(0, sub.step.max() * 1.02)
             ax.margins(y=0.10)
-            # ratio placed in each row's empty quadrant: upper-right for the decaying raw
-            # series, upper-left for the flat normalised one
             rx, ry, rha = (0.985, 0.90, "right") if rowname == "raw" else (0.035, 0.92, "left")
-            # named once for the whole grid, on the first panel: the four ratios are the
-            # same quantity and a small multiple that names it four times is louder, not
-            # clearer
             S.value(ax, rx, ry, ratios[(panel, col)],
                     r"plateau $\div$ baseline" if (ci == 0 and ri == 0) else "", ha=rha)
             if ri == 0:
@@ -372,7 +305,6 @@ def signature(variant: S.Variant) -> str:
                     else r"normalised   $H_1^{\max}/s$"
                 )
 
-    # share y within a row: the comparison across regimes is the argument
     for ri in (0, 1):
         lo = min(axes[(ri, c)].get_ylim()[0] for c in (0, 1))
         hi = max(axes[(ri, c)].get_ylim()[1] for c in (0, 1))
@@ -392,11 +324,6 @@ def signature(variant: S.Variant) -> str:
             ax.text(float(np.median(tg)) * 2.4, ax.get_ylim()[0], r"$t_g$", color=S.SIENNA,
                     fontsize=6.4 * variant.scale, ha="left", va="bottom")
 
-    # name the one subordinate trace, and the two windows the ratio is measured between.
-    # The window names run up inside their own bands: set below the panel they read as a
-    # second x-axis, and there is no room beside them for anything horizontal.
-    # set in the gap between the dotted trace and the seeds it runs above, at the left of
-    # the panel where that gap is widest; over the seeds it was type on top of data
     S.annotate(axes[(0, 0)], 0.055, 0.845, "cloud scale, $s$", colour=S.BRONZE,
                size=6.6 * variant.scale)
     ax = axes[(0, 0)]
@@ -409,30 +336,9 @@ def signature(variant: S.Variant) -> str:
     return S.save(fig, "fig-4-2-signature", variant)
 
 
-# ---------------------------------------------------------------------------- D4.3
-
-
 @renders("4.3", "diagrams")
 def diagrams(variant: S.Variant) -> str:
-    """The dominant cycle leaving the diagonal. Spec: D4-3-diagrams.md.
-
-    Each of the three stages carries its own axis limits, because the cloud contracts by
-    a factor of ten across them and a shared axis would compress the first into a dot.
-    The fourth panel puts all three on one axis after dividing each by its own scale,
-    which is the argument of section 3.3.1 in a single picture.
-
-    Laid out two by two rather than four across. A persistence diagram is a scatter whose
-    reading is the distance of a point from the diagonal, so the panel has to be square and
-    it has to be large enough to resolve a few hundred markers; four of them in a row on a
-    158 mm column gives each one thirty millimetres, which resolves nothing.
-
-    The panels are framed to where the loops live rather than to the origin. In a
-    high-dimensional embedding a one-cycle is born late and lives briefly relative to its
-    birth scale, so a [0, max death] frame renders the whole degree-one diagram as a
-    smudge in one corner. The degree-zero features are born at zero and so cannot be
-    drawn in that frame at all; their deaths are given as a rug along the foot of each
-    panel, which is where the connectivity scale comes from.
-    """
+    """The dominant cycle leaving the diagonal. Spec: D4-3-diagrams.md."""
     S.use(variant)
     d = _load("fig-4-3-diagrams.csv")
     stages = ["memorising", "grokking", "final"]
@@ -455,11 +361,9 @@ def diagrams(variant: S.Variant) -> str:
         ax.scatter(h1.birth, h1.death, s=4.0 + 36.0 * np.sqrt(life / life.max()), marker="o",
                    facecolors="none", edgecolors=S.BRONZE, linewidths=0.45, zorder=3)
 
-        # where the degree-zero features die: the cloud's connectivity, as a rug
         ax.scatter(h0.death, np.full(len(h0), lo + 0.011 * (hi - lo)), marker="|", s=14,
                    color=S.RULE, linewidths=0.4, zorder=2, clip_on=False)
 
-        # the dominant cycle, and how far it stands off the diagonal
         top = h1.loc[(h1.death - h1.birth).idxmax()]
         ax.scatter([top.birth], [top.death], s=26, marker="o", color=S.BRONZE, zorder=5,
                    linewidths=0)
@@ -489,7 +393,6 @@ def diagrams(variant: S.Variant) -> str:
         if variant.name == "thesis":
             S.panel_letter(ax, "ABC"[i], dx_mm=8.5 if i % 2 == 0 else 4.0, dy_mm=0.5)
 
-    # ... and the same three, each divided by its own scale
     ax = fig.add_subplot(gs[1, 1])
     shades = {"memorising": 0.55, "grokking": 0.78, "final": 1.0}
     ax.plot([0.70, 1.16], [0.70, 1.16], color=S.RULE, lw=S.HAIRLINE, zorder=1)
@@ -504,16 +407,9 @@ def diagrams(variant: S.Variant) -> str:
                    edgecolors=S.PAGE, linewidths=0.5)
         dominant.append((stage, colour, float(b[top]), float(dd[top])))
 
-    # The three dominant points sit within a few hundredths of each other on the diagonal,
-    # so each is named on a leader into the half-plane below it, which in a persistence
-    # diagram is empty by construction. Rows are ordered by the slope of the leader that
-    # would reach them, not by the points' height: three rays from one vertical stack cross
-    # unless they leave it in angular order, and crossed leaders have to be traced.
     x_ref, y_ref = 0.70 + 0.545 * 0.46, 0.70 + 0.177 * 0.46
     ordered = sorted(dominant, key=lambda t: -(t[3] - y_ref) / max(x_ref - t[2], 1e-6))
     for row, (stage, colour, bx, dy) in enumerate(ordered):
-        # the leader carries the colour; the words are set in ink, because the palest stop
-        # of the ramp is a legible mark and not legible type
         ax.annotate(f"{stage}   {dy - bx:.3f}", xy=(bx, dy), xytext=(0.545, 0.265 - 0.088 * row),
                     textcoords="axes fraction", color=S.INK, va="center", ha="left",
                     fontsize=7.0 * variant.scale,
@@ -530,14 +426,9 @@ def diagrams(variant: S.Variant) -> str:
     ax.set_xlabel(r"birth $\div s$")
     ax.set_ylabel(r"death $\div s$")
     if variant.name == "thesis":
-        # the same offset as (b), which shares its column: a letter's place is set by the
-        # column it stands over, not by whether its own panel happens to carry a y-label
         S.panel_letter(ax, "D", dx_mm=4.0, dy_mm=0.5)
 
     return S.save(fig, "fig-4-3-diagrams", variant)
-
-
-# ---------------------------------------------------------------------------- D4.4
 
 
 _OPERATION = {"add": "$a+b$", "sub": "$a-b$", "mul": r"$a \times b$", "div": r"$a \div b$",
@@ -552,7 +443,6 @@ def _robustness_fields(row) -> tuple[str, ...]:
     if row.block == "null model":
         return ("", _OPERATION[row.operation], "", "", f"$^{{{int(row.n_runs)}}}$")
     arch = "MLP" if row.model == "mlp" else "tf"
-    # the seed count rides on the weight-decay column only where it is not five of five
     n = "" if (row.n_runs == 5 and row.n_grokked == 5) else \
         f"$^{{{int(row.n_grokked)}/{int(row.n_runs)}}}$"
     return (arch, _OPERATION[row.operation],
@@ -562,12 +452,7 @@ def _robustness_fields(row) -> tuple[str, ...]:
 
 @renders("4.4", "robustness")
 def robustness(variant: S.Variant) -> str:
-    """The robustness map. Spec: D4-4-robustness.md.
-
-    The table beside this carries the numbers an examiner checks; the figure carries the
-    pattern the table cannot, which is that the ordering by signature strength is very
-    nearly the ordering by circularity. That is why the sparkline column is here.
-    """
+    """The robustness map. Spec: D4-4-robustness.md."""
     S.use(variant)
     d = _load("fig-4-4-robustness.csv")
     obs = "h1_max_persistence_normalised"
@@ -575,7 +460,6 @@ def robustness(variant: S.Variant) -> str:
     conditions = d[d.block == "condition"].reset_index(drop=True)
     nulls = d[d.block == "null model"].reset_index(drop=True)
 
-    # Rows run top to bottom in the table's order, so y is inverted: index 0 is the top.
     fig = S.figure(S.FULL, 0.680, variant)
     gs = fig.add_gridspec(
         2, 3, height_ratios=[len(conditions), len(nulls) + 0.6], width_ratios=[1.0, 0.17, 0.17],
@@ -629,10 +513,8 @@ def robustness(variant: S.Variant) -> str:
              ha="left", va="bottom", color=S.INK, alpha=0.68, family=S.SMALLCAPS,
              clip_on=False, fontsize=size)
 
-    # bilateral labelling: condition names down the left, the variable that orders them
-    # down the right (device 4), so the association of the next section is visible here
-    # S_5 has no residue axis, so no spectral circularity is defined for it; the row carries a
-    # dash rather than a bar of length zero, which would read as a measurement of zero.
+    # bilateral labelling (device 4): names left, the ordering variable right. S_5 has no
+    # residue axis, so its row carries a dash — a zero-length bar would read as a measurement.
     S.sparkline(axc, conditions.circularity,
                 colours=[{"above": S.BRONZE, "below": S.SLATE}.get(v, S.INK)
                          for v in conditions[f"{obs}__verdict"]],
@@ -646,7 +528,6 @@ def robustness(variant: S.Variant) -> str:
                 colours=[{"above": S.BRONZE, "below": S.SLATE}.get(v, S.INK)
                          for v in conditions[f"{obs}__verdict"]],
                 log=True, kind="dot", ticks=(10, 100), label=r"scale $\div$")
-    # the null rows carry the same two variables; theirs are the lowest circularity in the set
     axcn = fig.add_subplot(gs[1, 1])
     axsn = fig.add_subplot(gs[1, 2])
     S.sparkline(axcn, nulls.circularity, ticks=(0, 1))
@@ -659,8 +540,8 @@ def robustness(variant: S.Variant) -> str:
         a.tick_params(axis="x", length=0)
     for a in (axs, axsn):
         a.set_xlim(4, 400)
-    # the run-level association of section 4.5, which is what orders this column; read from
-    # the ledger rather than from these twenty-one condition medians, which are a different n
+    # the run-level association of §4.5, read from the ledger: these condition medians are
+    # a different n
     association = _claims()["circularity_association"]
     rho = association["h1_max_persistence_normalised__ratio"]["spearman_rho"]
     S.annotate(axcn, 0.5, -0.62, rf"$\rho = {rho:.2f}$", ha="center", va="top",
@@ -671,9 +552,6 @@ def robustness(variant: S.Variant) -> str:
         S.panel_letter(axn, "B", dx_mm=34.0, dy_mm=3.6)
 
     return S.save(fig, "fig-4-4-robustness", variant)
-
-
-# ---------------------------------------------------------------------------- D4.6
 
 
 @renders("4.6", "circularity")
@@ -701,7 +579,6 @@ def circularity(variant: S.Variant) -> str:
     xs = np.linspace(d.circularity.min(), d.circularity.max(), 100)
     ax.plot(xs, np.exp(a + b * xs), color=S.BRONZE, lw=S.SECONDARY, zorder=3)
 
-    # three channels: glyph = architecture, lightness = weight decay, position = the two variables
     wd = d.weight_decay.replace(0.0, 0.05)
     lo, hi = np.log10(0.05), np.log10(3.0)
     shade = (np.log10(wd) - lo) / (hi - lo)
@@ -726,7 +603,6 @@ def circularity(variant: S.Variant) -> str:
     S.annotate(ax, 0.025, 0.855, rf"$p = {pv / 10 ** exponent:.0f}"
                rf"\times 10^{{{exponent}}}$", size=7.2 * variant.scale)
 
-    # the degenerate strip: the same runs against final test accuracy
     for marker, sel in (("o", d.model == "transformer"), ("s", d.model == "mlp")):
         idx = sel.values
         ax2.scatter(
@@ -742,8 +618,6 @@ def circularity(variant: S.Variant) -> str:
     ax2.spines["bottom"].set_bounds(0.97, 1.03)
     ax2.spines["bottom"].set_color(S.RULE)
 
-    # the key, in the empty lower-right quadrant. Three channels are in play at once and
-    # none of them can be direct-labelled on a scatter of seventy-one points.
     lx, ly, lw_, lh = 0.585, 0.045, 0.400, 0.235
     ax.add_patch(plt.Rectangle((lx, ly), lw_, lh, transform=ax.transAxes, facecolor="none",
                                edgecolor=S.RULE, lw=S.HAIRLINE, zorder=6))
@@ -773,15 +647,8 @@ def circularity(variant: S.Variant) -> str:
     return S.save(fig, "fig-4-6-circularity", variant)
 
 
-# ---------------------------------------------------------------------------- D5.1
-
-
 def _baseline_ratio(frame: pd.DataFrame, column: str) -> pd.Series:
-    """A series divided by its own baseline median, so it reads against the null band.
-
-    The window rule of thesis section 4.2, applied to the whole series rather than to its
-    two windows: this is the same quantity the tables quote, drawn as it evolves.
-    """
+    """A series divided by its own baseline median, so it reads against the null band."""
     tg = float(frame.t_g.iloc[0])
     step, value = frame.step.to_numpy(float), frame[column].to_numpy(float)
     base = np.nanmedian(value[(step >= 0.5 * tg) & (step <= 0.9 * tg)])
@@ -790,13 +657,7 @@ def _baseline_ratio(frame: pd.DataFrame, column: str) -> pd.Series:
 
 @renders("5.1", "basis")
 def basis(variant: S.Variant) -> str:
-    """What a change of basis costs a spectral statistic. Spec: D5-1-basis.md.
-
-    Two rows because the figure makes two claims and only one of them is comfortable.
-    Above: the residue-axis transform never leaves the noise the null models produce,
-    while the same transform in the group's own basis rises. Below: what persistent
-    homology, which was told neither basis, reports about the same runs.
-    """
+    """What a change of basis costs a spectral statistic. Spec: D5-1-basis.md."""
     S.use(variant)
     d = _load("fig-5-1-basis.csv")
     operations = [("mul", r"$a \times b$"), ("div", r"$a \div b$")]
@@ -816,9 +677,6 @@ def basis(variant: S.Variant) -> str:
         axes[(0, ci)], axes[(1, ci)] = top, bottom
 
         top.axhspan(noise_lo, noise_hi, facecolor=S.RULE, alpha=0.30, lw=0, zorder=0)
-        # basis and terminal value are one label, set outside the frame where the series
-        # ends. Named in the right column only: the two panels are a small multiple, so
-        # naming both would be the same label twice.
         for column, dash, weight, basis_name in (
             ("fourier_concentration_k5", (0, (4, 2)), 1.0, "residue axis"),
             ("fourier_concentration_group_k5", "solid", 1.15, "discrete log"),
@@ -829,9 +687,6 @@ def basis(variant: S.Variant) -> str:
             median = sub.groupby("step")[column].median()
             top.plot(median.index, median.values, color=S.BRONZE, lw=weight, ls=dash, zorder=4)
             if ci == 0:
-                # the two bases named once, in a key inside the corner the curves leave
-                # empty. Named at the curve ends they cost a fifth of the width of both
-                # upper panels; the terminal values are in the caption.
                 y = 0.735 - 0.105 * (dash == "solid")
                 top.plot([0.045, 0.145], [y, y], transform=top.transAxes, color=S.BRONZE,
                          lw=weight, ls=dash, clip_on=False, zorder=6)
@@ -841,8 +696,6 @@ def basis(variant: S.Variant) -> str:
         top.set_yticks([0, 0.25, 0.5, 0.75])
 
         S.null_band(bottom, 0.75, 1.32)
-        # the ratio the thesis quotes for this condition, from the same table the figure
-        # of section 4.4 is drawn from, so the two cannot drift apart
         q = _condition_row(operation=operation, train_fraction=0.5)
         S.value(bottom, 0.030, 0.905, f"{q.med:.2f}  [{q.lo:.2f}, {q.hi:.2f}]",
                 r"plateau $\div$ baseline" if ci == 0 else "")
@@ -887,25 +740,13 @@ def basis(variant: S.Variant) -> str:
     return S.save(fig, "fig-5-1-basis", variant)
 
 
-# ---------------------------------------------------------------------------- D5.2
-
-
 @renders("5.2", "noncyclic")
 def noncyclic(variant: S.Variant) -> str:
-    """A task that groks with no circle to find. Spec: D5-2-noncyclic.md.
-
-    Two columns because there are two facts and they need different horizontal axes. The
-    spread in transition time is only legible against absolute steps; the persistence
-    comparison is only legible once each seed is rescaled by its own transition, since
-    five transitions six-fold apart otherwise smear the picture into nothing.
-
-    The left column is split because the pre-transition plateau is the quantitative test
-    of the leakage model of section 3.5, and at full scale it is a line on the axis.
-    """
+    """A task that groks with no circle to find. Spec: D5-2-noncyclic.md."""
     S.use(variant)
     d = _load("fig-5-2-noncyclic.csv")
     band = float(d.null_lo.iloc[0]), float(d.null_hi.iloc[0])
-    predicted = 0.6 * 840 / 14400  # section 3.5, from the 840 commuting pairs of S_5
+    predicted = 0.6 * 840 / 14400  # §3.5, from the 840 commuting pairs of S_5
 
     fig = S.figure(S.FULL, 0.585, variant)
     gs = fig.add_gridspec(2, 2, height_ratios=[2.05, 1.0], left=0.068, right=0.912,
@@ -948,8 +789,6 @@ def noncyclic(variant: S.Variant) -> str:
     strip.set_xlabel("training step")
     S.range_frame(strip, y=(0, 0.06))
     measured = _claims()["s5_measured_plateau"]["median"]
-    # no y-label: the strip is a zoom of the panel above it, sharing both quantity and
-    # horizontal axis, and its two ticks already report the range
     S.value(strip, 0.028, 0.985, f"{measured:.3f}", "measured", colour=S.INK)
     S.value(strip, 0.290, 0.985, f"{predicted:.3f}", "predicted")
 
@@ -992,25 +831,9 @@ def noncyclic(variant: S.Variant) -> str:
     return S.save(fig, "fig-5-2-noncyclic", variant)
 
 
-# ---------------------------------------------------------------------------- D5.3
-
-
 @renders("5.3", "headtohead")
 def headtohead(variant: S.Variant) -> str:
-    """What early-window topology adds. Spec: D5-3-headtohead.md.
-
-    Two questions of the same features, and the harder one is the one that would matter.
-    Whether a run groks at all is a classification problem the cheap observables already
-    answer; when it groks is a regression problem nothing answers, and the fold spread is
-    drawn rather than summarised because it is the reason the second panel says nothing.
-
-    The lower strips are the claim by itself: the score of the cheap observables together,
-    subtracted from the score of the same set with the topological features added.
-
-    The four series cross twice and end within a tenth of each other, so there is no
-    terminus to name them at --- the one case §4.6 keeps the ruled key block for. It also
-    fills the corner the two short strips leave empty.
-    """
+    """What early-window topology adds. Spec: D5-3-headtohead.md."""
     S.use(variant)
     d = _load("fig-5-3-headtohead.csv")
     windows = ["w1000", "w5000", "tc"]
@@ -1103,24 +926,9 @@ def headtohead(variant: S.Variant) -> str:
     return S.save(fig, "fig-5-3-headtohead", variant)
 
 
-# ---------------------------------------------------------------------------- D5.4
-
-
 @renders("5.4", "pid")
 def pid(variant: S.Variant) -> str:
-    """The redundancy question, decomposed, and the regime that reverses it. Spec: D5-4-pid.md.
-
-    Stacked bars, which this house style otherwise forbids, because here the whole is the
-    joint mutual information and the four atoms genuinely partition it.
-
-    Two rows rather than one, because the result is the reversal. Pooled over the bank the
-    unique atom belongs to Fourier and $H_1$ has none; inside the canonical regime, the one
-    section 4.5 reports as having no signature, the structural zero moves to Fourier and the
-    atom unique to $H_1$ is the largest in the decomposition. A single pooled bar would
-    invite a structural zero to be read as a finding.
-
-    Both rows are drawn on one nats axis, so the comparison is made by alignment.
-    """
+    """The redundancy question, decomposed, and the regime that reverses it. Spec: D5-4-pid.md."""
     S.use(variant)
     d = _load("fig-5-4-pid.csv")
     d = d[d.estimator == "gaussian_mmi__ratio"]
@@ -1136,10 +944,6 @@ def pid(variant: S.Variant) -> str:
     fig.subplots_adjust(left=0.036, right=0.952, bottom=0.255, top=0.955)
     size = 6.6 * variant.scale
 
-    # The atoms are named once, in a key across the top, in stacking order. Naming them on
-    # the bar cost three staggered lines of leaders and half the panel's height, and the
-    # names had to be repeated or the second row left unlabelled; here each row spends its
-    # width on the measurement and nothing else.
     ya = ax.get_yaxis_transform()  # x in axes fractions, y in rows
     for frac, (_, name, colour) in zip((0.0, 0.215, 0.475, 0.775), atoms, strict=True):
         ax.add_patch(Rectangle((frac, -1.36), 0.020, 0.30, transform=ya, clip_on=False,
@@ -1162,8 +966,6 @@ def pid(variant: S.Variant) -> str:
                     edgecolor=variant.ground or "white", linewidth=0.5)
             if width <= 0.004:  # a structural zero, ticked where the segment would have been
                 ax.plot([left, left], [row - 0.29, row + 0.29], color=colour, lw=1.3, zorder=4)
-                # Two near-zero atoms can sit within a label's width of each other, so the
-                # later one is dropped a line rather than overprinted.
                 lift = 2.5 + 9.0 * (zeros_drawn := zeros_drawn + 1) - 9.0
                 ax.annotate(f"{width:.3f}", xy=(left, row - 0.29), xytext=(0, lift),
                             textcoords="offset points", ha="center", va="bottom",
@@ -1180,9 +982,6 @@ def pid(variant: S.Variant) -> str:
         ax.text(total + span[1] * 0.010, row + 0.06, f"$n$ = {n}", ha="left", va="top",
                 color=S.INK, alpha=0.62, fontsize=size)
 
-    # The cluster bootstrap on the atom both rows are read for, drawn beneath its own segment.
-    # Every atom carries one of comparable width; four on a stacked partition are unreadable,
-    # and a bar labelled to three decimals with none at all overstates what 71 runs support.
     frames = {key: d[d.regime == key].set_index("atom") for key, _ in regimes}
     for row, left, atom, _ in intervals:
         if atom != "unique_a":
@@ -1215,18 +1014,9 @@ def pid(variant: S.Variant) -> str:
     return S.save(fig, "fig-5-4-pid", variant)
 
 
-# ---------------------------------------------------------------------------- D5.5
-
-
 @renders("5.5", "lag")
 def lag(variant: S.Variant) -> str:
-    """The signed lag, ordered by signature strength. Spec: D5-5-lag.md.
-
-    The figure's claim is about dispersion as much as sign: conditions whose signature
-    clears its null band produce tight, small, negative lags; conditions without one
-    produce values scattered over two orders of magnitude on both sides, because the
-    detector is being asked to time an event that did not occur.
-    """
+    """The signed lag, ordered by signature strength. Spec: D5-5-lag.md."""
     S.use(variant)
     obs = "h1_max_persistence_normalised"
     d = _load("fig-5-5-lag.csv")
@@ -1258,8 +1048,6 @@ def lag(variant: S.Variant) -> str:
     nulls = _load("fig-5-5-lag.csv")
     nulls = nulls[(nulls.observable == obs) & nulls.label_permutation & nulls.t_top.notna()]
 
-    # Standard plate: full column width, filled by two sparkline columns beside the forest
-    # and the null strip beneath it (master §4.4).
     fig = S.figure(S.FULL, 0.72, variant)
     gs = fig.add_gridspec(
         2, 3, height_ratios=[len(t), 2.6], width_ratios=[1.0, 0.135, 0.135],
@@ -1301,7 +1089,7 @@ def lag(variant: S.Variant) -> str:
     S.annotate(ax, -1000, -0.012, "Tang, $\\approx$1,000", colour=S.BRONZE, ha="right",
                va="top", size=6.0 * variant.scale, transform=ax.get_xaxis_transform())
 
-    # the null strip: no t_g, so no lag — only the steps the detector chose to call a transition
+    # no t_g, so no lag — only the steps the detector chose to call a transition
     axn.scatter(nulls.t_top, np.zeros(len(nulls)), s=20, marker="o", facecolors="none",
                 edgecolors=S.INK, linewidths=0.8, zorder=4)
     axn.set_ylim(-1.1, 1.1)
@@ -1318,8 +1106,6 @@ def lag(variant: S.Variant) -> str:
                style="normal",
                size=6.4 * variant.scale)
 
-    # why a row is filled: the signature strength that orders the forest, as a sparkline
-    # column (device 5). Rows with a signature have long bars and tight negative lags.
     axr.axvspan(0.75, 1.32, facecolor=S.RULE, alpha=0.30, lw=0, zorder=0)
     axr.barh(range(len(t)), t.ratio, height=0.42, zorder=3,
              color=[S.BRONZE if c else S.INK for c in t.clears])
@@ -1335,7 +1121,6 @@ def lag(variant: S.Variant) -> str:
     S.annotate(axr, 0.5, 1.015, r"$H_1^{\max}/s$", colour=S.INK, ha="center", style="normal",
                size=6.4 * variant.scale)
 
-    # the second ordering variable, tying this figure to D4.6 without a word
     axc.barh(range(len(t)), t.circ.fillna(0.0), height=0.42, zorder=3,
              color=[S.BRONZE if c else S.INK for c in t.clears])
     axc.set_xlim(0, 1.05)
@@ -1349,7 +1134,6 @@ def lag(variant: S.Variant) -> str:
     S.annotate(axc, 0.5, 1.015, "circularity", colour=S.INK, ha="center", style="normal",
                size=6.4 * variant.scale)
 
-
     if variant.name == "thesis":
         S.panel_letter(ax, "A", dx_mm=47.0)
         S.panel_letter(axn, "B", dx_mm=47.0, dy_mm=1.0)
@@ -1357,35 +1141,16 @@ def lag(variant: S.Variant) -> str:
     return S.save(fig, "fig-5-5-lag", variant)
 
 
-# ---------------------------------------------------------------------------- D6.1
-
-
 @renders("6.1", "crocker")
 def crocker(variant: S.Variant) -> str:
-    """The trajectory as one surface. Spec: D6-1-crocker.md.
-
-    A CROCKER plot is a (time x scale) field of Betti numbers, so the form is a surface
-    and there is no alternative; the design work is entirely in not letting it look like
-    a heatmap from a library.
-
-    Two rows because the contraction of section 3.3.1 appears on the raw scale axis as
-    the whole band of live features sliding downwards, and is absent from the normalised
-    one. The rows do not share a vertical axis; they are in different units, which is the
-    error the chapter is about.
-    """
+    """The trajectory as one surface, on both scale axes. Spec: D6-1-crocker.md."""
     S.use(variant)
     d = _load("fig-6-1-crocker.csv")
     regimes = [("reference", r"$p=113$, wd $0.1$"), ("canonical", r"$p=97$, wd $1.0$")]
     axes_rows = [("raw", "raw scale"), ("normalised", r"scale $\div\, s$")]
     cmap = S.sequential(floor=0.32)
-    # the top of the scale is a handful of cells; framing on the maximum would render the
-    # whole surface as paper. Clipped at the 95th percentile of the live cells, and the
-    # colourbar carries the arrow that says so.
     live = d.betti1[d.betti1 > 0]
     vmax = float(np.percentile(live, 90))
-    # ... and the ramp is compressed at the top, because the median live cell holds eleven
-    # features against a ceiling of fifty: on a linear ramp the surface the chapter is
-    # about would sit in the palest fifth of it.
     norm = PowerNorm(gamma=0.48, vmin=0.5, vmax=vmax)
 
     fig = S.figure(S.FULL, S.RATIOS["standard"], variant)
@@ -1429,7 +1194,6 @@ def crocker(variant: S.Variant) -> str:
     colours.outline.set_visible(False)
     bar.set_xlabel(r"live $H_1$ features", labelpad=2)
     bar.tick_params(length=1.8, width=S.HAIRLINE, pad=1.5)
-    # absence is paper, and paper is not on the ramp, so it gets its own swatch
     bar.add_patch(plt.Rectangle((-0.075, 0.0), 0.045, 1.0, transform=bar.transAxes,
                                 facecolor=S.PAGE, edgecolor=S.RULE, lw=S.HAIRLINE,
                                 clip_on=False, zorder=4))
@@ -1439,24 +1203,9 @@ def crocker(variant: S.Variant) -> str:
     return S.save(fig, "fig-6-1-crocker", variant)
 
 
-# ---------------------------------------------------------------------------- D5.6
-
-
 @renders("5.6", "interventions")
 def interventions(variant: S.Variant) -> str:
-    """The interventions are architecture-sensitive. Spec: D5-6-interventions.md.
-
-    Every seed is drawn, because the seed-level outcomes are the finding: a mean over
-    five transformer seeds of which four diverge is a number describing no run.
-
-    Two failures are distinguished and must stay distinguished. A run that *memorises*
-    holds train accuracy at one and test accuracy at the floor to its budget; a run that
-    *diverges* stops, and is drawn stopping, with an open marker at the last finite step.
-
-    Four arms recur across both panels and all four end in the same corner of each, so
-    they are named once in the ruled block --- which sits in the lower right, where the
-    paired strip's own width leaves a corner that would otherwise be empty.
-    """
+    """The interventions are architecture-sensitive. Spec: D5-6-interventions.md."""
     S.use(variant)
     d = _load("fig-5-6-interventions.csv")
     arms = {
@@ -1499,16 +1248,12 @@ def interventions(variant: S.Variant) -> str:
         else:
             ax.set_yticklabels([])
 
-    # how each bundle ends, as a tally of named outcomes. Set in ink rather than in an
-    # arm's colour: these are counts over the panel, and a coloured tally would claim to
-    # belong to one series.
     for model, tallies in (("mlp", (("memorising", 3), ("diverged", 1))),
                            ("transformer", (("diverged", 4), ("memorising", 5)))):
         for row, (name, count) in enumerate(tallies):
             S.annotate(panels[model], 0.030, 0.640 - 0.115 * row, f"{name}  {count}",
                        colour=S.INK, size=6.8 * variant.scale, style="normal")
 
-    # the paired comparison the chapter turns on: two MLP arms that grok equally fast
     lower = fig.add_gridspec(1, 3, width_ratios=[0.86, 0.125, 0.63], left=0.235, right=0.988,
                              bottom=0.135, top=0.395, wspace=0.070)
     strip = fig.add_subplot(lower[0, 0])
@@ -1573,23 +1318,9 @@ def interventions(variant: S.Variant) -> str:
     return S.save(fig, "fig-5-6-interventions", variant)
 
 
-# ---------------------------------------------------------------------------- D6.2
-
-
 @renders("6.2", "velocity")
 def velocity(variant: S.Variant) -> str:
-    """Topological speed, and a silent null. Spec: D6-2-velocity.md.
-
-    Four panels. The third is the permuted-label control and it exists to show nothing,
-    which is the degenerate-panel device and half the argument; the fourth is where the
-    changepoint detector puts the step in each condition, which is the other half. A series
-    panel shows that the rate rises; only the fourth shows that the rise is *located*, and
-    that in both controls the only feature found is the initialisation transient.
-
-    The rate is plotted, never the raw distance. The snapshot grid is logarithmic outside
-    the dense window, so a consecutive-distance series confounds reorganisation with
-    sampling interval, and this thesis has already had one detector artefact.
-    """
+    """Topological speed, and a silent null. Spec: D6-2-velocity.md."""
     S.use(variant)
     d = _load("fig-6-2-velocity.csv")
     panels = [("reference", r"reference   $p=113$, wd $0.1$"),
@@ -1637,8 +1368,6 @@ def velocity(variant: S.Variant) -> str:
         if variant.name == "thesis":
             S.panel_letter(ax, "ABCD"[pi], dx_mm=8.0 if ci == 0 else 3.0, dy_mm=1.0)
 
-    # D · where the detector puts the step. Same axis as the series panels, so the reader
-    # reads across rather than converting between scales.
     ax = fig.add_subplot(gs[1, 1])
     located = _claims_json("velocity_changepoint.json")
     rows = [("reference", r"reference"), ("canonical", "canonical"), ("permuted", "permuted")]
@@ -1655,8 +1384,6 @@ def velocity(variant: S.Variant) -> str:
             S.annotate(ax, 0.985, y, rf"$\times{size:.1f}$", colour=colour, ha="right",
                        va="bottom", style="normal", size=6.6 * variant.scale,
                        transform=ax.get_yaxis_transform())
-        # set inside the frame, above the left end of the rule: outboard, the longest of
-        # the three reached across the gutter into the panel beside it
         S.annotate(ax, 1, y + 0.14, label, colour=S.INK, ha="left", va="bottom",
                    style="normal", size=6.6 * variant.scale, transform=ax.transData)
     ax.set_xscale("symlog", linthresh=100)
@@ -1674,22 +1401,9 @@ def velocity(variant: S.Variant) -> str:
     return S.save(fig, "fig-6-2-velocity", variant)
 
 
-# ---------------------------------------------------------------------------- D6.3
-
-
 @renders("6.3", "phdim")
 def phdim(variant: S.Variant) -> str:
-    """The dimension of the optimisation path. Spec: D6-3-phdim.md.
-
-    A negative is harder to draw than a positive and drawn badly it looks like a failed
-    positive, so the form has to make flatness the visible subject. Five conditions in
-    sequence with the null last, on a fixed generous vertical range: auto-scaling would
-    magnify noise into structure, which is exactly the error the section warns about.
-
-    The sixth panel states the claim being tested in its own currency. Birdal et al.
-    report that this dimension tracks the generalisation gap; here the gap runs from zero
-    to one and the dimension does not move.
-    """
+    """The dimension of the optimisation path. Spec: D6-3-phdim.md."""
     S.use(variant)
     d = _load("fig-6-3-phdim.csv")
     conditions = [
@@ -1738,18 +1452,14 @@ def phdim(variant: S.Variant) -> str:
         else:  # the row's scale is stated once, on the left; a bare spine with unlabelled
             ax.set_yticks([])  # ticks beside it is a second axis that reports nothing
             ax.spines["left"].set_visible(False)
-        # (e) ends its column and (d) is the last training-step panel in its own, because
-        # (f) below plots a different quantity. (c) is labelled too: it sits beside (d),
-        # and one duplicated axis name costs less than a row that looks half-finished.
         if (ri, ci) in {(2, 0), (1, 1), (1, 0)}:
             ax.set_xlabel("training step")
         if variant.name == "thesis":
             S.panel_letter(ax, "ABCDE"[order.index((ri, ci))],
                            dx_mm=8.0 if ci == 0 else 3.0, dy_mm=0.5)
 
-    # the claim in Birdal's own currency: terminal dimension against the gap it is said to
-    # track. The gap is read from the bank rather than assigned by run name, and runs that
-    # never fit their training set are dropped, since the claim is about models that fit.
+    # the claim in Birdal's own currency. The gap is read from the bank, and runs that never
+    # fit are dropped: the claim is about models that fit.
     ax = fig.add_subplot(gs[2, 1])
     terminal = (d.sort_values("step").groupby("run")
                 .agg(dim=("ph_dim", lambda s: float(s.dropna().tail(5).median())),
@@ -1757,9 +1467,6 @@ def phdim(variant: S.Variant) -> str:
                      fits=("fits_train_set", "first"))
                 .dropna(subset=["dim", "gap"]))
     fitting = terminal[terminal.fits.astype(bool)]
-    # this panel shares the row's vertical scale, because a small multiple whose last cell
-    # rescales is not one. The two runs above it are pinned at the ceiling with their value,
-    # which reports them without letting them flatten the other thirty-eight.
     inside, above = fitting[fitting.dim <= ylim[1]], fitting[fitting.dim > ylim[1]]
     ax.scatter(inside.gap, inside.dim, s=13, marker="o", facecolors="none",
                edgecolors=S.INK, linewidths=0.5, zorder=3)
@@ -1770,7 +1477,6 @@ def phdim(variant: S.Variant) -> str:
         S.direct_label(ax, float(above.gap.min()), ylim[1] - 0.012,
                        "off scale: " + ", ".join(f"{v:.1f}" for v in sorted(above.dim)),
                        S.INK, dx=-6, dy=-1, ha="right", size=6.4 * variant.scale)
-    # condition medians in bronze, so the scatter reads as a distribution and not as noise
     condition = fitting.assign(cond=fitting.index.str.replace(r"_s\d+$", "", regex=True))
     for _, g in condition.groupby("cond"):
         if g.dim.median() <= ylim[1]:
@@ -1783,8 +1489,6 @@ def phdim(variant: S.Variant) -> str:
     ax.set_ylim(*ylim)
     ax.set_xticks([0.0, 0.5, 1.0])
     ax.set_xticklabels(["0", "0.5", "1"])
-    # a scatter in a grid of series, and the only panel in its column whose axes are not
-    # training step against dimension, so it carries its own scale on the side it is read from
     ax.set_yticks([1.0, 1.2, 1.4, 1.6])
     ax.set_yticklabels(["1.0", "1.2", "1.4", "1.6"])
     ax.yaxis.set_label_position("right")
@@ -1800,9 +1504,6 @@ def phdim(variant: S.Variant) -> str:
         S.panel_letter(ax, "F", dx_mm=3.0, dy_mm=0.5)
 
     return S.save(fig, "fig-6-3-phdim", variant)
-
-
-# ------------------------------------------------------------------------------ cli
 
 
 def main() -> None:
@@ -1830,9 +1531,6 @@ def main() -> None:
             print(f"  {number:5s} {fn.figure_name:14s} {v.name:6s} -> {path}")
 
 
-# ---------------------------------------------------------------------------- D6.4
-
-
 LAYER_NAMES = {
     "operands": "operands",
     "hook_hidden": "hidden",
@@ -1848,7 +1546,6 @@ BLOCKS = [("mlp", "MLP"), ("reference", r"reference, $p=113$"), ("canonical", r"
 
 
 def _betti_glyph(ax, x, base, b1, b2, *, unit, width, scale, zero_marker=True):
-    """One cell of the matrix: two bars on a shared baseline, absence drawn not omitted."""
     for offset, value, colour in ((-0.5 * unit, b1, S.BRONZE), (0.5 * unit, b2, S.INK)):
         height = scale * value / 2.0
         if height > 0.004:
@@ -1861,22 +1558,7 @@ def _betti_glyph(ax, x, base, b1, b2, *, unit, width, scale, zero_marker=True):
 
 @renders("6.4", "depth")
 def depth(variant: S.Variant) -> str:
-    """Betti profile across depth and training stage. Spec: D6-4-depth.md.
-
-    The thesis's only glyph matrix, which is deliberate variety: a reader here compares a
-    *shape* --- the pair $(\\beta_1, \\beta_2)$ --- across a grid of stage by depth, and three
-    line plots would make that a tracing exercise. Rows run down in training time so the eye
-    finishes on the row where the prediction lands; columns run left to right in depth, from
-    the operand representation to the logits.
-
-    All three conditions are drawn, at the same scale, because the claim is a contrast: the
-    registered prediction holds on the MLP and on neither transformer, and a panel showing
-    only the architecture where it works would be an argument for it rather than a test of
-    it. The key names the two shapes the prediction is about.
-
-    Bar heights are means over five seeds and three landmark draws, so a bar at exactly 2
-    means all fifteen agreed; the spread that fact hides is reported in section 4.6.
-    """
+    """Betti profile across depth and training stage. Spec: D6-4-depth.md."""
     S.use(variant)
     d = _load("fig-6-4-depth.csv")
     d = d[d.pca_dim == 2] if "pca_dim" in d else d
@@ -1918,15 +1600,12 @@ def depth(variant: S.Variant) -> str:
             side.set_visible(False)
         S.panel_title(ax, title, pad=6.0)
 
-    # stage names and the shared height scale, both on the left margin of the first block
     left = axes[0]
     for ri, (_, label) in enumerate(STAGES):
         base = float(len(STAGES) - 1 - ri)
         S.annotate(left, -0.22, base, label, colour=S.INK, ha="right", va="bottom",
                    style="normal", size=6.4 * variant.scale,
                    transform=left.get_yaxis_transform())
-        # the scale is drawn on every row, because "common scale without exception" is the
-        # claim the matrix rests on, and named once on the row the eye finishes on
         if ri == len(STAGES) - 1:  # one labelled scale, on the row the eye finishes on;
             for level in (1, 2):   # ticks without numbers beside them report nothing
                 y = base + scale * level / 2.0
@@ -1935,7 +1614,6 @@ def depth(variant: S.Variant) -> str:
                 left.text(-0.19, y, str(level), ha="right", va="center", color=S.RULE,
                           fontsize=5.8 * variant.scale, clip_on=False)
 
-    # the key: the two shapes the registered prediction is a transition between
     kax = fig.add_axes([0.892, 0.230, 0.100, 0.600])
     kax.set_xlim(0, 1)
     kax.set_ylim(0, 2.60)
@@ -1960,6 +1638,4 @@ def depth(variant: S.Variant) -> str:
 
 
 if __name__ == "__main__":
-    import matplotlib as mpl  # noqa: F401  (used above for the colormap helper)
-
     main()

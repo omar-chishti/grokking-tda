@@ -1,27 +1,4 @@
-"""How well does the transition detector recover a step it is shown? (section 5.6)
-
-The lag of section 5.6 is a difference between two detectors with different noise
-properties --- $\\tg$ is a threshold crossing on test accuracy, a series that goes from
-chance to one, while $\\ttop$ is a midpoint crossing on a noisy persistence ratio. The
-difference of two estimators is biased whenever either is, and the size of that bias is
-currently unknown, so the seed spread quoted in D5.5 is standing in for an uncertainty
-rather than being one.
-
-It can be measured directly. Take a real null series --- a permuted-label run's own
-persistence, which carries this pipeline's actual noise and none of its signal --- inject a
-logistic step of known location and known amplitude, and ask the detector where it thinks
-the step is. Sweep the amplitude against the series' own noise, because the answer is only
-interesting relative to what the reference regime actually shows: a normalised ratio rising
-about threefold across the transition.
-
-The snapshot grid is logarithmic, so the recovery error is reported in steps *and* as a
-fraction of the injected location, and the smallest amplitude at which the detector is
-usable at all is reported with it.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.detector
-"""
+"""How much does the choice of detector decide the timing result? (§3.6, §5.6)"""
 
 from __future__ import annotations
 
@@ -32,11 +9,10 @@ import numpy as np
 import pandas as pd
 
 from analysis import cli
-from analysis.bank import HEADLINE_OBSERVABLE, iter_runs
+from analysis.bank import HEADLINE_OBSERVABLE, condition_label, iter_runs, load_bank
 from grokking_tda.evaluation import transition_step
 
-# Amplitudes as a multiple of the baseline: 1.0 is no step, 2.9 is what the reference
-# regime shows, and the range brackets every condition in the bank.
+# as a multiple of the baseline: 1.0 is no step, 2.9 is what the reference regime shows
 AMPLITUDES = (1.0, 1.25, 1.5, 2.0, 3.0, 5.0, 9.0)
 LOCATIONS = (0.2, 0.35, 0.5, 0.65, 0.8)  # as a fraction of the run's length
 N_DRAWS = 40
@@ -44,12 +20,7 @@ WIDTH = 0.04  # logistic width, as a fraction of the run: a transition, not a ju
 
 
 def inject(steps: np.ndarray, values: np.ndarray, location: float, amplitude: float):
-    """A logistic step of known location and amplitude, multiplied into a null series.
-
-    Multiplicative rather than additive because the observable is a ratio and the thesis
-    reads it as one; injecting into the log is what makes "an amplitude of 2.9" mean the
-    same thing here as in table 4.2.
-    """
+    """A logistic step of known location and amplitude, multiplied in: the observable is a ratio."""
     span = steps[-1] - steps[0]
     centre = steps[0] + location * span
     ramp = 1.0 / (1.0 + np.exp(-(steps - centre) / (WIDTH * span)))
@@ -57,7 +28,7 @@ def inject(steps: np.ndarray, values: np.ndarray, location: float, amplitude: fl
 
 
 def null_series(root: Path) -> list[tuple[str, np.ndarray, np.ndarray]]:
-    """Permuted-label runs' headline observable: this pipeline's noise, without its signal."""
+    """Permuted-label runs: this pipeline's own noise, carrying none of its signal."""
     out = []
     for run in iter_runs(root):
         if not run.config.get("data", {}).get("label_permutation"):
@@ -74,12 +45,7 @@ def null_series(root: Path) -> list[tuple[str, np.ndarray, np.ndarray]]:
 
 
 def unrepaired(root: Path) -> dict:
-    """What the proxy did before it was made to measure the rise from the trough.
-
-    Raw persistence is largest on the random initial embedding, so the series opens above the
-    midpoint of its own global extremes, the first crossing is step zero and the lag is the
-    whole of ``t_g``. Section 5.6 quotes the counts from here rather than asserting them.
-    """
+    """What the proxy did before it measured the rise from the trough."""
     n_runs = n_located = n_zero = n_grokking = n_lead = 0
     for run in iter_runs(root):
         obs = run.observables
@@ -107,6 +73,49 @@ def unrepaired(root: Path) -> dict:
         "n_grokking": n_grokking,
         "n_lead_is_tg": n_lead,
     }
+
+
+def changepoint_agreement(bank: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """The timing result under the second detector, from the same ``t_g`` (§3.6, §5.6)."""
+    runs = bank[bank.grokked & ~bank.replicate].copy()
+    runs["label"] = [condition_label(r) for _, r in runs.iterrows()]
+    both = runs.dropna(subset=["t_top", "t_changepoint"])
+
+    rows = []
+    for label, sub in runs.groupby("label"):
+        proxy = sub.lead_lag_steps.dropna()
+        cp = sub.lead_lag_steps__changepoint.dropna()
+        rows.append(
+            {
+                "condition": label,
+                "n_seeds": len(sub),
+                "n_located_proxy": len(proxy),
+                "n_located_changepoint": len(cp),
+                "median_lag_proxy": float(proxy.median()) if len(proxy) else float("nan"),
+                "median_lag_changepoint": float(cp.median()) if len(cp) else float("nan"),
+                "n_lagging_proxy": int((proxy < 0).sum()),
+                "n_lagging_changepoint": int((cp < 0).sum()),
+            }
+        )
+    table = pd.DataFrame(rows).sort_values("condition").reset_index(drop=True)
+
+    separation = (both.t_top - both.t_changepoint).abs()
+    signs = np.sign(both.lead_lag_steps) == np.sign(both.lead_lag_steps__changepoint)
+    summary = {
+        "observable": HEADLINE_OBSERVABLE,
+        "n_grokking_runs": int(len(runs)),
+        "n_located_proxy": int(runs.t_top.notna().sum()),
+        "n_located_changepoint": int(runs.t_changepoint.notna().sum()),
+        "n_located_by_both": int(len(both)),
+        "median_separation_steps": float(separation.median()) if len(both) else float("nan"),
+        "median_separation_over_t_g": float((separation / both.t_g).median())
+        if len(both)
+        else float("nan"),
+        "sign_agreement": float(signs.mean()) if len(both) else float("nan"),
+        "n_lagging_proxy": int((runs.lead_lag_steps < 0).sum()),
+        "n_lagging_changepoint": int((runs.lead_lag_steps__changepoint < 0).sum()),
+    }
+    return table, summary
 
 
 def main() -> None:
@@ -169,6 +178,25 @@ def main() -> None:
             f"        {relative:8.1%}"
         )
 
+    bank, _ = load_bank(args.root)
+    agreement, summary["changepoint"] = changepoint_agreement(bank)
+    agreement.to_csv(args.out / "detector_agreement.csv", index=False)
+    c = summary["changepoint"]
+    print(
+        f"\n{c['n_grokking_runs']} grokking runs: the proxy locates a transition on "
+        f"{c['n_located_proxy']}, the changepoint on {c['n_located_changepoint']}, both on "
+        f"{c['n_located_by_both']}"
+    )
+    print(
+        f"  they place it a median {c['median_separation_steps']:,.0f} steps apart "
+        f"({c['median_separation_over_t_g']:.0%} of t_g) and agree on the sign of the lag "
+        f"on {c['sign_agreement']:.0%} of runs"
+    )
+    print(
+        f"  topology lags on {c['n_lagging_proxy']} runs under the proxy and "
+        f"{c['n_lagging_changepoint']} under the changepoint"
+    )
+
     summary["unrepaired_detector"] = unrepaired(args.root)
     u = summary["unrepaired_detector"]
     print(
@@ -178,7 +206,7 @@ def main() -> None:
     )
 
     (args.out / "detector_calibration.json").write_text(json.dumps(summary, indent=2))
-    print(f"\nwritten to {args.out}/detector_calibration.csv and .json")
+    print(f"\nwritten to {args.out}/detector_calibration.csv, .json and detector_agreement.csv")
 
 
 if __name__ == "__main__":

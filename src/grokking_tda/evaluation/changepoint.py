@@ -1,24 +1,13 @@
-"""A second transition detector, so the timing result does not rest on one definition.
-
-The midpoint-crossing proxy in ``transitions.py`` is deliberately assumption-light, which
-also makes it crude: it reads a single crossing and says nothing about whether the series
-actually changed regime. This module segments the series instead, by exact optimal
-partitioning under a squared-error cost with a linear penalty per changepoint — the same
-optimum the PELT algorithm computes, reached here by dynamic programming because a
-snapshot series is a few hundred points and pruning buys nothing at that size.
-
-Agreement between the two detectors is a robustness result; disagreement is a finding
-about how sharply defined the transition is, and either way it belongs in the thesis
-rather than in a footnote.
-"""
+"""A second transition detector, by exact optimal partition — the optimum PELT computes."""
 
 from __future__ import annotations
 
 import numpy as np
 
+from grokking_tda.evaluation.transitions import orient
+
 
 def _segment_costs(values: np.ndarray) -> np.ndarray:
-    """``cost[i, j]`` = squared error of the best constant fit to ``values[i:j]``."""
     n = values.size
     prefix = np.concatenate([[0.0], np.cumsum(values)])
     prefix_sq = np.concatenate([[0.0], np.cumsum(values**2)])
@@ -31,13 +20,8 @@ def _segment_costs(values: np.ndarray) -> np.ndarray:
     return cost
 
 
-def changepoints(values, penalty: float | None = None, max_changes: int = 4) -> list[int]:
-    """Indices at which the series changes level, as an exact optimal partition.
-
-    ``penalty`` defaults to the BIC-like ``sigma^2 * log n`` estimated from the series'
-    successive differences, which is robust to the level shifts being detected in a way
-    that the raw variance is not.
-    """
+def changepoints(values, penalty: float | None = None) -> list[int]:
+    """The exact optimal partition; the BIC-like penalty is the only control on how many cuts."""
     x = np.asarray(values, dtype=float)
     x = x[np.isfinite(x)]
     n = x.size
@@ -66,36 +50,31 @@ def changepoints(values, penalty: float | None = None, max_changes: int = 4) -> 
             cuts.append(int(start))
         at = start
     cuts.reverse()
-    return cuts[:max_changes] if max_changes else cuts
+    return cuts
 
 
-def changepoint_step(steps, values, direction: str = "rising") -> int | None:
-    """The step of the largest level shift in the declared direction, or ``None``.
-
-    Reported beside ``transition_step`` for every observable: two detectors that disagree
-    are telling you the transition is not sharply located, which is itself worth knowing.
-    """
+def changepoint_step(
+    steps, values, direction: str = "rising", compare: str = "trough"
+) -> int | None:
+    """The largest level shift after the trough. ``compare="global"`` keeps the unrepaired form."""
     s = np.asarray(steps)
     x = np.asarray(values, dtype=float)
     mask = np.isfinite(x)
     if mask.sum() < 4:
         return None
     s, x = s[mask], x[mask]
-    if direction == "falling":
-        x = -x
-    elif direction not in {"rising", "auto"}:
-        raise ValueError(f"unknown direction {direction!r}")
+    x = orient(x, direction)
+    if compare == "trough":
+        trough = int(np.argmin(x))
+        s, x = s[trough:], x[trough:]
+    elif compare != "global":
+        raise ValueError(f"unknown compare {compare!r}; choices: trough, global")
 
     cuts = changepoints(x)
     if not cuts:
         return None
-    bounds = [0, *cuts, x.size]
-    jumps = []
-    for i in range(len(bounds) - 2):
-        before = x[bounds[i] : bounds[i + 1]].mean()
-        after = x[bounds[i + 1] : bounds[i + 2]].mean()
-        jumps.append((after - before, cuts[i]))
-    rises = [j for j in jumps if j[0] > 0]
-    if not rises:
-        return None
-    return int(s[max(rises)[1]])
+    # Scored before-against-after, not between adjacent segments: how finely a noisy series
+    # fragments must not decide where its one transition is
+    rises = [(float(np.median(x[c:]) - np.median(x[:c])), c) for c in cuts]
+    size, at = max(rises)
+    return int(s[at]) if size > 0 else None

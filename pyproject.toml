@@ -81,6 +81,9 @@ warn_unused_ignores = false
 markers = ["slow: degree-2 homology on a few hundred points (seconds, not milliseconds)"]
 testpaths = ["tests"]
 addopts = "-q"
+# The reduction layer is run from the repository root and is not installed, so the tests
+# that cover it need the root on the path however pytest was invoked.
+pythonpath = ["."]
 filterwarnings = [
   # torch (Intel OpenMP) and sklearn (LLVM OpenMP) load two runtimes in one process;
   # benign at teardown, and KMP_DUPLICATE_LIB_OK is already set at package import.

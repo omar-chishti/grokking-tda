@@ -1,19 +1,4 @@
-"""Tidy data for every thesis figure, one CSV per figure.
-
-Separating figure *data* from figure *rendering* means the plotting layer never reaches
-into the artefact store, and every panel can be checked as a table before it is drawn.
-Each builder declares its figure number and the one claim that figure has to make
-undeniable; both are written into the manifest beside the data.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.figures.build
-    uv run python -m analysis.figures.build --only 4.2 4.6
-
-Each builder returns a frame and is registered by figure number; a builder whose inputs
-do not exist yet skips with a note instead of failing, so the set fills in as analyses
-land.
-"""
+"""Tidy data for every thesis figure, one CSV per figure, plus a manifest of their claims."""
 
 from __future__ import annotations
 
@@ -35,6 +20,8 @@ from analysis.bank import (
     null_band,
     verdicts,
 )
+from grokking_tda.analysis.observable import diagram_cache_digest, stored_analysis_cfg
+from grokking_tda.artifacts import Run
 
 BUILDERS: dict[str, Callable] = {}
 
@@ -50,9 +37,6 @@ def builder(number: str, name: str, claim: str):
 
 class Missing(Exception):
     """An input this figure needs has not been produced yet."""
-
-
-# --------------------------------------------------------------------------- helpers
 
 
 def _metrics(root: Path, run: str) -> pd.DataFrame:
@@ -83,21 +67,28 @@ def _pick(bank: pd.DataFrame, **conditions) -> list[str]:
     return sorted(bank.loc[mask, "run"])
 
 
+def _construction(root: Path, run: str) -> str:
+    """The digest of the run's own construction: a second representation caches beside the first."""
+    handle = Run(root / run)
+    return diagram_cache_digest(stored_analysis_cfg(handle), int(handle.config.get("seed", 0)))
+
+
 def _diagrams(root: Path, run: str) -> tuple[list[int], list[np.ndarray | None]]:
-    """Cached per-snapshot degree-one diagrams, in step order."""
     cache = root / run / "analysis" / "diagrams"
     if not cache.exists():
         raise Missing(f"no cached diagrams for {run}")
     steps, bars = [], []
-    for path in sorted(cache.glob("step_*.npz")):
+    for path in sorted(cache.glob(f"step_*_{_construction(root, run)}.npz")):
         with np.load(path, allow_pickle=True) as f:
             bars.append(f["dim1"] if "dim1" in f.files else None)
         steps.append(int(path.stem.split("_")[1]))
+    if not steps:
+        raise Missing(f"no cached diagrams for {run} in its own construction")
     return steps, bars
 
 
 def _diagram_file(root: Path, run: str, step: int) -> str:
-    return next((root / run / "analysis" / "diagrams").glob(f"step_{step:08d}_*.npz")).name
+    return f"step_{step:08d}_{_construction(root, run)}.npz"
 
 
 def _finite(bars: np.ndarray | None) -> np.ndarray:
@@ -106,10 +97,7 @@ def _finite(bars: np.ndarray | None) -> np.ndarray:
     return bars[np.isfinite(bars[:, 1])]
 
 
-# The fifteen conditions of thesis table 4.2: everything that groks under the reference
-# loss and optimiser on a task with a group structure. The interventions are chapter 5's
-# subject and the polynomial is a null, so both are excluded here; the two-seed S_5
-# fraction sweep is excluded with them, leaving the five-seed condition the chapter reports.
+# Table 4.2: what groks under the reference recipe on a task with a group structure
 def _main_programme(table: pd.DataFrame) -> pd.DataFrame:
     return table[
         (table.loss == "softmax_ce")
@@ -118,9 +106,6 @@ def _main_programme(table: pd.DataFrame) -> pd.DataFrame:
         & (~table.label_permutation)
         & (table.n_grokked > 0)
     ]
-
-
-# -------------------------------------------------------------------------- builders
 
 
 @builder("1.1", "hero", "The network fits in 200 steps and generalises 27,600 steps later.")
@@ -147,8 +132,7 @@ def fig_reproduction(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
         "canonical MLP": dict(model="mlp", operation="add", modulus=97, weight_decay=1.0),
     }
     rows = []
-    # the permuted-label null is the fourth panel: the same measurement on the condition
-    # that must not grok, so the claim and its control share one field
+    # the fourth panel: the same measurement on the condition that must not grok
     main = bank[(bank.loss == "softmax_ce") & (~bank.replicate) & (~bank.label_permutation)]
     null = bank[(bank.loss == "softmax_ce") & (~bank.replicate) & bank.label_permutation]
     sources = {p: main for p in panels}
@@ -203,11 +187,6 @@ def fig_signature(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("4.3", "diagrams", "One long-lived cycle separates from the diagonal and stays separated.")
 def fig_diagrams(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """Three degree-one diagrams from one reference run, with the scale that normalises them.
-
-    Steps are taken from the run's own snapshot grid — the nearest available to
-    mid-memorisation, the grokking step and the end — never interpolated.
-    """
     run = "transformer_add113_f0.3_wd0.1_softmax_ce_s0"
     steps, bars = _diagrams(root, run)
     obs, summ = _observables(root, run), _summary(root, run)
@@ -230,15 +209,7 @@ def fig_diagrams(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("6.1", "crocker", "The band of live features slides as the cloud contracts.")
 def fig_crocker(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """CROCKER surfaces on both scale axes, for the two regimes, seed 0.
-
-    The scale grid is geometric rather than uniform. Filtration values span three orders
-    of magnitude over training, so a uniform grid spends nearly all of its rows on the
-    early cloud and resolves the late one into two or three cells.
-
-    Long format — one row per (regime, axis, step, scale) cell — because a tidy CSV a
-    reader can check beats a pickled matrix, and 2 x 2 x 120 x 64 is small.
-    """
+    """CROCKER surfaces on both scale axes, on a geometric scale grid, for the two regimes."""
     from grokking_tda.tda.trajectory import betti_at_scales
 
     regimes = {
@@ -266,11 +237,7 @@ def fig_crocker(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("4.4", "robustness", "Five of sixteen conditions clear the null; one runs below it.")
 def fig_robustness(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """The rows of thesis table 4.2, plus the two pooled null rows beneath them.
-
-    The nulls are pooled across their conditions here, as the table pools them: eleven
-    polynomial runs spanning two weight decays are one null model, not four.
-    """
+    """The rows of table 4.2, with the nulls pooled across their conditions as the table does."""
     table = verdicts(bank, condition_table(bank))
     keep = [
         "model",
@@ -292,8 +259,7 @@ def fig_robustness(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     out["block"] = "condition"
     out = out.sort_values("h1_max_persistence_normalised__med", ascending=False)
 
-    # The intervention arms are chapter 5's subject and do not belong in the forest, but
-    # figure 5.6 needs their intervals against the same band; tagged, not duplicated.
+    # not in the forest, but figure 5.6 needs their intervals against the same band
     arms = table[
         ((table.loss == "stablemax_ce") | (table.optimizer.str.startswith("orthograd")))
         & (table.n_grokked > 0)
@@ -324,9 +290,7 @@ def fig_robustness(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("4.6", "circularity", "Circularity predicts the signature; generalisation does not.")
 def fig_circularity(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    # the dense re-runs repeat conditions the main programme already holds, so they are
-    # excluded here for the same reason analysis/circularity.py excludes them: the panel and
-    # the association section 4.5 quotes have to be computed over one set of runs
+    # excluded as in analysis/circularity.py: one set of runs behind panel and association
     m = bank[bank.grokked & (bank.operation != "compose") & (~bank.replicate)]
     keep = [
         "run",
@@ -398,7 +362,6 @@ def fig_interventions(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     m = bank[
         (bank.loss == "stablemax_ce") | (bank.optimizer.str.startswith("orthograd"))
     ]
-    # both architectures' weight-decay baselines, so each panel has its own reference
     baseline = bank[
         (bank.operation == "add") & (bank.modulus == 97) & (bank.train_fraction == 0.3)
         & (bank.weight_decay == 1.0) & (bank.loss == "softmax_ce") & (bank.optimizer == "adamw")
@@ -408,8 +371,7 @@ def fig_interventions(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     for run in sorted(set(m.run) | set(baseline.run)):
         info = bank[bank.run == run].iloc[0]
         metrics = _metrics(root, run)
-        # a diverged run keeps logging accuracy after its loss goes non-finite; the series
-        # is cut there, because what follows is not a trajectory
+        # a diverged run keeps logging accuracy after its loss goes non-finite
         finite = np.isfinite(metrics[["train_loss", "test_loss"]].to_numpy(float)).all(axis=1)
         metrics = metrics.iloc[: len(finite) if finite.all() else int(finite.argmin())]
         metrics = metrics[["step", "train_acc", "test_acc"]].assign(
@@ -431,7 +393,6 @@ def fig_interventions(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 @builder("5.3", "headtohead",
          "Topology adds little over the cheap baselines, and nothing to timing.")
 def fig_headtohead(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """The grouped-fold comparison, as ``gtda-compare`` wrote it."""
     path = Path("results/processed/head_to_head.csv")
     if not path.exists():
         raise Missing("no head_to_head.csv — run gtda-compare")
@@ -442,12 +403,6 @@ def fig_headtohead(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("5.4", "pid", "What topology says about the transition is mostly said by Fourier too.")
 def fig_pid(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """One row per (regime, estimator, atom), with its interval and its permutation null.
-
-    The atoms are meaningless without the null: the binned estimator has an upward bias at
-    this sample size, so a synergy of 0.33 against a shuffled-target null of 0.23 is a very
-    different claim from a synergy of 0.33 against nothing.
-    """
     path = Path("results/processed/thesis/pid.json")
     if not path.exists():
         raise Missing("no pid.json — run analysis.pid")
@@ -479,11 +434,6 @@ def fig_pid(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     "4.7", "torus", "The joint representation is a torus upstream and a circle at the readout."
 )
 def fig_torus(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """Degree-two homology by stage, depth and ambient dimension.
-
-    The ambient rows are the honest half of the panel and belong on it: they are where the
-    structure is invisible, and the contrast with the projected rows is the finding.
-    """
     path = Path("results/processed/thesis/torus.csv")
     if not path.exists():
         raise Missing("no torus.csv — run analysis.torus")
@@ -501,14 +451,7 @@ def fig_torus(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("6.4", "depth", "The torus appears at the operand layer, and only after the transition.")
 def fig_depth(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """The same measurement as 4.7, crossed over depth and training stage.
-
-    4.7 asks where in *depth* the structure lives at one stage; this asks the same of every
-    stage at once, which is the pair of axes section 6.5 exists to cross. Only the plane the
-    structure is legible in is kept --- section 4.6 establishes that it is nowhere else ---
-    and the cell is the mean over seeds and landmark draws, so a cell of exactly 2 means
-    every draw agreed.
-    """
+    """4.7 crossed over depth and stage, in the plane the structure is legible in."""
     frame = fig_torus(root, bank)
     plane = frame[frame.pca_dim == 2]
     if plane.empty:
@@ -528,11 +471,6 @@ def fig_depth(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("5.5", "lag", "Topology follows generalisation, and leads nowhere.")
 def fig_lag(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """Signed lag per observable per run, plus the null's located transitions.
-
-    Timing comes from each run's summary and is never recomputed here: the detector lives
-    in ``grokking_tda.evaluation.transitions``.
-    """
     observables = (
         "h1_max_persistence_normalised",
         "h1_total_persistence_normalised",
@@ -569,17 +507,7 @@ def fig_lag(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("6.2", "velocity", "The representation reorganises fastest around the transition.")
 def fig_velocity(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    """Topological speed for three conditions, recomputed on scale-normalised diagrams.
-
-    The pipeline's ``trajectory_distance.csv`` takes the distance between raw diagrams,
-    so it inherits the contraction of section 3.3.1 and measures shrinkage as motion.
-    Dividing each diagram by its own snapshot's connectivity scale first is the same
-    correction the level series carries, and the diagrams are cached, so it is cheap.
-
-    The rate rather than the distance is reported: the snapshot grid is logarithmic
-    outside the dense window, and a raw consecutive distance confounds reorganisation
-    with sampling interval.
-    """
+    """Topological speed on scale-normalised diagrams, as a rate: the grid is logarithmic."""
     from grokking_tda.tda.distances import diagram_distance
 
     panels = {
@@ -630,9 +558,6 @@ def fig_phdim(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     if not rows:
         raise Missing("no ph_dimension.csv anywhere — run gtda-analyse on the dense set")
     return pd.concat(rows, ignore_index=True)
-
-
-# ------------------------------------------------------------------------------ cli
 
 
 def main() -> None:

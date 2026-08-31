@@ -1,15 +1,4 @@
-"""The Observable abstraction and the per-run runner.
-
-An *observable* is any scalar computed from a training snapshot: H1 persistence,
-Fourier concentration, weight norm, local intrinsic dimension. Treating them all as
-the same kind of object is what makes the central thesis comparison — "what does
-topology add over cheaper diagnostics?" — a one-line change in the config's
-``observables`` list.
-
-A single :class:`ObservationContext` per snapshot lazily builds (and caches) the
-expensive shared artifacts — the point cloud and its persistence diagrams — so many
-observables over one snapshot pay that cost once.
-"""
+"""The Observable abstraction and the per-run runner, with one cached context per snapshot."""
 
 from __future__ import annotations
 
@@ -29,15 +18,41 @@ from grokking_tda.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
+def diagram_cache_digest(cfg, seed: int) -> str:
+    """The construction a cached diagram came from; readers of the directory must select on it."""
+    pc, hm = cfg.pointcloud, cfg.homology
+    key = "|".join(
+        str(v)
+        for v in (
+            cfg.representation,
+            cfg.representation_split,
+            pc.normalize,
+            pc.metric,
+            pc.max_points,
+            pc.subsample,
+            pc.drop_first,
+            hm.maxdim,
+            hm.coeff,
+            hm.thresh,
+            seed,
+        )
+    )
+    return hashlib.sha1(key.encode()).hexdigest()[:10]
+
+
+def stored_analysis_cfg(run: Run):
+    """The analysis recipe a run was written with, laid over the current defaults."""
+    from omegaconf import OmegaConf
+
+    from grokking_tda.config.schema import AnalysisCfg
+
+    cfg = OmegaConf.structured(AnalysisCfg)
+    if "analysis" in run.config:
+        cfg = OmegaConf.merge(cfg, run.config["analysis"])
+    return cfg
+
+
 class ObservationContext:
-    """Shared, lazily-computed inputs for all observables on one snapshot.
-
-    Persistence diagrams are also cached **on disk** (``analysis/diagrams/``), keyed
-    by the construction config, because every downstream consumer — observables,
-    CROCKER, trajectory velocity, bootstrap — wants the same diagrams and recomputing
-    them is the dominant analysis cost.
-    """
-
     def __init__(self, run: Run, snapshot: Snapshot, cfg) -> None:
         self.run = run
         self.snapshot = snapshot
@@ -52,7 +67,6 @@ class ObservationContext:
         self._dataset = None
 
     def embedding_matrix(self) -> np.ndarray:
-        """Always the residue-embedding matrix (the Fourier baseline lives here)."""
         if self._embedding is None:
             self._embedding = extract_representation_matrix(self.run, self.snapshot, "embedding")
         return self._embedding
@@ -69,24 +83,7 @@ class ObservationContext:
         return self._point_cloud
 
     def _diagram_cache_path(self):
-        pc, hm = self.cfg.pointcloud, self.cfg.homology
-        key = "|".join(
-            str(v)
-            for v in (
-                self.cfg.representation,
-                self.cfg.representation_split,
-                pc.normalize,
-                pc.metric,
-                pc.max_points,
-                pc.subsample,
-                pc.drop_first,
-                hm.maxdim,
-                hm.coeff,
-                hm.thresh,
-                self.seed,
-            )
-        )
-        digest = hashlib.sha1(key.encode()).hexdigest()[:10]
+        digest = diagram_cache_digest(self.cfg, self.seed)
         return (
             self.run.dir / "analysis" / "diagrams" / f"step_{self.snapshot.step:08d}_{digest}.npz"
         )
@@ -114,35 +111,26 @@ class ObservationContext:
         return self._weights
 
     def model(self):
-        """The snapshot's model, rebuilt from weights and cached."""
         if self._model is None:
             self._model = self.run.rebuild_model(self.snapshot)
         return self._model
 
     def dataset(self):
-        """The run's dataset, rebuilt deterministically from its config and seed."""
         if self._dataset is None:
             self._dataset = dataset_for(self.run)
         return self._dataset
 
 
-# Observables are factories taking a context and returning a scalar.
 Observable = Callable[[ObservationContext], float]
 OBSERVABLES: Registry[float] = Registry("observable")
 
-# Which way an observable moves at the transition. Declared at registration rather
-# than inferred from the series, because inferring it from the first and last value
-# misreads anything non-monotone (weight norm rises then falls under weight decay)
-# and a wrong direction yields a t_top that silently enters the lead-lag results.
+# Declared at registration: inferring it from first and last value misreads anything
+# non-monotone, and a wrong direction enters the lead-lag results silently
 OBSERVABLE_DIRECTION: dict[str, str] = {}
 
 
 def register_observable(name: str, *, direction: str = "rising"):
-    """Decorator registering an ``(ctx) -> float`` observable under ``name``.
-
-    ``direction`` is ``rising``, ``falling``, or ``auto`` where the observable is
-    genuinely non-monotone and the series must speak for itself.
-    """
+    """Register an ``(ctx) -> float`` observable, declaring which way it moves at the transition."""
     if direction not in {"rising", "falling", "auto"}:
         raise ValueError(f"unknown direction {direction!r}")
     OBSERVABLE_DIRECTION[name] = direction
@@ -150,8 +138,6 @@ def register_observable(name: str, *, direction: str = "rising"):
 
 
 def run_observables(run: Run, cfg) -> pd.DataFrame:
-    """Compute every observable in ``cfg.observables`` over every snapshot of ``run``."""
-    # Ensure the built-in observables are registered.
     import grokking_tda.analysis.task_metrics  # noqa: F401
     import grokking_tda.baselines  # noqa: F401
     import grokking_tda.tda.observables  # noqa: F401
@@ -161,7 +147,7 @@ def run_observables(run: Run, cfg) -> pd.DataFrame:
         ctx = ObservationContext(run, snapshot, cfg)
         row: dict[str, float] = {"step": snapshot.step}
         for name in cfg.observables:
-            # One bad snapshot must not abort a long analysis: record NaN and carry on.
+            # one bad snapshot must not abort a long analysis
             try:
                 row[name] = OBSERVABLES.build(name, ctx)
             except Exception as exc:

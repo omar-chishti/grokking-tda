@@ -1,48 +1,4 @@
-"""Is the trajectory-dimension negative about the quantity or about the construction? (6.4)
-
-Section 6.4 reports that the persistent-homology dimension of the projected optimisation
-path is flat in training time, identical in a run that memorises noise and one that learns a
-rule, and unable to separate a generalisation gap of one from a gap of zero. It then names
-things that could each account for that and separates none of them. Three are settled here
-from stored trajectories; the projection can only be settled halfway, and this says which
-half.
-
-**Window length.** The reported series reads two hundred iterates at a stride of twenty
-steps, so each window spans four thousand optimisation steps --- a substantial fraction of
-the interval the transition occupies, and quite possibly an average over it. Swept.
-
-**The projection.** Each iterate was written through a fixed random projection into $128$
-dimensions *at training time*, so a second projection seed or a **larger** dimension needs
-the runs again and is not a re-analysis, contrary to what the chapter implies. What the
-stored trajectory does support is projecting further **down**, under fresh seeds. That is
-still informative in the direction that matters: Johnson--Lindenstrauss says $128$
-dimensions preserve pairwise distances, so if the estimate is stable from $128$ to $32$ the
-projection is not what is destroying the signal, and if it moves then $128$ was already too
-few and the negative belongs to the construction.
-
-**Across runs, in Birdal's own form.** Their claim is stated between models --- terminal dimension
-against the generalisation gap --- and the thesis could not state it that way, because every run
-carrying a trajectory either groks completely or never generalises at all. `R13` gives a trajectory
-to the conditions in between, so the correlation is computed here over a gap that is continuous.
-The gap is ``train - test`` and not ``1 - test``: a run that never fits its training set has a
-gap of about zero rather than of one, and is excluded, because the claim is about models that fit.
-
-**Subsamples per size.** The reported series draws one subsample at each size where Birdal
-et al. average, so regression noise is a fourth candidate. Swept by ``--draw-sweep``.
-
-**The estimator's floor.** ``dim = alpha / (1 - slope)`` is stiff near the bottom of its
-range: a dimension of $1.15$ is a slope of $0.13$, and the fitted slope is now reported
-beside the dimension. More decisive is a calibration --- run the same estimator on synthetic
-clouds of *known* dimension, at the same window size, and see what it returns for a true
-line. If the measured trajectory dimensions sit at or below that value, the series is
-resting on the estimator's floor and no experiment on this construction can lift it.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.phdim
-    uv run python -m analysis.phdim --windows 100 200 400
-    uv run python -m analysis.phdim --draw-sweep
-"""
+"""Is the trajectory-dimension negative about the quantity or the construction? (§6.4)"""
 
 from __future__ import annotations
 
@@ -63,13 +19,12 @@ CALIBRATION_DIMS = (1, 2, 3, 4)
 
 
 def calibrate(window: int, *, seed: int = 0, repeats: int = 5) -> list[dict]:
-    """What the estimator returns on clouds whose dimension is known, at this window size."""
+    """What the estimator returns on clouds of known dimension, at this window size."""
     rng = np.random.default_rng(seed)
     rows = []
     for dim in CALIBRATION_DIMS:
         for repeat in range(repeats):
-            # A line, a plane, ... sampled as a random walk: the trajectory's own shape,
-            # not an i.i.d. blob, so the comparison is against a like object.
+            # a random walk, not an i.i.d. blob: the trajectory's own shape
             walk = np.cumsum(rng.normal(size=(window, dim)), axis=0)
             rows.append(
                 {"window": window, "true_dim": dim, "repeat": repeat, **ph_dimension_fit(walk)}
@@ -90,7 +45,6 @@ def series(points: np.ndarray, steps: np.ndarray, window: int, *, seed: int = 0)
 
 
 def project(points: np.ndarray, dim: int, seed: int) -> np.ndarray:
-    """A further Johnson-Lindenstrauss projection of the already-projected path."""
     if dim <= 0 or dim >= points.shape[1]:
         return points
     rng = np.random.default_rng(seed)
@@ -106,12 +60,7 @@ DRAW_SWEEP = (1, 4, 8)
 
 
 def draw_sweep(runs: list, window: int = 200, seed: int = 0) -> pd.DataFrame:
-    """Terminal dimension when ``E_alpha`` is averaged over several subsamples per size.
-
-    The reported series takes one subsample at each size, where Birdal et al. average; a single
-    draw is noisier, and noise in the regression is a fourth explanation for the null that
-    section 6.4 does not otherwise eliminate.
-    """
+    """Terminal dimension with ``E_alpha`` averaged over subsamples, as Birdal et al. do."""
     rows = []
     for run_dir in runs:
         run = Run(run_dir)
@@ -128,12 +77,7 @@ def draw_sweep(runs: list, window: int = 200, seed: int = 0) -> pd.DataFrame:
 
 
 def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim: int) -> dict:
-    """Terminal PH-dimension against the generalisation gap, across runs.
-
-    Terminal dimension is the median over each run's last five windows; runs that never fit
-    their training set are dropped. Birdal et al. report a *positive* association --- a
-    higher-dimensional trajectory going with a larger gap.
-    """
+    """Terminal dimension against the generalisation gap; runs that never fit are dropped."""
     from scipy import stats
 
     sub = table[(table.window == window) & (table.projection_dim == dim)]
@@ -148,8 +92,7 @@ def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim
     gap, dimension = merged.generalisation_gap.to_numpy(), merged.ph_dim.to_numpy()
     rho = stats.spearmanr(gap, dimension)
     pearson = stats.pearsonr(gap, dimension)
-    # Tan et al.'s comparator: the norm of the final parameter vector, which they report
-    # beating the dimension across architectures and datasets.
+    # Tan et al.'s comparator, which they report beating the dimension
     comparator: dict = {}
     if "weight_norm__final" in merged:
         norm = merged[["generalisation_gap", "weight_norm__final"]].dropna()

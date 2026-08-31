@@ -1,19 +1,4 @@
-"""A small, hookable transformer for modular arithmetic (Nanda-style).
-
-Deliberately written from scratch (rather than ``nn.TransformerEncoder``) so that
-every internal representation is exposed via a named :class:`HookPoint`. Defaults
-(1 layer, d_model=128, 4 heads) match the canonical grokking setup. The answer is
-read from the final ("=") sequence position.
-
-Hook points of interest for TDA (named by full module path, so per-block hooks stay
-unique with ``n_layers >= 2``):
-  - ``hook_embed``                : token+positional embedding (per-position residual in)
-  - ``blocks.<i>.hook_attn_out``  : attention output of block ``i``
-  - ``blocks.<i>.hook_mlp_out``   : MLP output of block ``i``
-  - ``hook_resid_final``          : residual stream at the answer position (pre-unembed)
-The *embedding matrix* ``embed.weight[:p]`` is the primary point cloud used by the
-reference paper and is read directly as a parameter (no forward pass needed).
-"""
+"""A small, hookable transformer (Nanda-style); hooks are named by full module path."""
 
 from __future__ import annotations
 
@@ -27,8 +12,6 @@ _ACTIVATIONS = {"relu": nn.ReLU, "gelu": nn.GELU}
 
 
 class Attention(nn.Module):
-    """Multi-head self-attention (bidirectional; the sequence is only 3 tokens)."""
-
     def __init__(self, d_model: int, n_heads: int) -> None:
         super().__init__()
         if d_model % n_heads != 0:
@@ -85,8 +68,6 @@ class TransformerBlock(nn.Module):
 
 
 class GrokkingTransformer(HookedModule):
-    """1-layer-by-default transformer; logits read from the final token position."""
-
     def __init__(
         self,
         *,
@@ -113,7 +94,7 @@ class GrokkingTransformer(HookedModule):
         self.hook_resid_final = HookPoint()
         self.unembed = nn.Linear(d_model, num_classes, bias=False)
         self.modulus = num_classes
-        self.hidden_hook = "hook_resid_final"  # representation used for "hidden"
+        self.hidden_hook = "hook_resid_final"  # what AnalysisCfg.representation="hidden" reads
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         x = self.hook_embed(self.embed(tokens) + self.pos_embed[: tokens.shape[1]])
@@ -123,12 +104,11 @@ class GrokkingTransformer(HookedModule):
         return self.unembed(final)
 
     def embedding_matrix(self) -> torch.Tensor:
-        """The ``p x d_model`` residue-embedding point cloud (excludes the "=" token)."""
+        # the p residue rows; the slice drops the "=" token at index p
         return self.embed.weight[: self.modulus].detach()
 
 
 def build_transformer(model_cfg, meta: TaskMeta) -> GrokkingTransformer:
-    """Factory bound to the model registry."""
     return GrokkingTransformer(
         vocab_size=meta.vocab_size,
         num_classes=meta.num_classes,

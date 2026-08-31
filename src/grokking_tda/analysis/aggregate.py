@@ -1,11 +1,4 @@
-"""Aggregate many runs into one tidy table for the robustness / predictive figures.
-
-Walks a directory tree for run dirs (anything holding a ``manifest.json``), joins
-each run's config keys with its ``analysis/summary.json`` (when present), and
-returns one row per run. Per-observable transitions are flattened to
-``t_top__<name>`` / ``delta__<name>`` columns. Everything in the robustness map,
-lead-lag forest, and predictive figures reads this table.
-"""
+"""Aggregate many runs into one tidy table: config keys joined with each summary."""
 
 from __future__ import annotations
 
@@ -50,7 +43,6 @@ def _config_row(run: Run) -> dict:
 
 
 def aggregate_runs(root: str | Path) -> pd.DataFrame:
-    """One row per run under ``root`` (recursively), config joined with summary."""
     rows: list[dict] = []
     for manifest_path in sorted(Path(root).rglob("manifest.json")):
         run_dir = manifest_path.parent
@@ -72,12 +64,7 @@ def aggregate_runs(root: str | Path) -> pd.DataFrame:
 
 
 def early_window_table(root: str | Path, window: str) -> pd.DataFrame:
-    """One row per run of early-window features, ready for the predictive comparison.
-
-    ``group`` is the run name without its seed suffix, so that folds can be split by
-    configuration rather than by run: seeds of one configuration are near-duplicates and
-    splitting across them would leak.
-    """
+    """Early-window features per run; ``group`` is the configuration, so folds cannot leak."""
     rows: list[dict] = []
     for manifest_path in sorted(Path(root).rglob("manifest.json")):
         run_dir = manifest_path.parent

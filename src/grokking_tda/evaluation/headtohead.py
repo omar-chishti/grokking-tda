@@ -1,17 +1,4 @@
-"""Does a topological observable predict grokking beyond what cheaper ones already do?
-
-The redundancy question is not a horse race. Topology beating Fourier on its own would
-say little, since both may be reading the same circle; what matters is whether adding
-topology to the cheap baselines *improves* the prediction. Every feature set is therefore
-scored on identical folds, and the reported quantity is the increment from adding the
-topological block to the baseline block.
-
-Two rules keep the comparison honest. Seeds of one configuration are near-duplicates, so
-folds are split by *configuration*, never by run — a random split would put a run's own
-siblings in the training set and inflate every score. And features come only from
-pre-registered early windows (``evaluation/predictive.py``), so the window length cannot
-encode the label being predicted.
-"""
+"""What does topology add over the cheap baselines, on identical configuration-split folds?"""
 
 from __future__ import annotations
 
@@ -39,8 +26,7 @@ FOURIER = ("fourier_concentration", "fourier_concentration_group") + tuple(
 )
 CHEAP = ("weight_norm", "lid")
 
-# Nested by design: each set adds one block to the one before it, so the difference in
-# score is attributable to that block alone.
+# baselines is nested in baselines+topology, so their difference is the topological block
 FEATURE_SETS: dict[str, tuple[str, ...]] = {
     "weight_norm": CHEAP[:1],
     "lid": CHEAP[1:],
@@ -52,13 +38,11 @@ FEATURE_SETS: dict[str, tuple[str, ...]] = {
 
 
 def feature_columns(observables: tuple[str, ...], available: list[str]) -> list[str]:
-    """The ``__mean``/``__trend`` columns belonging to a set, in a stable order."""
     wanted = {f"{name}__{stat}" for name in observables for stat in ("mean", "trend")}
     return [column for column in available if column in wanted]
 
 
 def _estimator(task: str) -> tuple[Pipeline, dict]:
-    """A regularised linear model; the grid is searched in the inner fold only."""
     if task == "classification":
         model = LogisticRegression(max_iter=2000)
         grid = {"model__C": [0.01, 0.1, 1.0, 10.0]}
@@ -76,13 +60,7 @@ def _estimator(task: str) -> tuple[Pipeline, dict]:
 
 
 def _n_splits(task: str, target: np.ndarray, groups: np.ndarray, requested: int) -> int:
-    """Fold count that every fold can actually satisfy.
-
-    A fold holding one class makes ROC AUC undefined, and sklearn answers that with a
-    silent NaN that then decides the hyper-parameter. Since folds are split by
-    configuration, the binding constraint is how many *configurations* the rarer class
-    has, not how many runs.
-    """
+    """Fold count every fold can satisfy: a single-class fold makes AUC a silent NaN."""
     n_groups = len(np.unique(groups))
     limit = min(requested, n_groups)
     if task == "classification":
@@ -92,14 +70,7 @@ def _n_splits(task: str, target: np.ndarray, groups: np.ndarray, requested: int)
 
 
 def _tunable(task: str, target: np.ndarray, groups: np.ndarray, n_splits: int) -> bool:
-    """Whether an inner search on this split would score anything.
-
-    ``_n_splits`` bounds the fold count by how many configurations the rarer class has,
-    but two configurations spread over two folds can still land in the same one, and the
-    training side then holds a single class. sklearn scores that fit ``NaN``, and a grid
-    of ``NaN`` picks its first candidate — a hyper-parameter chosen by ordering rather
-    than by data. When no fold count avoids it, tune nothing and say so.
-    """
+    """Whether an inner search would score anything; a grid of NaN picks its first candidate."""
     if task != "classification":
         return True
     splitter = _splitter(task, n_splits)
@@ -111,11 +82,6 @@ def _tunable(task: str, target: np.ndarray, groups: np.ndarray, n_splits: int) -
 
 
 def _splitter(task: str, n_splits: int):
-    """Stratify classification folds by class as well as by group.
-
-    Plain grouped folds regularly produce a fold with a single class here — many
-    configurations grok and many do not, and the split is by configuration.
-    """
     if task == "classification":
         return StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=0)
     return GroupKFold(n_splits=n_splits)
@@ -129,7 +95,6 @@ def nested_scores(
     n_outer: int = 5,
     n_inner: int = 3,
 ) -> list[float]:
-    """Outer-fold scores with the hyper-parameter chosen inside each training fold."""
     outer = _splitter(task, _n_splits(task, target, groups, n_outer))
     scores: list[float] = []
     for train_idx, test_idx in outer.split(features, target, groups):
@@ -164,11 +129,6 @@ def nested_scores(
 
 
 def head_to_head(table: pd.DataFrame, task: str, window: str) -> pd.DataFrame:
-    """Score every feature set on identical folds for one task and one early window.
-
-    ``table`` carries one row per run: a ``group`` column (the configuration, so seeds
-    stay together), a ``target`` column, and the early-window feature columns.
-    """
     available = [c for c in table.columns if c.endswith(("__mean", "__trend"))]
     groups = table["group"].to_numpy()
     target = table["target"].to_numpy(dtype=float)
@@ -190,7 +150,7 @@ def head_to_head(table: pd.DataFrame, task: str, window: str) -> pd.DataFrame:
             }
         )
     frame = pd.DataFrame(rows)
-    # The headline number: what the topological block adds to the cheap baselines.
+    # the headline: what the topological block adds
     if {"baselines", "baselines+topology"} <= set(frame["feature_set"]):
         base = frame.loc[frame.feature_set == "baselines", "score_mean"].iloc[0]
         both = frame.loc[frame.feature_set == "baselines+topology", "score_mean"].iloc[0]

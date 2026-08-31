@@ -1,17 +1,4 @@
-"""Extract a representation matrix from a snapshot.
-
-``embedding`` is read straight from the snapshot (always cached, cheap). ``hidden``
-and ``logits`` are read from the snapshot if cached, otherwise *recomputed* by
-rebuilding the model from weights and running the dataset — so we never have to
-store large activation tensors, yet can still analyse them losslessly.
-
-``split`` restricts hidden/logit rows to the train or test inputs. Tang et al. build
-hidden-state point clouds from the **test set** (at the answer-token position, which
-is what the models' ``hidden_hook`` already captures); analysing "all" would leak the
-train/test distinction into the topology. The split mask is rebuilt deterministically
-from the manifest's data config + seed, so cached full-table representations can be
-sliced after the fact.
-"""
+"""A representation matrix from a snapshot, recomputed from weights when uncached."""
 
 from __future__ import annotations
 
@@ -20,8 +7,7 @@ import torch
 
 from grokking_tda.artifacts.reader import Run, Snapshot
 
-# Datasets are deterministic in (data config, seed) and small; cache per process so
-# per-snapshot split lookups do not rebuild the tensors every time.
+# Deterministic in (data config, seed), so one build per key serves every snapshot.
 _DATA_CACHE: dict[tuple, object] = {}
 
 
@@ -32,13 +18,9 @@ def dataset_for(run: Run):
     from grokking_tda.data import build_data
 
     data_cfg = dict(run.config["data"])
-    # For the permutation-group task ``modulus`` records the group order, and
-    # ``build_permutation_data`` refuses a config where the two disagree. An early batch of
-    # S_5 runs was launched before that guard existed and carries the default 97, so
-    # rebuilding their dataset raises and every observable that needs it comes back NaN.
-    # The order is what the data actually is, so it is recomputed here: the guard stays in
-    # place for new runs, where a mismatch is a real config error, and the analysis layer
-    # can still read the artefacts that predate it.
+    # An early batch of S_5 runs predates the guard rejecting ``modulus != |S_n|`` and carries
+    # the default 97, so rebuilding raises and every observable returns NaN. Recomputed, not
+    # trusted: the guard stays a real error for new runs.
     if data_cfg.get("task") == "permutation_group":
         data_cfg["modulus"] = factorial(int(data_cfg["n_symbols"]))
     key = (tuple(sorted(data_cfg.items())), int(run.config["seed"]))
@@ -67,11 +49,7 @@ def _split_rows(run: Run, matrix: np.ndarray, split: str) -> np.ndarray:
 def extract_representation_matrix(
     run: Run, snapshot: Snapshot, kind: str, split: str = "all"
 ) -> np.ndarray:
-    """Return the ``(n, d)`` representation matrix of the requested ``kind``.
-
-    ``split`` applies to ``hidden``/``logits`` only; the embedding matrix is the
-    ``p x d`` residue table and has no train/test notion.
-    """
+    """The ``(n, d)`` matrix of the requested kind; ``split`` applies to hidden and logits only."""
     if kind == "embedding":
         matrix = snapshot.representation("embedding")
         if matrix is None:
@@ -85,7 +63,6 @@ def extract_representation_matrix(
     if cached is not None:
         return _split_rows(run, cached, split)
 
-    # Recompute deterministically from weights, on the requested split only.
     data = dataset_for(run)
     if split == "train":
         inputs = data.train_inputs

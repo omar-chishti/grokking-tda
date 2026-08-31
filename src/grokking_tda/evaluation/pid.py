@@ -1,23 +1,4 @@
-"""Partial information decomposition of what topology and Fourier say about grokking.
-
-The redundancy question — does the topological observable carry information about the
-transition beyond the Fourier baseline — is a question about how information is
-distributed among sources, and a predictive comparison can only approach it obliquely.
-Williams and Beer's decomposition answers it directly: the mutual information two sources
-jointly carry about a target splits into redundant, unique and synergistic atoms, and the
-*unique* information carried by topology is the quantity of interest.
-
-The atoms are not fixed by Shannon information alone, so a redundancy function has to be
-supplied. This uses the minimum-mutual-information redundancy on Gaussian variables — the
-estimator Luppi et al. adopt — under which redundancy is ``min_i I(S_i; T)``. That choice
-is a genuine limitation and belongs in the text beside any number produced here: MMI is
-the most common choice and the least generous to synergy, so a synergy estimate from it is
-conservative.
-
-Gaussianity is an assumption about these observables, not a fact. Rank-transform the
-inputs (``normal_scores=True``, the default) and it becomes an assumption about the
-*copula* instead, which is far weaker and is what makes the estimate defensible here.
-"""
+"""Partial information decomposition, under MMI redundancy on rank-transformed variables."""
 
 from __future__ import annotations
 
@@ -26,13 +7,11 @@ from scipy.stats import norm, rankdata
 
 
 def _to_normal_scores(x: np.ndarray) -> np.ndarray:
-    """Rank-transform each column to standard normal marginals."""
     ranks = np.apply_along_axis(rankdata, 0, x)
     return norm.ppf(ranks / (x.shape[0] + 1.0))
 
 
 def _gaussian_mi(x: np.ndarray, y: np.ndarray) -> float:
-    """Mutual information (nats) between two jointly Gaussian blocks."""
     x = np.atleast_2d(x.T).T
     y = np.atleast_2d(y.T).T
     joint = np.hstack([x, y])
@@ -47,10 +26,10 @@ def _gaussian_mi(x: np.ndarray, y: np.ndarray) -> float:
 def gaussian_pid(
     source_a, source_b, target, *, normal_scores: bool = True
 ) -> dict[str, float]:
-    """MMI decomposition of ``I({A,B}; T)`` into redundant, unique and synergistic atoms.
+    """MMI decomposition of ``I({A,B}; T)`` in nats; ``unique_a`` is the headline.
 
-    Returns nats. ``unique_a`` is the headline: information about the transition that the
-    topological source carries and the baseline does not.
+    Under MMI the weaker source's unique atom is zero by construction, so a zero here means
+    dominated, not uninformative. ``williams_beer_pid`` is the estimator that can tell them apart.
     """
     a = np.asarray(source_a, dtype=float).reshape(-1, 1)
     b = np.asarray(source_b, dtype=float).reshape(-1, 1)
@@ -84,11 +63,6 @@ def gaussian_pid(
 
 
 def _specific_information(joint: np.ndarray, axis: int) -> np.ndarray:
-    """``I(T = t; S)`` for each target value: the surprise a source resolves about it.
-
-    ``joint`` is a ``(n_source_a, n_source_b, n_target)`` probability table; ``axis`` names
-    which source to marginalise onto.
-    """
     p_st = joint.sum(axis=1 - axis)  # (n_source, n_target)
     p_s, p_t = p_st.sum(axis=1), p_st.sum(axis=0)
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -100,20 +74,10 @@ def _specific_information(joint: np.ndarray, axis: int) -> np.ndarray:
 
 
 def williams_beer_pid(source_a, source_b, target, *, bins: int = 4) -> dict[str, float]:
-    """Williams-Beer decomposition on quantile-binned variables (nats).
+    """Williams-Beer on quantile-binned variables (nats).
 
-    The reason this exists beside ``gaussian_pid``: Barrett showed that for jointly
-    Gaussian variables with univariate sources and target, essentially every proposed
-    redundancy function collapses to the minimum-mutual-information one, under which the
-    weaker source's unique atom is zero by construction. That is a property of the
-    Gaussian model, not of the data, and it cannot be escaped by choosing a different
-    redundancy function *within* that model.
-
-    ``I_min`` is a redundancy over target values rather than over their average, so it can
-    credit a weaker source with unique information: a source that resolves a *different
-    part* of the target's range is not dominated even when its average mutual information
-    is smaller. Binning is what buys that, and it costs resolution, so both estimates
-    belong in any report and neither replaces the other.
+    ``I_min`` is a redundancy over target values rather than their average, so the weaker
+    source can be credited — which under Gaussian MMI it cannot be, by construction.
     """
     data = np.column_stack(
         [np.asarray(v, dtype=float) for v in (source_a, source_b, target)]

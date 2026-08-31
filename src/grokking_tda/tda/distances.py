@@ -1,12 +1,4 @@
-"""Distances between persistence diagrams, and the trajectory-velocity series.
-
-The distance between *consecutive* snapshots' diagrams is a topological "speed" of
-the training trajectory: flat while the representation drifts, peaking when its
-shape reorganises. Its changepoint can be compared against the grokking step — a
-cheap, high-value trajectory-topology result (thesis figure 6.3). Distances also
-serve distance-to-null comparisons and the circularity probe (distance of the
-embedding diagram to that of an ideal p-gon).
-"""
+"""Distances between persistence diagrams, and the trajectory-velocity series."""
 
 from __future__ import annotations
 
@@ -22,12 +14,7 @@ from grokking_tda.tda.summaries import finite_bars
 def diagram_distance(
     d1: np.ndarray | None, d2: np.ndarray | None, metric: str = "sliced_wasserstein"
 ) -> float:
-    """Distance between two diagrams (finite bars only).
-
-    ``bottleneck`` is the stability-theorem metric; ``sliced_wasserstein`` is a fast,
-    smoother proxy better suited to velocity curves. An empty diagram is treated as
-    diagonal-only, so the bottleneck distance to it is half the longest lifetime.
-    """
+    """Distance between two diagrams; an empty one is diagonal-only."""
     a, b = finite_bars(d1), finite_bars(d2)
     if a.size == 0 and b.size == 0:
         return 0.0
@@ -49,11 +36,6 @@ def trajectory_velocity(
     diagrams: Sequence[np.ndarray | None],
     metric: str = "sliced_wasserstein",
 ) -> pd.DataFrame:
-    """Per-step distance between consecutive diagrams.
-
-    Row ``i`` (at ``steps[i]``) holds the distance between the diagrams at
-    ``steps[i-1]`` and ``steps[i]``. Returns a ``(step, distance)`` DataFrame.
-    """
     if len(steps) != len(diagrams):
         raise ValueError("steps and diagrams must have equal length")
     rows = [

@@ -1,11 +1,4 @@
-"""Vector-first matplotlib style for thesis figures, in the thesis house palette.
-
-``pdf.fonttype = 42`` embeds editable TrueType fonts (not bitmaps), and we keep
-everything vector so figures scale cleanly in the manuscript. Colours mirror its house
-palette — ThesisInk ``#1F1B16``, ThesisAccent (bronze) ``#8C6A43``, ThesisRule
-``#C8B69B`` — with two muted companions for multi-series plots. Serif font
-preferences fall back gracefully where ETbb is not installed.
-"""
+"""Vector-first matplotlib style for run figures, in the house palette."""
 
 from __future__ import annotations
 
@@ -15,8 +8,7 @@ import matplotlib as mpl
 from cycler import cycler
 from matplotlib.colors import LinearSegmentedColormap
 
-# fontTools logs every glyph it subsets at INFO when embedding fonts into PDFs;
-# that floods our console, so quiet it (and matplotlib's own chatter).
+# fontTools logs every glyph it subsets at INFO when embedding fonts into PDFs.
 logging.getLogger("fontTools").setLevel(logging.WARNING)
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
@@ -29,7 +21,6 @@ STONE = "#8E8276"  # warm grey (fourth series)
 GROK_COLOR = "#96402A"  # burnt sienna: marks the grokking step on time axes
 DIM_COLORS = {0: STONE, 1: ACCENT, 2: SAGE}  # H0 / H1 / H2 in persistence diagrams
 
-# Sequential ramp for heatmaps, in the house palette: paper -> bronze -> ink.
 SEQUENTIAL = LinearSegmentedColormap.from_list("thesis", ["#F5F1EA", ACCENT, INK])
 
 

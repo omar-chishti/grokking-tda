@@ -1,12 +1,4 @@
-"""Typed, composable configuration layer.
-
-``schema`` defines the dataclasses (validated by Hydra/OmegaConf); ``store``
-registers preset nodes and config groups with Hydra's ``ConfigStore`` so that
-experiments are selected and overridden declaratively from the CLI:
-
-    gtda-train +experiment=tf_mod97_grok train.optimizer.weight_decay=0.5 seed=1
-    gtda-train -m +experiment=tf_mod97_grok seed=0,1,2   # multirun sweep
-"""
+"""Typed, composable configuration: ``schema`` defines it, ``store`` registers it with Hydra."""
 
 from grokking_tda.config.schema import (
     AnalysisCfg,

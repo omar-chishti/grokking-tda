@@ -1,20 +1,4 @@
-"""Register the schema and config-group presets with Hydra's ConfigStore.
-
-Group presets live here as *typed Python instances* (not YAML) so they are
-validated at definition time and stay close to the schema. YAML is reserved for
-the thin top-level ``config.yaml`` and the ``experiment/`` presets, which is
-where composition/override actually happens.
-
-Composition model (Hydra defaults list in ``configs/config.yaml``)::
-
-    experiment_base   # full typed defaults (ExperimentCfg)
-      + model: transformer
-      + data:  mod_add_p97
-      + train: full_batch_adamw
-      + analysis: default
-
-An ``experiment/`` preset then overrides any of those groups in one file.
-"""
+"""Register the schema and config-group presets with Hydra's ConfigStore, as typed instances."""
 
 from __future__ import annotations
 
@@ -31,17 +15,13 @@ from grokking_tda.config.schema import (
 
 
 def register_configs() -> None:
-    """Idempotently register the schema and all group presets."""
     cs = ConfigStore.instance()
 
-    # Top-level schema (full defaults; runnable as-is).
     cs.store(name="experiment_base", node=ExperimentCfg)
 
-    # --- model group ---
     cs.store(group="model", name="transformer", node=ModelCfg(name="transformer"))
     cs.store(group="model", name="mlp", node=ModelCfg(name="mlp"))
-    # Tang et al. architectures (faithful reproduction, PDF §3): 2 pre-LN encoder
-    # blocks with GELU / a 3-hidden-layer width-512 GELU MLP.
+    # Tang et al. §3: 2 pre-LN encoder blocks with GELU / a 3-hidden-layer width-512 MLP.
     cs.store(
         group="model",
         name="transformer_tang",
@@ -61,9 +41,8 @@ def register_configs() -> None:
         node=ModelCfg(name="mlp", embedding_dim=128, hidden_dim=512, depth=3, act="gelu"),
     )
 
-    # --- data group ---
     cs.store(group="data", name="mod_add_p97", node=DataCfg("modular_arithmetic", "add", 97, 0.3))
-    # Prieto et al. run the interventions at fraction 0.4.
+    # Prieto et al. run the interventions at fraction 0.4
     cs.store(
         group="data", name="mod_add_p97_f04", node=DataCfg("modular_arithmetic", "add", 97, 0.4)
     )
@@ -73,12 +52,11 @@ def register_configs() -> None:
     cs.store(group="data", name="mod_mul_p97", node=DataCfg("modular_arithmetic", "mul", 97, 0.5))
     cs.store(group="data", name="mod_div_p97", node=DataCfg("modular_arithmetic", "div", 97, 0.5))
     cs.store(group="data", name="mod_poly_p97", node=DataCfg("modular_arithmetic", "poly", 97, 0.5))
-    # S_5 composition: non-abelian, so no circle can respect the group operation.
+    # non-abelian, so no circle respects the group operation
     cs.store(
         group="data",
         name="s5_composition",
-        # modulus carries the group order here, so run names read compose120 rather than
-        # inheriting the meaningless default of 97 from the modular tasks.
+        # the group order, so run names read compose120 rather than the modular default
         node=DataCfg(
             task="permutation_group", operation="compose", modulus=120, train_fraction=0.5
         ),
@@ -86,12 +64,9 @@ def register_configs() -> None:
     smoke = DataCfg("modular_arithmetic", "add", 11, 0.5)
     cs.store(group="data", name="mod_add_p11_smoke", node=smoke)
 
-    # --- train group ---
     cs.store(group="train", name="full_batch_adamw", node=TrainCfg())
-    # Prieto et al. interventions. Their published settings are lr 1e-2 with no weight
-    # decay, train fraction 0.4, and beta2 raised (0.999 for StableMax, 0.99 for OrthoGrad);
-    # they apply the two separately, so each gets its own preset and the combination is a
-    # third condition rather than the default.
+    # Prieto et al.: lr 1e-2, no weight decay, beta2 raised; applied separately, so the
+    # combination is a third condition
     cs.store(
         group="train",
         name="stablemax",
@@ -124,8 +99,7 @@ def register_configs() -> None:
         name="smoke",
         node=TrainCfg(steps=200, n_snapshots=8, metric_every=20),
     )
-    # Tang et al. training recipe: minibatch AdamW, lr 3e-3, wd 0.1, eps 1e-6,
-    # 60k steps, snapshots every 500 steps (120 linear snapshots).
+    # Tang et al.: minibatch AdamW, lr 3e-3, wd 0.1, eps 1e-6, 60k steps, 120 snapshots.
     cs.store(
         group="train",
         name="tang",
@@ -141,5 +115,4 @@ def register_configs() -> None:
         ),
     )
 
-    # --- analysis group ---
     cs.store(group="analysis", name="default", node=AnalysisCfg())

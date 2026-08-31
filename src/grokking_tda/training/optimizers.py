@@ -1,11 +1,4 @@
-"""Optimizers, including the OrthoGrad (⊥Grad) intervention from Prieto et al.
-
-OrthoGrad projects each parameter's gradient onto the subspace orthogonal to the
-parameter itself (then rescales to preserve gradient norm), which removes the
-"naive loss minimisation" direction that merely scales logits. It wraps any base
-optimizer, so ``orthograd_adamw`` / ``orthograd_sgd`` are available alongside the
-plain optimizers.
-"""
+"""Optimizers, including OrthoGrad (Prieto et al.): it projects out the logit-scaling direction."""
 
 from __future__ import annotations
 
@@ -18,12 +11,10 @@ from grokking_tda.config.schema import OptimCfg
 
 
 class OrthoGrad(Optimizer):
-    """Wrap a base optimizer, orthogonalising gradients w.r.t. weights before each step."""
-
     def __init__(self, base_optimizer: Optimizer, eps: float = 1e-30) -> None:
         self.base = base_optimizer
         self.eps = eps
-        # Share state with the base optimizer so checkpointing/inspection just works.
+        # shared with the base optimizer, so checkpointing works
         self.param_groups = base_optimizer.param_groups
         self.state = base_optimizer.state
         self.defaults = base_optimizer.defaults
@@ -67,7 +58,6 @@ def _build_base(name: str, params: Iterable[torch.nn.Parameter], cfg: OptimCfg) 
 
 
 def build_optimizer(params: Iterable[torch.nn.Parameter], cfg: OptimCfg) -> Optimizer:
-    """Build the optimizer named by ``cfg.name`` (optionally OrthoGrad-wrapped)."""
     if cfg.name.startswith("orthograd_"):
         return OrthoGrad(_build_base(cfg.name.removeprefix("orthograd_"), params, cfg))
     return _build_base(cfg.name, params, cfg)

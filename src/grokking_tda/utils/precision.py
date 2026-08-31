@@ -1,10 +1,4 @@
-"""Device-aware floating-point precision.
-
-High-precision (float64) cross-entropy avoids the softmax-collapse loss spikes that
-plague grokking runs, but Apple's MPS backend does not implement float64. Rather than
-crash on a Mac dev box, we degrade float64 to float32 there (once, with a warning) and
-keep full precision on CPU/CUDA where it is supported.
-"""
+"""Device-aware precision: float64 cross-entropy, degraded to float32 on MPS with a warning."""
 
 from __future__ import annotations
 
@@ -17,7 +11,6 @@ _warned_devices: set[str] = set()
 
 
 def supported_float_dtype(requested: torch.dtype, device: torch.device | str) -> torch.dtype:
-    """Return ``requested`` if the device supports it, else the best available fallback."""
     device_type = torch.device(device).type
     if requested == torch.float64 and device_type == "mps":
         if device_type not in _warned_devices:

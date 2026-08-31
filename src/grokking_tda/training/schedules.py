@@ -1,10 +1,4 @@
-"""Snapshot-step schedules.
-
-Grokking happens over a wide range of step counts, so we space heavy snapshots
-*logarithmically* by default: dense early (to catch memorisation) and dense enough
-to bracket a late transition without storing every step. The endpoints (0 and the
-final step) are always included.
-"""
+"""Snapshot-step schedules: logarithmic by default, with an optional dense window."""
 
 from __future__ import annotations
 
@@ -18,14 +12,7 @@ def snapshot_steps(
     dense_from: int = 0,
     dense_to: int = 0,
 ) -> list[int]:
-    """Return a sorted, de-duplicated list of steps at which to take snapshots.
-
-    A ``dense_from``/``dense_to`` window spends half the budget linearly inside it
-    and the rest on the base schedule. Log spacing alone puts most snapshots in the
-    first fraction of a percent of training while leaving the transition — where the
-    signed-lag analysis needs resolution finer than the lag it is measuring — sampled
-    only every several hundred steps.
-    """
+    """Snapshot steps, log-spaced, with an optional dense window taking half the budget."""
     if n_snapshots < 2:
         return [0, total_steps]
 
@@ -38,7 +25,6 @@ def snapshot_steps(
     if schedule == "linear":
         pts = np.linspace(0, total_steps, n_snapshots)
     elif schedule == "log":
-        # log-space over [1, total_steps], then prepend 0.
         log_pts = np.logspace(0, np.log10(max(total_steps, 1)), n_snapshots - 1)
         pts = np.concatenate([[0.0], log_pts])
     else:

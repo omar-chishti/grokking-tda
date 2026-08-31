@@ -1,17 +1,4 @@
-"""Significance machinery: bootstrap confidence sets and null models.
-
-This is the apparatus the reference paper lacks. Two pieces:
-
-- **Bootstrap confidence sets** (after Fasy et al.): subsample the point cloud,
-  recompute persistence, and form percentile intervals on max/total persistence —
-  uncertainty attached to every headline number.
-- **Null models**: the same summaries on point clouds that *cannot* carry the
-  signal — freshly-initialised (untrained) weights here; shuffled-label runs are
-  produced by training with ``data.label_permutation=true`` and analysed normally.
-
-Multi-run aggregation and multiple-comparison control live in
-``analysis/aggregate.py`` and the figure layer, not here.
-"""
+"""Bootstrap confidence sets (after Fasy et al.) and the random-initialisation null."""
 
 from __future__ import annotations
 
@@ -36,10 +23,6 @@ def bootstrap_summary_ci(
     seed: int = 0,
     alpha: float = 0.05,
 ) -> dict:
-    """Percentile CIs on max/total H_dim persistence under point subsampling.
-
-    Returns ``{"max": {lo, median, hi}, "total": {...}, "samples": DataFrame}``.
-    """
     homology = homology or HomologyCfg(maxdim=max(dim, 1))
     x = np.asarray(points, dtype=np.float64)
     n = x.shape[0]
@@ -73,11 +56,7 @@ def random_init_null(
     metric: str = "euclidean",
     dim: int = 1,
 ) -> pd.DataFrame:
-    """H_dim summaries of freshly-initialised (untrained) models of the run's architecture.
-
-    The distribution of max/total persistence under random init is the band a trained
-    snapshot's value must exceed before it can be called a signal.
-    """
+    """Summaries of freshly-initialised models: the band a trained value must exceed."""
     from grokking_tda.config.schema import ModelCfg
     from grokking_tda.data.modular import TaskMeta
     from grokking_tda.models import build_model
@@ -86,8 +65,7 @@ def random_init_null(
     homology = homology or HomologyCfg(maxdim=max(dim, 1))
     rows = []
     for i in range(n_samples):
-        # A local generator: seeding the global RNG here would perturb any caller
-        # that draws randomness afterwards.
+        # forked: seeding the global RNG would perturb any caller drawing afterwards
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(seed + i)
             model = build_model(ModelCfg(**run.config["model"]), TaskMeta(**run.task_meta))

@@ -1,1 +1,1 @@
-# Marker so Hydra can load these YAMLs via `initialize_config_module`.
+# marker: Hydra loads these YAMLs via initialize_config_module

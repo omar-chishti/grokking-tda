@@ -1,25 +1,4 @@
-"""Where the topological velocity changes rate, and whether it changes at all (section 6.3).
-
-Section 6.3 describes a tenfold step in the reference regime's reorganisation rate *by
-eye*, and the panel it describes has no measurement on it. This locates the step with the
-optimal-partition detector of ``evaluation/changepoint.py``, expresses it relative to
-$\\tg$, and bootstraps over seeds.
-
-The two controls are the point. The canonical regime and the permuted-label null are
-where the chapter claims there is no feature to find, so a detector that finds nothing
-there is what makes the positive worth having --- and a detector that finds something
-there says the location in the reference regime is what a changepoint procedure returns
-on any series, which is the trap section 5.6 already fell into once with the midpoint
-detector.
-
-The velocity itself is not recomputed: ``analysis/figures/build.py`` builds it on
-scale-normalised diagrams, divided by the step gap, and a second implementation would
-drift from the panel it is supposed to annotate.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.velocity
-"""
+"""Where the topological velocity changes rate, and whether it changes at all (§6.3)."""
 
 from __future__ import annotations
 
@@ -36,7 +15,6 @@ VELOCITY = "figures/fig-6-2-velocity.csv"
 
 
 def step_size(steps: np.ndarray, rate: np.ndarray, cut: float) -> float:
-    """Ratio of the median rate after the located changepoint to the median before it."""
     before, after = rate[steps < cut], rate[steps >= cut]
     if before.size == 0 or after.size == 0:
         return float("nan")

@@ -1,13 +1,4 @@
-"""A derived ETbb small-capitals face, for panel letters and panel titles.
-
-Matplotlib cannot ask an OpenType font for a feature, so the substitution is baked in:
-``smcp`` and ``onum`` are both single substitutions, and applying them is a matter of
-pointing the character map at the glyphs they name. Old-style figures ride along because
-this face is only ever used for labels, where they sit with the small capitals; measured
-numbers keep the lining figures of the plain face, which align in a column and compare.
-
-The derived face is cached beside this module and registered with matplotlib on import.
-"""
+"""A derived ETbb small-capitals face: matplotlib cannot ask a font for a feature."""
 
 from __future__ import annotations
 
@@ -66,7 +57,6 @@ def _derive(source: Path, target: Path, family: str, style: str, tags: tuple[str
 
 
 def install() -> str:
-    """Derive the face if it is not cached, register it, and return its family name."""
     CACHE.mkdir(exist_ok=True)
     for style, suffix in _STYLES.items():
         source = Path.home() / "Library" / "Fonts" / f"ETbb{suffix or '-Regular'}.otf"

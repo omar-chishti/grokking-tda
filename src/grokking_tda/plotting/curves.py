@@ -13,7 +13,6 @@ from grokking_tda.plotting.style import GROK_COLOR, use_vector_style
 def plot_training_curves(
     metrics: pd.DataFrame, out_path: str | Path, transition: int | None = None
 ) -> Path:
-    """Two-panel accuracy/loss vs step (symlog x to include step 0)."""
     use_vector_style()
     m = metrics.sort_values("step")
     fig, (ax_acc, ax_loss) = plt.subplots(1, 2, figsize=(9, 3.2))

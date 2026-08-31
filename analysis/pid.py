@@ -1,37 +1,4 @@
-"""Partial information decomposition, per regime and with uncertainty (section 5.5).
-
-The pooled decomposition in ``analysis/redundancy.py`` reports four bare point estimates
-over the whole bank. Three things are wrong with that and only one is currently in the
-text.
-
-**It is pooled.** Section 4.5 establishes that the regimes differ in exactly the structure
-being decomposed, so a single decomposition averages over the distinction the chapter is
-about. Each regime is decomposed separately here, and the pooled figure kept for
-comparison.
-
-**The weaker source's unique atom is zero by construction.** Under minimum-mutual-
-information redundancy, redundancy is ``min_i I(S_i; T)``, so whichever source carries
-less can never be credited with anything of its own --- and $H_1$ carries less. That
-limitation is already stated in the chapter, but the stronger fact is not: Barrett showed
-that for jointly Gaussian variables with univariate sources and target, essentially every
-proposed redundancy function *collapses* to MMI, so the zero cannot be escaped by choosing
-differently within the Gaussian model. Escaping it requires leaving that model, so the
-Williams-Beer decomposition is computed on quantile-binned variables alongside, where
-redundancy is taken over target values rather than over their average and a source that
-resolves a different part of the range can be credited. Both are reported. A zero under
-*both* is a measurement; a zero under MMI alone is an artefact of the estimator.
-
-**The atoms are point estimates.** Each gets a cluster bootstrap and a permutation null
-here. The bootstrap resamples *configurations*, not runs, because the five seeds of a
-recipe are near-duplicates --- which is also the real correction to the effective sample
-size. The caveat currently in section 5.5 attributes the shortfall to autocorrelation
-between checkpoints within runs; that describes a different analysis, since the unit here
-is the run. The reported design effect is what the clustering actually costs.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.pid
-"""
+"""Partial information decomposition, per regime and with uncertainty (§5.5)."""
 
 from __future__ import annotations
 
@@ -51,8 +18,8 @@ ATOMS = ("redundant", "unique_a", "unique_b", "synergistic", "total")
 SOURCE_B = "circularity"
 TARGET = "log10 t_g"
 
-# The reported pairing sets a ratio across the transition against a terminal level, which are not
-# the same kind of quantity, so the decomposition is also run with both sources terminal.
+# The reported pairing sets a ratio against a terminal level, which are not the same kind of
+# quantity, so it is also run with both sources terminal
 SOURCE_A = "h1_max_persistence_normalised__ratio"
 SOURCES_A = {
     "ratio": SOURCE_A,
@@ -60,12 +27,11 @@ SOURCES_A = {
 }
 
 ESTIMATORS = {"gaussian_mmi": gaussian_pid, "williams_beer": williams_beer_pid}
-# Resampling with replacement creates ties, and a binned estimator reads ties as dependence, so a
-# bootstrap interval on the Williams-Beer atoms is biased upward -- far enough that a point estimate
-# can fall outside its own interval. Only the permutation null is reported for it.
+# Resampling creates ties, which a binned estimator reads as dependence, so only the
+# permutation null is reported for the Williams-Beer atoms
 BOOTSTRAPPED = {"gaussian_mmi"}
 
-# The regimes section 4.5 separates; "pooled" keeps the whole bank for comparison.
+# The regimes §4.5 separates; "pooled" keeps the whole bank for comparison.
 REGIMES = {
     "reference": lambda d: (d.model == "transformer")
     & (d.modulus == 113)
@@ -78,13 +44,7 @@ REGIMES = {
 
 
 def design_effect(groups: np.ndarray, values: np.ndarray) -> dict:
-    """Effective sample size under clustering by configuration.
-
-    ``n_eff = n / (1 + (m - 1) rho)`` with ``m`` the mean cluster size and ``rho`` the
-    intraclass correlation, estimated from the one-way variance components. Seeds of one
-    recipe are near-duplicates, so this --- not autocorrelation in training time --- is
-    what the nominal count overstates.
-    """
+    """Effective sample size under clustering by configuration; seeds are near-duplicates."""
     frame = pd.DataFrame({"g": groups, "v": values}).dropna()
     n, n_groups = len(frame), frame.g.nunique()
     if n_groups < 2 or n == n_groups:
@@ -106,12 +66,7 @@ def design_effect(groups: np.ndarray, values: np.ndarray) -> dict:
 def permute_within_clusters(
     target: np.ndarray, groups: np.ndarray, rng: np.random.Generator
 ) -> np.ndarray:
-    """Shuffle target values between configurations, leaving the clustering intact.
-
-    A free permutation breaks the source-target association *and* the near-duplication of seeds
-    within a recipe, so its null is tighter than the data support by roughly the design effect.
-    Permuting whole configurations destroys only the association, which is what is under test.
-    """
+    """Shuffle targets between configurations, so only the association is destroyed."""
     unique = np.unique(groups)
     pools = {g: target[groups == g] for g in unique}
     out = np.empty_like(target)
@@ -126,7 +81,6 @@ def decompose(
     frame: pd.DataFrame, estimator, *, source_a: str = SOURCE_A,
     bootstrap: bool = True, seed: int = 0,
 ) -> dict:
-    """Atoms, a cluster bootstrap interval on each, and a cluster permutation null."""
     a = frame[source_a].to_numpy(float)
     b = frame[SOURCE_B].to_numpy(float)
     t = np.log10(frame["t_g"].to_numpy(float))

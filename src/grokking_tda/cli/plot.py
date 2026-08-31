@@ -1,11 +1,4 @@
-"""``gtda-plot`` — render vector-first figures from a run's artifacts.
-
-    gtda-plot results/raw/tf_mod97_grok_s0
-
-Produces (in ``<run_dir>/figures/``): training curves, observables-over-time, the
-final-snapshot persistence diagram, and a CROCKER plot of the trajectory (>=3 snapshots).
-Run ``gtda-analyse`` first for the observables-over-time figure.
-"""
+"""``gtda-plot`` — render vector-first figures from a run's artifacts."""
 
 from __future__ import annotations
 
@@ -66,7 +59,6 @@ def main() -> None:
         ctx = ObservationContext(run, snapshots[-1], cfg)
         plot_persistence_diagram(ctx.diagrams(), fig_dir / "persistence_diagram_final.pdf")
 
-        # Stage diagrams (e.g. before / during / after grokking) on request.
         if args.steps:
             available = [s.step for s in snapshots]
             for wanted in (int(s) for s in str(args.steps).split(",") if s.strip()):
@@ -78,7 +70,6 @@ def main() -> None:
                     fig_dir / f"persistence_diagram_step_{snap.step:08d}.pdf",
                 )
 
-        # CROCKER: topology *of* the trajectory (>=3 snapshots needed to read as evolution).
         if len(snapshots) >= 3:
             try:
                 _plot_crocker_figure(run, snapshots, cfg, fig_dir, transition)
@@ -89,7 +80,7 @@ def main() -> None:
 
 
 def _plot_crocker_figure(run, snapshots, cfg, fig_dir, transition) -> None:
-    # Reuse the per-snapshot diagram cache written by gtda-analyse (same construction).
+    # the per-snapshot cache gtda-analyse wrote, same construction
     diagrams = [ObservationContext(run, s, cfg).diagrams().get(1) for s in snapshots]
     scales, matrix = crocker_from_diagrams(diagrams)
     steps = np.array([s.step for s in snapshots])

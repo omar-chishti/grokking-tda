@@ -1,13 +1,4 @@
-"""``gtda-train`` — compose a config, train, and emit run artifacts.
-
-Examples::
-
-    gtda-train +experiment=smoke
-    gtda-train +experiment=tf_mod97_grok seed=1 train.optimizer.weight_decay=0.5
-    gtda-train -m +experiment=tf_mod97_grok seed=0,1,2          # local multirun
-    gtda-train -m +experiment=tf_mod97_grok seed=0,1,2 \
-        hydra/launcher=submitit_slurm                            # cluster sweep
-"""
+"""``gtda-train`` — compose a config, train, and emit run artifacts."""
 
 from __future__ import annotations
 
@@ -33,8 +24,6 @@ register_configs()
 logger = get_logger(__name__)
 
 
-# Hydra hands back a DictConfig backed by the ExperimentCfg schema; the casts below say
-# so once, rather than threading OmegaConf's union types through the whole call graph.
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
 def main(cfg: DictConfig) -> None:
     seed_everything(cfg.seed, deterministic=cfg.train.deterministic)
@@ -45,7 +34,6 @@ def main(cfg: DictConfig) -> None:
     model = build_model(cfg.model, data.meta)
 
     run_dir = Path(cfg.output_root) / cfg.run_name
-    # Never silently reuse a directory that already holds a run (mixed-run artifacts).
     prepare_run_dir(run_dir, overwrite=bool(cfg.get("overwrite", False)))
     writer = ArtifactWriter(run_dir)
     writer.write_manifest(
@@ -59,9 +47,10 @@ def main(cfg: DictConfig) -> None:
     )
 
     try:
+        # Hydra hands back a DictConfig backed by ExperimentCfg; the cast says so once,
+        # rather than threading OmegaConf union types through the engine
         Trainer(model, data, cast(ExperimentCfg, cfg), device, writer).fit()
     except Exception as exc:
-        # Leave a traceable outcome in the artifact before propagating.
         writer.append_event({"event": "train_end", "status": "failed", "error": repr(exc)})
         logger.exception("training failed for run=%s", cfg.run_name)
         raise

@@ -18,7 +18,6 @@ def plot_observables_over_time(
     out_path: str | Path,
     markers: dict[str, int | None] | None = None,
 ) -> Path:
-    """One panel per observable, value vs step, with optional transition markers."""
     use_vector_style()
     columns = [c for c in observables.columns if c != "step"]
     obs = observables.sort_values("step")
@@ -42,7 +41,6 @@ def plot_observables_over_time(
 
 
 def plot_persistence_diagram(diagrams: dict[int, np.ndarray], out_path: str | Path) -> Path:
-    """Birth-death scatter for each homology dimension (infinite bars clamped to top)."""
     use_vector_style()
     fig, ax = plt.subplots(figsize=(4, 4))
     bars = [b for b in map(finite_bars, diagrams.values()) if b.size]

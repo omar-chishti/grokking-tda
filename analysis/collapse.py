@@ -1,27 +1,4 @@
-"""Is the signature a function of dimensional collapse, and where is it not? (sections 4.5, 5.3)
-
-Section 4.5 establishes that the topological signature tracks how circular the learned embedding
-becomes, and measures that with a Fourier concentration. The measure has a boundary the chapter does
-not state: Fourier concentration along the residue axis is only meaningful when the residues are the
-group, so every permutation-group run is absent from the association. That is the one condition the
-argument most needs, because section 5.3 reports the largest total-persistence ratio in the bank on
-a task with no circle at all. As written, the two sections do not meet.
-
-The spectrum meets them. Effective rank of the centred embedding is defined for any task, takes no
-basis and counts no loops, and it orders the modular conditions the same way circularity does. So
-the general form of the boundary is dimensional collapse, of which circularity is the cyclic-group
-special case, and the question section 5.3 should be asking becomes quantitative: does the
-non-abelian task carry *more* loop structure than its own collapse accounts for?
-
-The law is fitted on the modular runs alone --- log2 persistence ratio against log2 effective-rank
-ratio --- and every condition is then scored by its mean residual from it, in units of the fit's own
-residual spread. Conditions are ranked, so the headline is a rank rather than a t-statistic: with
-eighteen conditions, first place is worth p = 1/18 and nothing stronger is claimed.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.collapse
-"""
+"""Is the signature a function of dimensional collapse, and where is it not? (§4.5, §5.3)"""
 
 from __future__ import annotations
 
@@ -38,7 +15,6 @@ NON_CYCLIC = "compose"  # the operation whose solution admits no circle
 
 
 def frame(root, out) -> pd.DataFrame:
-    """Grokking runs carrying both a persistence ratio and a spectrum, one row each."""
     bank, _ = load_bank(root)
     spectra = pd.read_csv(out / "normalisation.csv")[["run", COLLAPSE]]
     frame = bank.merge(spectra, on="run", how="inner")

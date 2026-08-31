@@ -1,19 +1,4 @@
-"""Dense recording of the optimisation path, for topology *of* the trajectory.
-
-Snapshots are log-spaced and number in the low hundreds — ample for measuring an
-observable over training, far too sparse to treat the trajectory itself as a point
-cloud. The persistent-homology dimension of a training path (Birdal et al., NeurIPS
-2021) is estimated from a window of consecutive iterates, so it needs thousands.
-
-Storing the full parameter vector that often is wasteful, so each iterate is written
-through a fixed random projection. Johnson-Lindenstrauss keeps pairwise distances
-close to their true values, and pairwise distances are all persistent homology reads
-— so the projected path carries the topology of the real one at a few kilobytes per
-recorded step.
-
-The projection is drawn from the run's seed and its shape is recorded, so the same
-matrix is reconstructible from the manifest alone.
-"""
+"""Dense recording of the optimisation path, through a fixed random projection."""
 
 from __future__ import annotations
 
@@ -30,8 +15,6 @@ def flat_parameters(model: torch.nn.Module) -> torch.Tensor:
 
 
 class TrajectoryRecorder(Callback):
-    """Record a projected copy of the parameter vector every ``every`` steps."""
-
     def __init__(self, dim: int, every: int, seed: int) -> None:
         self.dim = dim
         self.every = max(1, every)

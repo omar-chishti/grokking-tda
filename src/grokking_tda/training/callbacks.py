@@ -1,10 +1,4 @@
-"""Callbacks — the engine's extension points.
-
-The training loop fires ``on_train_start`` / ``on_step_end`` / ``on_train_end``.
-Everything beyond the bare gradient step (metric logging, snapshotting, console
-output, early stopping, and one day online probes) is a callback, so the loop
-stays tiny and new behaviour is additive.
-"""
+"""Callbacks — the engine's extension points, so the loop stays small."""
 
 from __future__ import annotations
 
@@ -17,9 +11,9 @@ logger = get_logger(__name__)
 
 
 class Callback:
-    """Base class; override the hooks you need."""
+    """Override the hooks you need; the engine calls all three."""
 
-    def on_train_start(self, trainer) -> None:  # noqa: D401
+    def on_train_start(self, trainer) -> None:
         ...
 
     def on_step_end(self, trainer) -> None:
@@ -30,8 +24,6 @@ class Callback:
 
 
 class MetricLogger(Callback):
-    """Record cheap scalar metrics on a fixed cadence (and at the very start/end)."""
-
     def __init__(self, every: int) -> None:
         self.every = max(1, every)
 
@@ -44,8 +36,6 @@ class MetricLogger(Callback):
 
 
 class SnapshotSaver(Callback):
-    """Save heavy snapshots (weights + representations) at scheduled steps."""
-
     def __init__(self, steps: Iterable[int]) -> None:
         self.steps = set(steps)
 
@@ -59,8 +49,6 @@ class SnapshotSaver(Callback):
 
 
 class ConsoleProgress(Callback):
-    """Periodic human-readable progress line with throughput and ETA."""
-
     def __init__(self, every: int = 1000) -> None:
         self.every = max(1, every)
         self._t0 = 0.0

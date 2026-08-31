@@ -8,8 +8,6 @@ from typing import Any
 
 @dataclass
 class Manifest:
-    """Everything needed to interpret and reproduce a run."""
-
     run_name: str
     config: dict[str, Any]  # fully-resolved ExperimentCfg (OmegaConf container)
     env: dict[str, Any]  # provenance: git, versions, hardware

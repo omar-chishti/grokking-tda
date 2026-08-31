@@ -1,11 +1,4 @@
-"""``gtda-compare`` — does topology predict grokking beyond the cheap baselines?
-
-    gtda-compare results/raw --out results/processed/head_to_head.csv
-
-Scores every feature set on identical folds, at every pre-registered early window, for
-two targets: whether a run groks at all (AUC) and how late it groks (R^2 on log t_g).
-Folds are split by configuration, so a run's own seeds never sit in its training set.
-"""
+"""``gtda-compare`` — does topology predict grokking beyond the cheap baselines?"""
 
 from __future__ import annotations
 

@@ -1,11 +1,4 @@
-"""``gtda-aggregate`` — collect many analysed runs into one tidy table.
-
-    gtda-aggregate results/raw
-    gtda-aggregate results/raw --out results/processed/robustness.csv
-
-One row per run (config keys + summary transitions). Run ``gtda-analyse`` on each
-run first; runs without a summary still appear, with the analysis columns empty.
-"""
+"""``gtda-aggregate`` — collect many analysed runs into one tidy table."""
 
 from __future__ import annotations
 

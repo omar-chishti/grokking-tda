@@ -13,7 +13,6 @@ DATASETS.register("permutation_group")(build_permutation_data)
 
 
 def build_data(cfg: DataCfg, seed: int) -> ModularArithmeticData:
-    """Build the dataset selected by ``cfg.task`` (deterministic split via ``seed``)."""
     return DATASETS.build(cfg.task, cfg, seed)
 
 

@@ -1,10 +1,4 @@
-"""A hookable embedding-MLP baseline for modular arithmetic.
-
-Embeds the two operand tokens, concatenates them, and passes through a stack of
-ReLU layers (Gromov-style two-layer-ish networks also grok modular arithmetic).
-The "=" token is ignored. Exposes the same ``embedding_matrix`` interface as the
-transformer so the TDA pipeline is architecture-agnostic.
-"""
+"""A hookable embedding-MLP baseline, with the transformer's ``embedding_matrix`` interface."""
 
 from __future__ import annotations
 
@@ -42,7 +36,7 @@ class GrokkingMLP(HookedModule):
         self.mlp = nn.Sequential(*layers)
         self.unembed = nn.Linear(current, num_classes)
         self.modulus = num_classes
-        self.hidden_hook = "hook_hidden"  # representation used for "hidden"
+        self.hidden_hook = "hook_hidden"  # what AnalysisCfg.representation="hidden" reads
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         operands = tokens[:, :2]  # ignore "=" token
@@ -51,7 +45,7 @@ class GrokkingMLP(HookedModule):
         return self.unembed(hidden)
 
     def embedding_matrix(self) -> torch.Tensor:
-        """The ``p x embedding_dim`` residue-embedding point cloud."""
+        # the p residue rows; the slice drops the "=" token at index p
         return self.embed.weight[: self.modulus].detach()
 
 

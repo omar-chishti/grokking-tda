@@ -1,31 +1,4 @@
-"""The completed predictive head-to-head (thesis section 5.4).
-
-``gtda-compare`` scores every feature set once, on the whole table. That is not enough to
-report the regression's negative $R^2$ as a property of the observables, because the
-design is unbalanced by construction: the weight-decay-$0.1$ configuration has a median
-$\\tg$ of $140{,}100$, fifty times the fastest condition's, and folds are split by
-configuration, so no model trained without it can predict it. A negative driven by one
-extreme cell is a design artefact; a negative that survives its removal is a statement
-about the whole family of progress measures.
-
-Three fits, on identical folds and identical features:
-
-``full``
-    every grokking run, as the chapter currently reports it.
-``holdout``
-    the same, with the weight-decay-$0.1$ configuration dropped.
-``winsorised``
-    the same as ``full``, with $\\log \\tg$ clipped to its 10th and 90th percentiles, so
-    the extremes stay in the sample but stop dominating the squared error.
-
-Classification is scored on the full table in every case; the imbalance is a property of
-the regression target, not of whether a run groks at all.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.predictive
-    uv run python -m analysis.predictive --windows w5000
-"""
+"""The completed predictive head-to-head (§5.4): full, extreme condition held out, winsorised."""
 
 from __future__ import annotations
 
@@ -39,13 +12,12 @@ from grokking_tda.analysis.aggregate import early_window_table
 from grokking_tda.evaluation.headtohead import head_to_head
 from grokking_tda.evaluation.predictive import PREREGISTERED_WINDOWS
 
-# The configuration section 5.4 names as the candidate driver of the negative.
+# the configuration §5.4 names as the candidate driver of the negative
 EXTREME_GROUP = "transformer_add97_f0.3_wd0.1_softmax_ce"
 WINSOR = (0.10, 0.90)
 
 
 def regression_variants(table: pd.DataFrame, window: str) -> pd.DataFrame:
-    """The three fits, each on the runs and target its name describes."""
     late = table[table["grokking_step"].notna()].copy()
     late["target"] = np.log10(late["grokking_step"].astype(float))
     if late["group"].nunique() < 3:

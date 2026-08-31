@@ -1,25 +1,4 @@
-"""Composition in the symmetric group S_n — the genuinely non-cyclic task.
-
-Every operation in ``data/modular.py`` lives on a cyclic group: addition directly,
-and subtraction, multiplication and division through isomorphisms, so a generalising
-embedding is expected to be a circle in every case. That makes them a poor test of
-whether persistent homology tracks *generalisation* or merely *circles*.
-
-S_n for n >= 3 is non-abelian, so no arrangement of its elements on a circle respects
-the group operation. If H1 still rises when this task groks, the signature is not
-circle-specific; if it does not, that is a sharp boundary on what the signature
-detects. Either outcome is a result.
-
-The task the thesis originally reserved for this role — the Power et al. polynomial
-``a^3 + ab mod p`` — was measured on 2026-08-24 not to grok at all: six runs at
-fractions 0.5 and 0.7 and weight decays 0.3 and 1.0 reached 150,000 steps with train
-accuracy 1.0 and test accuracy 0.021-0.026 against a chance level of 0.0103. Without a
-transition there is nothing for topology to track, so the decisive test moves here.
-
-Elements are indexed by their position in lexicographic order, which keeps the
-interface identical to the modular tasks: tokens ``[a, b, =]``, answer at the final
-position, ``num_classes`` equal to the group order.
-"""
+"""Composition in S_n: non-abelian, so no circle respects the operation."""
 
 from __future__ import annotations
 
@@ -33,7 +12,7 @@ from grokking_tda.data.modular import ModularArithmeticData, TaskMeta
 
 
 def composition_table(n_symbols: int) -> torch.Tensor:
-    """``table[i, j]`` is the index of ``perm_i`` composed with ``perm_j``."""
+    """``table[i, j]`` is the index of ``perm_i`` composed with ``perm_j``, applied right first."""
     elements = list(permutations(range(n_symbols)))
     index = {p: i for i, p in enumerate(elements)}
     order = len(elements)
@@ -45,7 +24,6 @@ def composition_table(n_symbols: int) -> torch.Tensor:
 
 
 def build_permutation_data(cfg: DataCfg, seed: int) -> ModularArithmeticData:
-    """Composition in S_n, with the same tokenisation and split as the modular tasks."""
     n = cfg.n_symbols
     if n < 3:
         raise ValueError("S_n is abelian below n = 3; the point of this task is that it is not")

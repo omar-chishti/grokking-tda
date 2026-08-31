@@ -1,10 +1,4 @@
-"""Hookable models, exposed through a registry.
-
-Every model implements ``forward(tokens) -> logits`` and ``embedding_matrix()``
-(the residue-embedding point cloud), and inherits ``run_with_cache`` from
-:class:`~grokking_tda.models.hooks.HookedModule`. This uniform interface is what
-lets the TDA layer treat architectures interchangeably.
-"""
+"""Hookable models: ``forward``, ``embedding_matrix``, ``run_with_cache``, through a registry."""
 
 from __future__ import annotations
 
@@ -22,7 +16,6 @@ MODELS.register("mlp")(build_mlp)
 
 
 def build_model(cfg: ModelCfg, meta: TaskMeta) -> nn.Module:
-    """Build the model selected by ``cfg.name``, sized to the task ``meta``."""
     return MODELS.build(cfg.name, cfg, meta)
 
 

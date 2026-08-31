@@ -1,18 +1,8 @@
-"""Fourier concentration of the residue-embedding matrix.
+"""Fourier concentration of the residue-embedding matrix (Nanda et al.).
 
-In modular addition the generalising embedding becomes approximately a circle —
-i.e. dominated by a few Fourier modes along the residue axis. This scalar measures
-that: the fraction of spectral power carried by the ``top_k`` non-DC frequencies.
-It rises as the representation becomes periodic, and is the diagnostic a topological
-H1 signal must be shown to beat (or to lead in time). See Nanda et al.
-
-The residue-axis DFT is **basis-bound**: for multiplication/division the grokked
-circle is arranged by *discrete log*, so it is invisible to this measure while
-persistent homology (permutation-invariant) still sees the loop. The
-``fourier_concentration_group`` variant reorders rows by powers of a primitive root
-(equivalently, measures concentration over multiplicative characters), giving the
-*fair* baseline for those operations — without it, the PH-vs-Fourier comparison on
-mul/div is rigged in topology's favour.
+The residue-axis transform is basis-bound: mul and div arrange their circle by discrete log,
+so it is blind to a loop persistent homology still sees. The ``_group`` variant reorders by
+powers of a primitive root, and is the fair baseline there.
 """
 
 from __future__ import annotations
@@ -25,8 +15,8 @@ from grokking_tda.analysis.observable import ObservationContext, register_observ
 def _concentration(embedding: np.ndarray, top_k: int) -> float:
     w = np.asarray(embedding, dtype=np.float64)
     w = w - w.mean(axis=0, keepdims=True)  # drop DC by centring along residues
-    spectrum = np.fft.rfft(w, axis=0)  # DFT along the residue axis
-    power = (np.abs(spectrum) ** 2).sum(axis=1)  # power per frequency (summed over dims)
+    spectrum = np.fft.rfft(w, axis=0)
+    power = (np.abs(spectrum) ** 2).sum(axis=1)
     if power.size > 0:
         power[0] = 0.0  # ignore residual DC
     total = power.sum()
@@ -38,10 +28,9 @@ def _concentration(embedding: np.ndarray, top_k: int) -> float:
 
 
 def _primitive_root(p: int) -> int | None:
-    """Smallest primitive root mod prime ``p`` (None if ``p`` is not prime / p < 3)."""
     if p < 3:
         return None
-    # Factor p-1 by trial division (p is small in this benchmark).
+    # trial division; p is small here
     factors: set[int] = set()
     m, d = p - 1, 2
     while d * d <= m:
@@ -60,7 +49,6 @@ def _primitive_root(p: int) -> int | None:
 
 
 def _discrete_log_order(p: int) -> list[int] | None:
-    """Residues 1..p-1 ordered as powers of the smallest primitive root."""
     g = _primitive_root(p)
     if g is None:
         return None
@@ -76,25 +64,16 @@ def _group_concentration(ctx: ObservationContext, top_k: int) -> float:
 
 @register_observable("fourier_concentration", direction="rising")
 def fourier_concentration(ctx: ObservationContext) -> float:
-    """Power fraction in the top-5 Fourier modes of the embedding."""
     return _concentration(ctx.embedding_matrix(), top_k=5)
 
 
 @register_observable("fourier_concentration_group", direction="rising")
 def fourier_concentration_group(ctx: ObservationContext) -> float:
-    """Top-5 concentration after discrete-log reordering (multiplicative characters).
-
-    The fair Fourier baseline for mul/div: a circle arranged by discrete log is flat
-    under the residue-axis DFT but periodic in this ordering. Residue 0 is excluded
-    (it sits outside the multiplicative group). NaN if the modulus is not prime.
-    """
+    """Concentration after discrete-log reordering: the fair baseline for mul and div."""
     return _group_concentration(ctx, top_k=5)
 
 
-# A claim that topology beats Fourier must not turn on an arbitrary k, so the whole
-# family is recorded and the comparison is made against whichever member tracks the
-# transition best. Concentration rises monotonically with k, so the strongest
-# competitor cannot be picked per snapshot — it is chosen downstream, on the series.
+# Concentration rises monotonically in k, so the strongest competitor is chosen downstream
 FOURIER_K_SWEEP = (1, 2, 3, 5, 10, 20)
 
 for _k in FOURIER_K_SWEEP:

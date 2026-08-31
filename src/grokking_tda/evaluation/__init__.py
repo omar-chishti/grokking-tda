@@ -1,9 +1,4 @@
-"""Evaluation: locating the grokking transition and comparing observables to it.
-
-This is where the thesis's quantitative questions live — *when* does generalization
-happen, *when* does a topological observable transition, and what is the signed lag
-between them (does topology lead?).
-"""
+"""Evaluation: locating the grokking transition and comparing observables to it."""
 
 from grokking_tda.evaluation.changepoint import changepoint_step, changepoints
 from grokking_tda.evaluation.multiplicity import benjamini_hochberg, benjamini_yekutieli

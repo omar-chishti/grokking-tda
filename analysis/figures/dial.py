@@ -1,13 +1,4 @@
-"""Geometry for C15, the dial.
-
-Modular addition is rotation; a grokked network builds that dial in its embedding, but
-*wound* --- laid out at some frequency rather than in residue order --- and it builds it
-cleanly only in some regimes. Every coordinate the picture draws is computed here, so the
-ring in panel (b), the chords threaded across it, the sinusoid in (c) and the three small
-dials in (d) describe one measurement and cannot disagree with each other.
-
-Run: ``uv run python -m analysis.figures.dial``.
-"""
+"""Geometry for C15, the dial: the ring, its chords, the sinusoid and the three small dials."""
 
 from __future__ import annotations
 
@@ -27,7 +18,6 @@ EXAMPLE = (9, 5)     # 9 + 5 = 2 (mod 12), the one worked example
 
 
 def terminal_embedding(run: str) -> np.ndarray:
-    """The residue-embedding matrix at the last stored snapshot, centred."""
     snaps = sorted(glob.glob(f"results/raw/{run}/snapshots/*/representations.npz"))
     if not snaps:
         raise FileNotFoundError(f"no snapshots for {run}")
@@ -36,11 +26,6 @@ def terminal_embedding(run: str) -> np.ndarray:
 
 
 def ring(E: np.ndarray) -> dict:
-    """The top-two principal plane, as a ring: coordinates, order, winding, share.
-
-    The winding is the step in *residue* taken by one step around the ring. Where the
-    embedding is one clean Fourier mode that step is constant, and it is the frequency.
-    """
     U, sv, _ = np.linalg.svd(E, full_matrices=False)
     Y = U[:, :2] * sv[:2]
     Y = Y / np.abs(Y).max()
@@ -71,9 +56,6 @@ def build() -> str:
 
     assert hero["winding"] is not None, "the hero ring is not a single clean winding"
 
-    # (c) one principal coordinate against residue, and its spectrum. The coordinate is a
-    # sinusoid whose frequency is the winding, which is what makes `Fourier concentration'
-    # a measurement of the same fact the ring shows.
     coord = hero["xy"][:, 0]
     coord = coord / np.abs(coord).max()
     spec = np.abs(np.fft.rfft(coord))
@@ -98,18 +80,13 @@ def build() -> str:
         "",
     ]
 
-    # the ring, in residue order: index i is residue i, so a chord i -- i+1 is a step of
-    # one in the group and a step of `winding' around the ring
     lines.append("\\def\\HeroPoints{" + ", ".join(
         f"{i}/{x:.4f}/{y:.4f}" for i, (x, y) in enumerate(hero["xy"])) + "}")
-    # the residues sitting at the quarter turns of the ring, which is all the labelling a
-    # ninety-seven-point dial can carry
     quarters = [int(hero["order"][round(f * p) % p]) for f in (0, 0.25, 0.5, 0.75)]
     lines.append("\\def\\HeroCardinals{" + ", ".join(
         f"{r}/{hero['xy'][r, 0]:.4f}/{hero['xy'][r, 1]:.4f}" for r in quarters) + "}")
     lines.append("")
 
-    # (c) the two strips, as unit-square paths
     xs = np.arange(p) / (p - 1)
     lines.append("\\def\\HeroWave{" + " -- ".join(
         f"({x:.4f},{0.5 + 0.5 * y:.4f})" for x, y in zip(xs, coord, strict=True)) + "}")
@@ -124,8 +101,6 @@ def build() -> str:
             f"{i}/{x:.4f}/{y:.4f}" for i, (x, y) in enumerate(r["xy"])) + "}")
         lines.append(f"\\def\\{name}Steps{{{'--'.join(str(s) for s in r['steps'][:3])}}}")
         lines.append(f"\\def\\{name}Share{{{r['share']:.2f}}}")
-        # the mean radius, drawn as a guide so departure from a ring is visible rather than
-        # inferred: without it a tangle and an approximate circle look alike
         lines.append(f"\\def\\{name}Radius{{{r['radius']:.4f}}}")
         lines.append("")
     return "\n".join(lines) + "\n"

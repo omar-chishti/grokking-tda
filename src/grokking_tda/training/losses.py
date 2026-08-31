@@ -1,11 +1,4 @@
-"""Loss functions, with the numerics that matter for grokking.
-
-``softmax_ce`` computes cross-entropy in float64 by default: float32 log-softmax
-underflows on very confident logits, producing loss spikes and "dodgy gradients"
-(Nanda et al.). ``stablemax_ce`` replaces softmax with StableMax (Prieto et al.),
-which avoids Softmax Collapse and enables grokking without weight decay — the loss
-side of the intervention experiments.
-"""
+"""Loss functions: float64 cross-entropy (Nanda et al.) and StableMax (Prieto et al.)."""
 
 from __future__ import annotations
 
@@ -34,7 +27,6 @@ def softmax_cross_entropy(
 def stablemax_cross_entropy(
     logits: torch.Tensor, targets: torch.Tensor, *, dtype: torch.dtype = torch.float64
 ) -> torch.Tensor:
-    # StableMax: s(x) = x + 1 (x >= 0) else 1 / (1 - x); normalise to a distribution.
     dtype = supported_float_dtype(dtype, logits.device)
     x = logits.to(dtype)
     s = torch.where(x >= 0, x + 1.0, 1.0 / (1.0 - x))
@@ -50,7 +42,6 @@ _LOSSES: dict[str, Callable[..., torch.Tensor]] = {
 
 
 def build_loss(name: str, dtype: str = "float64") -> LossFn:
-    """Return a ``(logits, targets) -> scalar`` loss bound to the chosen dtype."""
     if name not in _LOSSES:
         raise ValueError(f"unknown loss {name!r}; choices: {sorted(_LOSSES)}")
     torch_dtype = getattr(torch, dtype)

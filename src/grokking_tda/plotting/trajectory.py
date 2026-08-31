@@ -1,10 +1,4 @@
-"""CROCKER plot — topology *of* the training trajectory as one figure.
-
-A CROCKER plot is a ``(time x scale)`` heatmap of Betti numbers: how many H_k features
-are alive at each filtration scale at each training step. It renders the trajectory
-extension (``tda.trajectory.crocker_matrix``) as the evolving object the brief asks for,
-rather than a scalar per snapshot.
-"""
+"""CROCKER plot — a (time x scale) heatmap of Betti numbers over the trajectory."""
 
 from __future__ import annotations
 
@@ -25,7 +19,6 @@ def plot_crocker(
     homology_dim: int = 1,
     grokking_step: int | None = None,
 ) -> Path:
-    """Render a Betti-``homology_dim`` CROCKER matrix as a step-vs-scale heatmap."""
     use_vector_style()
     fig, ax = plt.subplots(figsize=(5.5, 3.4))
     vmax = max(int(matrix.max()), 1) if matrix.size else 1

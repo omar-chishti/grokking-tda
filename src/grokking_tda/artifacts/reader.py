@@ -1,11 +1,4 @@
-"""Read run artifacts. This is the *only* interface the analysis layer uses.
-
-``Run`` exposes the manifest, the step-indexed metrics (as a DataFrame), and the
-list of ``Snapshot``s. A ``Snapshot`` lazily loads weights and cached
-representations, and can rebuild the exact model so any representation (hidden
-states, logits) can be recomputed deterministically from weights — keeping
-snapshots small without losing information.
-"""
+"""Read run artifacts. The only interface the analysis layer uses."""
 
 from __future__ import annotations
 
@@ -22,13 +15,11 @@ from torch import nn
 
 @dataclass
 class Snapshot:
-    """One saved training state."""
-
     step: int
     directory: Path
 
     def load_weights(self, map_location: str = "cpu") -> dict[str, torch.Tensor]:
-        # weights_only=True: a state dict is pure tensors, so refuse arbitrary unpickling.
+        # a state dict is pure tensors, so refuse arbitrary unpickling
         return torch.load(
             self.directory / "weights.pt", map_location=map_location, weights_only=True
         )
@@ -44,8 +35,6 @@ class Snapshot:
 
 
 class Run:
-    """A read-only view over a single run directory."""
-
     def __init__(self, run_dir: str | Path) -> None:
         self.dir = Path(run_dir)
         if not (self.dir / "manifest.json").exists():
@@ -74,7 +63,6 @@ class Run:
 
     @cached_property
     def events(self) -> pd.DataFrame:
-        """Lifecycle/timing events emitted during the run (empty if none)."""
         path = self.dir / "events.jsonl"
         if not path.exists():
             return pd.DataFrame()
@@ -82,7 +70,6 @@ class Run:
         return pd.DataFrame(records)
 
     def trajectory(self) -> tuple[np.ndarray, np.ndarray] | None:
-        """The dense projected optimisation path as ``(steps, points)``, if recorded."""
         path = self.dir / "trajectory.npz"
         if not path.exists():
             return None
@@ -98,11 +85,7 @@ class Run:
         return Snapshot(step, self.dir / "snapshots" / f"step_{step:08d}")
 
     def rebuild_model(self, snapshot: Snapshot | None = None) -> nn.Module:
-        """Reconstruct the model from the manifest; load ``snapshot`` weights if given.
-
-        Imported lazily to keep the artifact layer free of model dependencies at
-        import time.
-        """
+        """Rebuild the model from the manifest. Imports are local: this layer stays model-free."""
         from grokking_tda.config.schema import ModelCfg
         from grokking_tda.data.modular import TaskMeta
         from grokking_tda.models import build_model

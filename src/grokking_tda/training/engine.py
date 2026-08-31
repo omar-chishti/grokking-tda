@@ -1,11 +1,4 @@
-"""The step-centric training engine.
-
-A deliberately small loop: take an optimizer step, then let callbacks observe. The
-engine owns the few responsibilities callbacks delegate back to it —
-``record_metrics`` and ``save_snapshot`` — because they need the model, data and
-artifact writer in one place. Default cadence is **full-batch** (``batch_size`` is
-None), the canonical grokking regime for modular arithmetic.
-"""
+"""The step-centric training engine: take an optimizer step, then let callbacks observe."""
 
 from __future__ import annotations
 
@@ -31,8 +24,6 @@ from grokking_tda.training.trajectory import TrajectoryRecorder
 
 
 class Trainer:
-    """Train a model for a fixed number of optimizer steps, emitting artifacts."""
-
     def __init__(
         self,
         model: nn.Module,
@@ -55,7 +46,6 @@ class Trainer:
         self.last_metrics: dict[str, float] = {}
         self._batch_gen = torch.Generator().manual_seed(cfg.seed + 1)
 
-    # --- main loop
     def fit(self) -> Trainer:
         self.writer.append_event(
             {"event": "train_start", "total_steps": self.total_steps, "device": str(self.device)}
@@ -93,7 +83,6 @@ class Trainer:
         for callback in self.callbacks:
             getattr(callback, hook)(self)
 
-    # --- responsibilities delegated by callbacks
     @torch.no_grad()
     def _evaluate(self, inputs: torch.Tensor, targets: torch.Tensor) -> tuple[float, float]:
         self.model.eval()
@@ -104,7 +93,7 @@ class Trainer:
 
     @torch.no_grad()
     def _weight_norm(self) -> float:
-        # Move to CPU first, then cast: MPS rejects float64 even as a cast target.
+        # CPU first: MPS rejects float64 even as a cast target
         sq = torch.zeros((), dtype=torch.float64)
         for p in self.model.parameters():
             sq += (p.detach().cpu().double() ** 2).sum()
@@ -138,7 +127,6 @@ class Trainer:
 
 
 def default_callbacks(cfg: ExperimentCfg) -> list[Callback]:
-    """The standard callback stack: metrics, snapshots (log-spaced), console."""
     steps = snapshot_steps(
         cfg.train.steps,
         cfg.train.n_snapshots,

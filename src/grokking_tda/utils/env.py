@@ -1,8 +1,4 @@
-"""Capture the provenance of a run: git state, Python/library versions, hardware.
-
-Every artifact embeds this so a result can always be traced back to the exact code
-and environment that produced it — a non-negotiable for a defensible thesis.
-"""
+"""Run provenance — git state, library versions, hardware — embedded in every artifact."""
 
 from __future__ import annotations
 
@@ -37,7 +33,6 @@ def _pkg_versions(names: tuple[str, ...] = _TRACKED_PACKAGES) -> dict[str, str]:
 
 
 def _git(*args: str) -> str | None:
-    """Run a git command from the repo, returning stripped stdout or None."""
     try:
         out = subprocess.run(
             ["git", *args],
@@ -52,8 +47,6 @@ def _git(*args: str) -> str | None:
 
 @dataclass
 class EnvInfo:
-    """A serialisable snapshot of the execution environment."""
-
     python_version: str
     platform: str
     git_commit: str | None
@@ -69,7 +62,6 @@ class EnvInfo:
 
 
 def collect_env_info() -> EnvInfo:
-    """Gather environment provenance. Best-effort: missing pieces become None."""
     torch_version: str | None = None
     cuda = mps = False
     device_name: str | None = None

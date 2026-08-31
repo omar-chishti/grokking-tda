@@ -80,8 +80,8 @@ drift. Method code has tests; reduction code has a committed output. See `analys
    each register by name; configs select by name. A new component is *additive* — add
    a factory + register it; no call site changes.
 2. **Callbacks** (`training/callbacks.py`). The training loop is ~15 lines; metric
-   logging, snapshotting, console output and (future) online probes are callbacks fired
-   on `on_step_end`. New training-time behaviour never edits the loop.
+   logging, snapshotting, console output and the projected-trajectory recorder are
+   callbacks fired on `on_step_end`. New training-time behaviour never edits the loop.
 3. **Hook points** (`models/hooks.py`). Activations are captured by name via
    `run_with_cache`, so the analysis layer can pull any internal representation without
    the model knowing about TDA.

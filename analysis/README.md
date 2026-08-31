@@ -14,11 +14,16 @@ analysis/
   cli.py               the --root/--out command line every driver below shares
   thesis_numbers.py    CLI: recompute every quoted number, print a ledger, write CSV + JSON
   figures/build.py     CLI: one tidy CSV per thesis figure, plus a manifest of claims
+  figures/render.py    CLI: the manuscript figures, from those CSVs
+  figures/talk.py      CLI: the presentation figures, from the same CSVs -- separate
+                       compositions, one claim each, at slide type size
 
   normalisation.py     is the contraction a similarity, and does the verdict survive a
                        different denominator?                            (thesis 3.3.1, 4.4)
   torus.py             degree-two homology of the joint-input cloud, by stage, depth and
                        projected dimension                               (thesis 4.6, 6.5)
+  representation.py    the same signature on the embedding, the hidden state and the
+                       logits, at matched cloud cardinality              (thesis 7.1, RQ4)
   circularity.py       two non-spectral circularity measures, the residual after circularity,
                        a column-shuffle null, and the recipe's share of
                        the variance in it                                (thesis 4.5)
@@ -28,8 +33,9 @@ analysis/
                        source pairings, cluster bootstrap and null       (thesis 5.5)
   redundancy.py        resampled-null p-values across the grid, drawn one null configuration
                        at a time, BH and BY side by side                 (thesis 3.7, 4.4)
-  detector.py          what the transition detector does to a step of known location, and
-                       what its unrepaired form did                      (thesis 5.6)
+  detector.py          what the detector does to a step of known location, what its
+                       unrepaired form did, and whether the timing result survives the
+                       second detector                                   (thesis 3.6, 5.6)
   velocity.py          changepoint on the topological velocity, with its controls
                                                                          (thesis 6.3)
   phdim.py             window x projection sweep, and the estimator on known dimensions
@@ -54,6 +60,7 @@ uv run python -m analysis.thesis_numbers        # -> results/processed/thesis/
 uv run python -m analysis.figures.build         # -> results/processed/thesis/figures/
 uv run python -m analysis.figures.build --only 4.2 4.6
 uv run python -m analysis.figures.render        # -> results/figures/generated/*.pdf
+uv run python -m analysis.figures.talk          # -> ../LaTeX/Presentation/figures/generated/
 uv run python -m analysis.figures.conceptual    # -> .../tikz-methodology-data.tex
 uv run python -m analysis.figures.dial          # -> .../tikz-dial-data.tex
 ```
@@ -66,12 +73,20 @@ default to its `figures/generated/` instead, so the build stays one command.
 one may be old enough to reject `zip(..., strict=True)` and, worse, may carry a different matplotlib
 and render a figure that differs from the rest of the set without failing.
 
-The drawing rules the renderers are held to are `Documentation/Figures/00-Master.md` — §4.6 for the
-shared devices (seed comb, null band, sparkline column, key block, named value, **seed tally**,
-**condition column block**) and §4.7 for precision: axes joined at one origin, leaders that reach
-their target and do not cross, panel-letter offsets that belong to the column rather than the panel.
-`style.py` implements all of them; `panel_letter`'s docstring carries the column rule where it is
-used.
+Every figure is drawn to one set of rules. A shared vocabulary of devices — seed comb, null band,
+sparkline column, key block, named value, seed tally, condition column block — so that a reader who
+learns one plate can read the next; and a precision standard beneath it: axes joined at one origin,
+leaders that reach their target and do not cross, panel-letter offsets that belong to the column
+rather than the panel. `style.py` implements all of them, and `panel_letter`'s docstring carries the
+column rule where it is used.
+
+`talk` draws the **presentation** figures. They are not the manuscript figures rescaled: a 158 mm
+plate at 8 pt would have to be set 217 mm across for its labels to read at slide body size, which
+is wider than a 160 mm page, so each is a separate composition carrying one claim at the exact
+width the frame gives it (148 mm, or 152 mm for the two forests). It imports `render` rather than
+restating it -- `_load`, `_claims`, `_condition_row`, `_baseline_ratio`, `_seed_tally`,
+`_condition_columns` -- so the two sets cannot drift, and it owns nothing but composition. It is
+held to the same drawing rules, at slide type size.
 
 `dial` reads three terminal embeddings straight from `results/raw/`, takes the top-two principal
 plane of each, and emits the ring coordinates, the winding, the mean radius and the residues at the
@@ -193,6 +208,8 @@ chapters quote. Method code has tests; reduction code has a committed output.
 | PID atoms, and the marginals behind them | `evaluation.pid.gaussian_pid`, `analysis.pid` | `thesis/pid.json` |
 | Predictive head-to-head, AUC / R² per feature set | `evaluation.headtohead`, `analysis.predictive` | `thesis/head_to_head.csv` |
 | Betti profile, torus test | `tda.betti`, `analysis.torus` | `thesis/torus.csv` |
+| The signature by representation space | `analysis.representation` | `thesis/representation.csv` |
+| Timing under the changepoint detector | `evaluation.changepoint`, `analysis.detector` | `thesis/detector_agreement.csv` |
 | Betti profile across depth and stage | `analysis.figures.build` (6.4) | `thesis/figures/fig-6-4-depth.csv` |
 | Window-rule sensitivity | `analysis.windows` | `thesis/window_sensitivity.csv` |
 | The collapse law, and excess over it by condition | `analysis.collapse` | `thesis/collapse_conditions.csv` |

@@ -15,10 +15,12 @@ a claim in the manuscript can be checked here without the raw artefact store.
 | `collapse_*.csv` | `analysis.collapse` |
 | `head_to_head.*` | `analysis.predictive` |
 | `pid.json` | `analysis.pid` |
-| `detector_calibration.*`, `mde_by_seed_count.csv` | `analysis.detector`, `analysis.thesis_numbers` |
+| `detector_calibration.*`, `detector_agreement.csv` | `analysis.detector` |
+| `mde_by_seed_count.csv` | `analysis.thesis_numbers` |
 | `velocity_changepoint.*` | `analysis.velocity` |
 | `phdim_*.csv/.json` | `analysis.phdim` |
 | `torus.csv` | `analysis.torus` |
+| `representation.csv`, `representation_conditions.csv` | `analysis.representation` |
 | `instability.csv` | `analysis.instability` |
 
 `results/raw/` holds the run artefacts these are derived from. It is gigabytes and is not tracked;

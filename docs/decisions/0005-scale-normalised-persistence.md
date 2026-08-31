@@ -16,16 +16,15 @@ divided by the cloud's **connectivity scale** — the largest finite H0 death, t
 filtration value at which the cloud becomes one component. That scale costs nothing
 (the H0 diagram is already computed) and is exactly linear in the cloud's size, which
 is the one property a denominator needs here. `pointcloud_scale` is registered as an
-observable in its own right, so the size of the confound is visible rather than
-assumed away.
+observable in its own right, so the size of the confound is visible.
 
 ## Consequences
-- Every downstream comparison can be run under both, and the difference is reportable
-  rather than hidden: the null band on the raw H1 maximum is nearly twice as wide in
-  log units as the normalised one.
-- The normalised summary, not the raw one, is what the analysis layer treats as
-  headline (`analysis.bank.HEADLINE_OBSERVABLE`); the raw series is kept alongside it
-  under an explicit `__raw` suffix so nothing is silently substituted.
+- Every downstream comparison can be run under both, and the difference reported: the
+  null band on the raw H1 maximum is nearly twice as wide in log units as the normalised
+  one.
+- The analysis layer treats the normalised summary as headline
+  (`analysis.bank.HEADLINE_OBSERVABLE`) and keeps the raw series beside it under an
+  explicit `__raw` suffix, so nothing is silently substituted.
 - Three alternative denominators (mean pairwise distance, diameter, root-mean-square
   radius) are swept in `analysis/normalisation.py`, because a normaliser that changes
   the verdict is a result about the normaliser, not about topology.

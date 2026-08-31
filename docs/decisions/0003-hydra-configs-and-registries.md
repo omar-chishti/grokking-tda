@@ -4,7 +4,7 @@
 
 ## Context
 The project is sweep-heavy (seeds × primes × train fractions × architectures ×
-interventions). We need composable, validated configuration and first-class
+interventions), so it needs composable, validated configuration and first-class
 multirun/cluster launching, while staying readable for a thesis reader.
 
 ## Decision
@@ -18,5 +18,5 @@ additive. Considered plain dataclasses+OmegaConf (less automation) and raw JSON
 ## Consequences
 - `gtda-train +experiment=… a.b=… -m seed=0,1,2` covers single runs and sweeps.
 - Typos in overrides fail fast against the schema.
-- Cost: Hydra adds some "framework magic"; mitigated by keeping configs thin and
-  documenting the composition model in `ARCHITECTURE.md`.
+- Cost: Hydra adds indirection; mitigated by keeping configs thin and documenting the
+  composition model in `ARCHITECTURE.md`.

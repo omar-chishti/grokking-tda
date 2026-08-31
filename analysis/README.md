@@ -1,13 +1,14 @@
 # `analysis/`
 
 Every number the thesis quotes in Chapters 4–7 is computed here, so each has a path from the
-artefact store to the page. Distinct from `src/grokking_tda/analysis/`, which is the library layer
-and computes observables from one snapshot; this directory answers questions about the bank.
+artefact store to the page.
 
 `src/grokking_tda/` holds the method — observables, detectors, estimators — installed, imported and
-unit tested. `analysis/` holds the reduction, and imports the method rather than restating it, so
-the two cannot drift. Method code has tests; reduction code has a committed output, under
-`results/processed/thesis/`, whose `README.md` maps each file to the module that wrote it.
+unit tested; its own `analysis/` subpackage, which shares this name, computes observables from a
+single snapshot. This directory holds the reduction: how a bank of runs becomes the tables the
+chapters quote. It imports the method rather than restating it, so the two cannot drift. Method
+code has tests; reduction code has a committed output, under `results/processed/thesis/`, whose
+`README.md` maps each file to the module that wrote it.
 
 ```
 bank.py              the run bank as one frame; the window rule; nulls; verdicts
@@ -45,8 +46,8 @@ shape.py             is there one dominant cycle? two scale-free statistics (the
 
 ## Running
 
-Every module is a CLI in the same shape, `uv run python -m analysis.<name>`, writing to
-`results/processed/thesis/`.
+Every module above except `bank.py` and `cli.py` is a CLI in the same shape,
+`uv run python -m analysis.<name>`, writing to `results/processed/thesis/`.
 
 ```bash
 cd Code
@@ -102,8 +103,8 @@ and the polynomial `a³ + ab`, which the network memorises completely. Per obser
 is the range its ratio takes across those sixteen. A condition is `above` if its whole bootstrap
 interval over seeds clears the band, `below` if the interval falls short, `inside` otherwise.
 
-Bands are per observable: the raw H1 maximum spans 0.54–1.54 and the normalised
-one 0.75–1.32, nearly half as wide in log units. That difference is the argument of thesis §4.4.
+Bands are per observable: the raw H1 maximum spans 0.54–1.54 and the normalised one 0.75–1.32,
+nearly half as wide in log units. That difference is the argument of thesis §4.4.
 
 ## Fourier concentration
 
@@ -147,5 +148,5 @@ def fig_torus(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     raise Missing("no maxdim=2 analysis")   # skips with a note; the rest of the set still builds
 ```
 
-The claim string is what the figure has to make undeniable, and it is written into the manifest, so
+The claim string is what the figure has to establish, and it is written into the manifest, so
 a reader can hold the figure to it.

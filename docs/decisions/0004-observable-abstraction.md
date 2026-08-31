@@ -17,7 +17,6 @@ that cost once.
 
 ## Consequences
 - Adding or swapping a diagnostic is a one-line `AnalysisCfg.observables` change.
-- Topology is never reported in isolation — the baseline comparison is structural,
-  not bolted on.
+- Topology is never reported in isolation; the baseline comparison is structural.
 - `evaluation/` consumes the resulting table uniformly to compute lead/lag and
   predictive features.

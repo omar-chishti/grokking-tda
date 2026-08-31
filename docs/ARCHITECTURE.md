@@ -1,8 +1,5 @@
 # Architecture
 
-This document explains how the `grokking_tda` codebase is put together and *why*.
-It is the map to read before changing anything.
-
 ## 1. Three layers
 
 ```
@@ -26,7 +23,7 @@ retraining, and sweeps parallelise across a cluster.
 
 ```
 src/grokking_tda/
-  registry.py        Generic typed Registry (name -> factory) used everywhere.
+  registry.py        Generic typed Registry (name -> factory).
   config/            Typed dataclass schema (schema.py) + Hydra ConfigStore presets (store.py).
   configs/           The Hydra YAML tree: config.yaml + experiment/ + hydra/launcher/.
   data/              modular.py: add/sub/mul/div/poly tasks, full tensors, deterministic split;
@@ -37,7 +34,7 @@ src/grokking_tda/
                      + optimizers.py (AdamW/SGD/OrthoGrad) + schedules.py (log-spaced snapshots,
                      with an optional dense window) + trajectory.py (projected iterate recorder).
   artifacts/         schema.py (Manifest) + writer.py (+ prepare_run_dir overwrite guard)
-                     + reader.py (Run/Snapshot). THE contract.
+                     + reader.py (Run/Snapshot) — the contract between the layers.
   analysis/          observable.py (Observable interface + ObservationContext + runner;
                      per-snapshot diagrams disk-cached under analysis/diagrams/)
                      + representations.py (embedding/hidden/logits extraction, train/test split)
@@ -84,7 +81,7 @@ drift. Method code has tests; reduction code has a committed output. See `analys
 3. **Hook points** (`models/hooks.py`). Activations are captured by name via
    `run_with_cache`, so the analysis layer can pull any internal representation without
    the model knowing about TDA.
-4. **Observable** (`analysis/observable.py`). *Everything* measured from a snapshot —
+4. **Observable** (`analysis/observable.py`). Everything measured from a snapshot —
    H1 persistence, Fourier concentration, weight norm, LID — is the same kind of object
    `(ctx) -> float`, so the central comparison — what does topology add over cheaper
    diagnostics? — is a one-line config change.
@@ -101,7 +98,7 @@ drift. Method code has tests; reduction code has a committed output. See `analys
    computes the configured observables over every snapshot → `analysis/observables.csv`.
    Per-snapshot persistence diagrams are cached to `analysis/diagrams/` (keyed by the
    construction config) so re-analysis, plotting, and trajectory metrics never recompute
-   them. `evaluation` locates `t_g` (grokking) and `t_top` + signed lag for **every**
+   them. `evaluation` locates `t_g` (grokking) and `t_top` + signed lag for every
    observable, plus early-window features at pre-registered windows →
    `analysis/summary.json`; the distance between consecutive H1 diagrams →
    `analysis/trajectory_distance.csv` (topological velocity).
@@ -109,9 +106,9 @@ drift. Method code has tests; reduction code has a committed output. See `analys
    (`--steps` selects stage diagrams). `cli/aggregate.py` joins many runs' configs and
    summaries into one tidy table for the robustness/predictive figures.
 
-Because snapshots store **weights** (authoritative) plus the small embedding matrix,
-hidden states and logits are *recomputed deterministically* from weights when needed
-(`analysis/representations.py`) — full information, small footprint.
+Snapshots store the weights, which are authoritative, plus the small embedding matrix;
+hidden states and logits are recomputed deterministically from the weights when needed
+(`analysis/representations.py`).
 
 ## 5. Reproducibility
 
@@ -134,8 +131,8 @@ hidden states and logits are *recomputed deterministically* from weights when ne
 ## 6. Local and cluster
 
 - **Laptop (Intel Mac, MPS/CPU):** `device=auto` resolves to MPS; use `+experiment=smoke`.
-  MPS has no float64, so it silently degrades the loss to float32 — fine for a smoke run,
-  wrong for a measured one. Pass `train.device=cpu` for anything whose numbers are reported.
+  MPS has no float64, so it silently degrades the loss to float32. Pass `train.device=cpu`
+  for anything whose numbers are reported.
   torch is pinned to 2.2.2 (last x86-mac wheel) via per-platform markers in `pyproject.toml`.
 - **Cluster (Linux/CUDA):** the same lockfile resolves CUDA wheels. Sweeps run either as a
   Hydra+submitit multirun (`hydra/launcher=imperial_slurm`) or via the scheduler-agnostic

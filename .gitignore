@@ -1,7 +1,3 @@
-# Code/.gitignore — scoped for a repo rooted at Code/ (the public-code candidate).
-# A repo rooted here does NOT see the project-root .gitignore, so the venv and
-# run outputs must be excluded explicitly or `git add -A` would commit gigabytes.
-
 # macOS
 .DS_Store
 

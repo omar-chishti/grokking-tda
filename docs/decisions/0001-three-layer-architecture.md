@@ -17,6 +17,6 @@ from weights on demand.
 ## Consequences
 - Train once on GPU; iterate analysis hundreds of times on CPU.
 - Natural two-stage cluster workflow (train array → analyse stage).
-- Full reproducibility: a run is interpretable from its manifest alone.
+- A run is interpretable from its manifest alone.
 - Cost: a defined artifact schema must be maintained (`artifacts/`), and analysis
   may recompute representations (cheap for these model sizes).

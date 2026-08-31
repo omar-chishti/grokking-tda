@@ -7,7 +7,7 @@
 A framework for measuring topological signatures of **grokking**. It trains small models on
 modular arithmetic, records each training trajectory as an immutable artifact, and computes
 persistent homology over training beside the cheap baselines it would have to beat — Fourier
-concentration, weight norm, local intrinsic dimension — so that what topology adds is measured.
+concentration, weight norm, local intrinsic dimension — so the comparison is built into the design.
 
 ![A transformer memorises modular addition at step 200 and generalises at step 28,600.](docs/assets/grokking.png)
 
@@ -19,8 +19,8 @@ uv sync     # CUDA wheels on Linux, MPS/CPU on macOS, from the committed lockfil
 
 ## Usage
 
-Training runs once and writes a self-describing artifact; analysis runs off that artifact, many
-times, never touching a GPU. The two layers meet only at the artifact store.
+Training runs once and writes a self-describing artifact; analysis runs off that artifact many
+times, never touching a GPU.
 
 ```bash
 uv run gtda-train +experiment=smoke          # ~10 s end to end

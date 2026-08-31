@@ -1,9 +1,4 @@
-"""Turn a representation matrix into a point cloud for persistent homology.
-
-The construction choices (normalisation, metric, subsampling) materially affect the
-persistence diagram, so they are explicit config — never silent defaults. The metric
-itself is applied later by ripser; here we only normalise and (optionally) subsample.
-"""
+"""Turn a representation matrix into a point cloud: normalise, and optionally subsample."""
 
 from __future__ import annotations
 
@@ -13,19 +8,19 @@ from grokking_tda.config.schema import PointCloudCfg
 
 
 def _maxmin_landmarks(x: np.ndarray, k: int, seed: int) -> np.ndarray:
-    """Greedy farthest-point (maxmin) landmark indices — good coverage for H1/H2."""
+    """Greedy farthest-point landmarks, on squared distances so each step is one matvec."""
     rng = np.random.default_rng(seed)
+    sq_norm = np.einsum("ij,ij->i", x, x)
     chosen = [int(rng.integers(x.shape[0]))]
-    min_dist = np.linalg.norm(x - x[chosen[0]], axis=1)
+    min_sq = sq_norm - 2.0 * (x @ x[chosen[0]]) + sq_norm[chosen[0]]
     for _ in range(k - 1):
-        nxt = int(min_dist.argmax())
+        nxt = int(min_sq.argmax())
         chosen.append(nxt)
-        min_dist = np.minimum(min_dist, np.linalg.norm(x - x[nxt], axis=1))
+        np.minimum(min_sq, sq_norm - 2.0 * (x @ x[nxt]) + sq_norm[nxt], out=min_sq)
     return np.sort(np.asarray(chosen))
 
 
 def build_point_cloud(matrix: np.ndarray, cfg: PointCloudCfg, *, seed: int = 0) -> np.ndarray:
-    """Normalise (and optionally subsample) a ``(n, d)`` matrix into a point cloud."""
     x = np.asarray(matrix, dtype=np.float64)
     if x.ndim != 2:
         raise ValueError(f"expected a 2D matrix, got shape {x.shape}")

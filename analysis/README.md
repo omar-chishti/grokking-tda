@@ -1,4 +1,4 @@
-# `analysis/` — the reduction layer
+# `analysis/`
 
 Every number the thesis quotes in Chapters 4–7 is computed here, so each has a path from the
 artefact store to the page. Distinct from `src/grokking_tda/analysis/`, which is the library layer
@@ -43,7 +43,7 @@ collapse.py          the ratio against dimensional collapse, and where the non-c
 shape.py             is there one dominant cycle? two scale-free statistics (thesis 3.3, 4.3)
 ```
 
-## Running it
+## Running
 
 Every module is a CLI in the same shape, `uv run python -m analysis.<name>`, writing to
 `results/processed/thesis/`.
@@ -63,7 +63,7 @@ The figure commands write to `results/figures/generated/`, overridden by `--out`
 `GTDA_FIGURE_DIR`; where a manuscript tree sits beside the repository they write into it instead, so
 the build stays one command.
 
-## What the reduction assumes
+## Assumptions
 
 **Timing is passed through.** `t_top`, the signed lag and the PH-dimension transition are read from
 each run's `analysis/summary.json`; the detector lives in `grokking_tda.evaluation.transitions`, and
@@ -79,7 +79,7 @@ Both are in the frame under names that say which: `t_top` and `t_top__raw`.
 snapshot schedule, which moves every window median. They are excluded from the condition table and
 the null band, and kept for the trajectory analyses of Chapter 6.
 
-## The window rule (thesis §4.2)
+## Window rule (§4.2)
 
 Comparing a persistence series across a transition needs a fixed rule for what counts as before and
 after:
@@ -95,17 +95,17 @@ hence the lower bound at `0.5·t_g`. Persistence keeps moving for a while after 
 threshold is crossed; hence `1.2·t_g`. Both bounds are stated in the thesis and neither was tuned
 after seeing results.
 
-## Null bands and verdicts
+## Null bands
 
 The nulls are the sixteen runs that fit their training data and never generalise: permuted labels,
 and the polynomial `a³ + ab`, which the network memorises completely. Per observable, the null band
 is the range its ratio takes across those sixteen. A condition is `above` if its whole bootstrap
 interval over seeds clears the band, `below` if the interval falls short, `inside` otherwise.
 
-Bands are per observable, which is the point: the raw H1 maximum spans 0.54–1.54 and the normalised
+Bands are per observable: the raw H1 maximum spans 0.54–1.54 and the normalised
 one 0.75–1.32, nearly half as wide in log units. That difference is the argument of thesis §4.4.
 
-## Two roles for the Fourier family
+## Fourier concentration
 
 `fourier_concentration` is swept over `k ∈ {1, 2, 3, 5, 10, 20}` in the residue-axis and
 discrete-log bases, and the family is kept whole: concentration rises monotonically in `k`, so the
@@ -121,7 +121,7 @@ Under multiplication and division the grokked circle is ordered by discrete loga
 `circularity_column` selects the group-reordered variant there; the residue-axis transform is blind
 to that ordering and would rig the comparison in topology's favour.
 
-## Things that will bite
+## Caveats
 
 **The skip guard is coarse.** `scripts/remote/analyse.sh` skips any run that already has an
 `analysis/summary.json`, without checking whether that summary predates a code change. After
@@ -138,7 +138,7 @@ whether it is informative. `analysis/pid.py` records both marginals and sets
 real data are therefore conservative, and the meaningful comparison is null-relative
 (`life_k_vs_init`, or `tda.significance.random_init_null`).
 
-## Adding a figure builder
+## Figure builders
 
 ```python
 @builder("4.7", "torus", "The joint representation is a torus upstream and a circle at the readout.")

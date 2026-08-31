@@ -3,7 +3,7 @@
 This document explains how the `grokking_tda` codebase is put together and *why*.
 It is the map to read before changing anything.
 
-## 1. The one idea: three decoupled layers
+## 1. Three layers
 
 ```
    ┌──────────────────────────┐     ┌───────────────────────────┐     ┌──────────────────────────────┐
@@ -67,14 +67,14 @@ src/grokking_tda/
                      + precision.py (device-aware float64).
 ```
 
-### 2b. The fourth layer: `analysis/`, beside the package
+### 2b. `analysis/`
 
 `src/grokking_tda/` is the **method** — observables, detectors, estimators — installed, imported
 and unit tested. `analysis/` is the **reduction**: how a bank of runs becomes the tables and
 claims a write-up quotes. It imports the method and never reimplements it, so the two cannot
 drift. Method code has tests; reduction code has a committed output. See `analysis/README.md`.
 
-## 3. The four patterns that keep it modular
+## 3. Patterns
 
 1. **Registry** (`registry.py`). Models, datasets, optimizers, losses and observables
    each register by name; configs select by name. A new component is *additive* — add
@@ -90,7 +90,7 @@ drift. Method code has tests; reduction code has a committed output. See `analys
    `(ctx) -> float`. This is what makes the thesis's central comparison ("what does
    topology add over cheaper diagnostics?") a one-line config change.
 
-## 4. Data flow of a run
+## 4. Data flow
 
 1. `cli/train.py` composes an `ExperimentCfg` (Hydra) → builds data + model → creates an
    `ArtifactWriter` → writes `manifest.json` (resolved config + git/env provenance + task
@@ -132,7 +132,7 @@ hidden states and logits are *recomputed deterministically* from weights when ne
   live throughput and ETA. Analysis tolerates a bad snapshot (records `NaN`, logs, and
   continues) rather than aborting.
 
-## 6. Local vs cluster
+## 6. Local and cluster
 
 - **Laptop (Intel Mac, MPS/CPU):** `device=auto` resolves to MPS; use `+experiment=smoke`.
   MPS has no float64, so it silently degrades the loss to float32 — fine for a smoke run,
@@ -143,7 +143,7 @@ hidden states and logits are *recomputed deterministically* from weights when ne
   SLURM/PBS templates in `orchestration/templates/`. Run training (GPU) and analysis (CPU)
   as two stages — never recompute training to re-analyse.
 
-## 7. How to extend
+## 7. Extending
 
 - **New task** (e.g. modular polynomial): add a builder in `data/`, register it, add a
   `data/` config preset.

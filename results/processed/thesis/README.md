@@ -1,4 +1,4 @@
-# The numbers behind the thesis
+# Processed tables
 
 One tidy table per analysis, written by `analysis/`. Chapters 4–7 quote these and nothing else, so
 a claim in the manuscript can be checked here without the raw artefact store.

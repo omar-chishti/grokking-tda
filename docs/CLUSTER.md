@@ -15,7 +15,7 @@ allocation and no fair-share: you pick a machine, check nobody is using it, and 
 idle GPUs, splits a run manifest across them, runs each host's share inside `tmux`, and pulls the
 artifacts back.
 
-## Why not the SLURM templates
+## The SLURM templates
 
 `src/grokking_tda/orchestration/templates/` contains SLURM and PBS job-array scripts and
 `configs/hydra/launcher/imperial_slurm.yaml` configures a submitit launcher. These target Imperial's
@@ -118,7 +118,7 @@ the whole ~85-run programme to finish in well under an hour of wall time across 
 Verify this on the first sweep rather than trusting it: `status` reports steps per second from each
 run's `events.jsonl`.
 
-## If access genuinely breaks
+## When access breaks
 
 Work through these in order; the first is by far the most likely.
 

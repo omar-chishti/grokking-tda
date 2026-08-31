@@ -1,16 +1,4 @@
-"""The run bank as one tidy frame, plus the window rule the thesis quotes.
-
-Every number in Chapters 4-7 is derived here, so that each has a path from the artefact
-store to the page. Two rules keep this layer honest.
-
-Timing quantities (``t_top``, lead/lag) are **passed through** from each run's summary,
-never recomputed: the detector lives in ``grokking_tda.evaluation.transitions`` and a
-second implementation here would silently diverge from it. Anything this module derives
-itself is a function of the observable series and ``t_g`` alone, and ``t_g`` is a
-threshold crossing on test accuracy, so none of it depends on the transition detector.
-
-The window rule is stated once, here, and matches thesis section 4.2.
-"""
+"""The run bank as one frame, and the window rule of §4.2, stated once here."""
 
 from __future__ import annotations
 
@@ -25,16 +13,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Thesis section 4.2. Baseline is late memorisation: after the initialisation transient
-# in raw H1 has decayed, before the transition begins. The plateau starts at 1.2 t_g
-# because persistence keeps moving for a while after the accuracy threshold is crossed.
+# Baseline is late memorisation, past the initialisation transient in raw H1; the plateau
+# starts late because persistence keeps moving after t_g
 BASELINE_WINDOW = (0.5, 0.9)
 PLATEAU_FROM = 1.2
-# A run that never transitions has no t_g to anchor to; split the run instead.
-NULL_BASELINE_WINDOW = (0.3, 0.6)
+NULL_BASELINE_WINDOW = (0.3, 0.6)  # no t_g to anchor to; split the run instead
 NULL_PLATEAU_FROM = 0.8
 
-# The series every timing claim in chapters 4-7 is stated on.
 HEADLINE_OBSERVABLE = "h1_max_persistence_normalised"
 
 RATIO_OBSERVABLES = (
@@ -78,7 +63,6 @@ def iter_runs(root: Path, *, require_summary: bool = True):
 
 
 def fourier_variants(columns) -> dict[tuple[bool, int | None], str]:
-    """Map ``(is_group, k)`` to column name for every Fourier column present."""
     out = {}
     for c in columns:
         m = _FOURIER.match(c)
@@ -88,12 +72,7 @@ def fourier_variants(columns) -> dict[tuple[bool, int | None], str]:
 
 
 def select_fourier_k(runs: list[Run]) -> int | None:
-    """The k whose series tracks test accuracy best, chosen once for the whole bank.
-
-    Concentration rises monotonically in k, so the strongest competitor cannot be picked
-    by maximising the scalar; it has to be picked on the time series. One global choice,
-    made on grokking runs only, and reported.
-    """
+    """The k whose series tracks test accuracy best, picked on the series and not the scalar."""
     scores: dict[int | None, list[float]] = {}
     for run in runs:
         if run.summary.get("grokking_step") is None:
@@ -116,20 +95,13 @@ def select_fourier_k(runs: list[Run]) -> int | None:
     return max(scores, key=lambda k: float(np.median(scores[k])))
 
 
-# Circularity is concentration in a *few* modes: a circle is one dominant frequency pair,
-# so a large k measures something other than circularity even though it is the strongest
-# competitor in a predictive comparison. The two roles use different k, and the
-# sensitivity of the association to this choice is reported.
+# A circle is power in one frequency pair, so circularity wants a small k — unlike the
+# predictive comparison, where the strongest competitor is a large one.
 CIRCULARITY_K = 5
 
 
 def circularity_column(operation: str, columns, k: int | None = CIRCULARITY_K) -> str | None:
-    """Terminal concentration in the fairest basis available for this operation.
-
-    Multiplication and division arrange the grokked circle by discrete logarithm, so the
-    residue-axis transform is blind to it and the group variant is the fair competitor.
-    The permutation group has no such basis, so none is reported for it.
-    """
+    """Terminal concentration in the fairest basis: mul and div order theirs by discrete log."""
     if operation == "compose":
         return None
     variants = fourier_variants(columns)
@@ -141,12 +113,7 @@ def circularity_column(operation: str, columns, k: int | None = CIRCULARITY_K) -
 
 
 def is_replicate(run: Run) -> bool:
-    """A re-run of a condition the main programme already covers.
-
-    Both batches exist for the trajectory analysis of chapter 6: the dense set on a different
-    snapshot schedule, which changes every window median, and the trajectory set on the same
-    seeds. Pooling either into a condition would count five runs as ten.
-    """
+    """A re-run of a condition the main programme already covers; pooling would double-count."""
     return (
         "_dense_" in run.name
         or "_traj_" in run.name
@@ -154,20 +121,38 @@ def is_replicate(run: Run) -> bool:
     )
 
 
-def _window(obs: pd.DataFrame, column: str, tg: float | None) -> tuple[float, float]:
+def plateau_relaxed(
+    obs: pd.DataFrame, tg: float | None, *, plateau_from: float = PLATEAU_FROM
+) -> bool:
+    """Has this run too few snapshots past the plateau bound to take a median?
+
+    Thirteen grok inside their last fifth. Theirs starts at ``t_g`` instead, which understates
+    a rising effect, and is reported because it departs from the rule §4.2 states.
+    """
+    steps = obs["step"].to_numpy(float)
+    bound = plateau_from * tg if tg else NULL_PLATEAU_FROM * float(steps.max())
+    return int((steps >= bound).sum()) < 2
+
+
+def window_medians(
+    obs: pd.DataFrame,
+    column: str,
+    tg: float | None,
+    *,
+    baseline: tuple[float, float] = BASELINE_WINDOW,
+    plateau_from: float = PLATEAU_FROM,
+) -> tuple[float, float]:
     steps, end = obs["step"].to_numpy(float), float(obs["step"].max())
     if tg:
-        lo, hi, plat_lo = BASELINE_WINDOW[0] * tg, BASELINE_WINDOW[1] * tg, PLATEAU_FROM * tg
+        lo, hi, plat_lo = baseline[0] * tg, baseline[1] * tg, plateau_from * tg
     else:
         lo, hi = NULL_BASELINE_WINDOW[0] * end, NULL_BASELINE_WINDOW[1] * end
         plat_lo = NULL_PLATEAU_FROM * end
+    if plateau_relaxed(obs, tg, plateau_from=plateau_from):
+        plat_lo = tg or end
     base = obs.loc[(steps >= lo) & (steps <= hi), column].to_numpy(float)
     plat = obs.loc[steps >= plat_lo, column].to_numpy(float)
-    if plat.size < 2:  # a run that groks near its budget edge
-        plat = obs.loc[steps >= (tg or end), column].to_numpy(float)
-    # A diverged run has NaN observables throughout; an all-NaN window is expected there
-    # and the divergence is recorded in the summary, so the warning is noise.
-    with warnings.catch_warnings():
+    with warnings.catch_warnings():  # an all-NaN window is expected for a diverged run
         warnings.simplefilter("ignore", RuntimeWarning)
         return (
             float(np.nanmedian(base)) if base.size else float("nan"),
@@ -176,20 +161,25 @@ def _window(obs: pd.DataFrame, column: str, tg: float | None) -> tuple[float, fl
 
 
 def task_modulus(data: dict) -> int:
-    """The modulus a condition is actually defined by.
-
-    For the permutation-group task this field records the *group order*, which is what
-    ``TaskMeta`` is built from and what every downstream quantity depends on. An early
-    batch of S_5 runs was launched before ``data/permutation.py`` gained the guard that
-    rejects a mismatch, so their config carries the default 97 while their data, model and
-    vocabulary are all S_5 exactly like the later batch's. Left uncorrected, one condition
-    appears in the table as two --- which is why the S_5 result rested on five seeds when
-    seven exist. The order is recomputed here rather than trusted, so the fix does not
-    depend on which batch a run came from.
-    """
+    """The modulus a condition is defined by, recomputed rather than trusted: an early S_5
+    batch predates the guard and carries the default 97."""
     if data.get("task") == "permutation_group":
         return factorial(int(data["n_symbols"]))
     return int(data["modulus"])
+
+
+def config_fields(config: dict) -> dict:
+    return {
+        "model": config["model"]["name"],
+        "operation": config["data"]["operation"],
+        "modulus": task_modulus(config["data"]),
+        "train_fraction": config["data"]["train_fraction"],
+        "label_permutation": config["data"]["label_permutation"],
+        "loss": config["train"]["loss"],
+        "optimizer": config["train"]["optimizer"]["name"],
+        "lr": config["train"]["optimizer"]["lr"],
+        "weight_decay": config["train"]["optimizer"]["weight_decay"],
+    }
 
 
 def summarise(run: Run, fourier_k: int | None) -> dict:
@@ -197,39 +187,36 @@ def summarise(run: Run, fourier_k: int | None) -> dict:
     tg = summ.get("grokking_step")
     row: dict[str, object] = {
         "run": run.name,
-        "model": cfg["model"]["name"],
-        "operation": cfg["data"]["operation"],
-        "modulus": task_modulus(cfg["data"]),
-        "train_fraction": cfg["data"]["train_fraction"],
-        "label_permutation": cfg["data"]["label_permutation"],
-        "loss": cfg["train"]["loss"],
-        "optimizer": cfg["train"]["optimizer"]["name"],
-        "lr": cfg["train"]["optimizer"]["lr"],
-        "weight_decay": cfg["train"]["optimizer"]["weight_decay"],
+        **config_fields(cfg),
         "steps": cfg["train"]["steps"],
         "seed": cfg["seed"],
         "n_snapshots": len(obs),
         "replicate": is_replicate(run),
-        # passed through from the pipeline, never recomputed here
         "t_c": summ.get("train_convergence_step"),
         "t_g": tg,
-        # The summary's top-level timing belongs to its *default* observable, which is the
-        # raw H1 maximum; the chapters quote the scale-normalised series. Both are named for
-        # the observable they describe, because a bare "lead_lag_steps" invites reading the
-        # raw lag as the headline one.
+        # the summary's top-level timing belongs to the raw series; the chapters quote the
+        # normalised one, so both are named for the observable they describe
         "t_top__raw": summ.get("topological_transition_step"),
         "lead_lag_steps__raw": summ.get("lead_lag_steps"),
         "t_top": (summ.get("transitions") or {}).get(HEADLINE_OBSERVABLE, {}).get("t_top"),
         "lead_lag_steps": (summ.get("transitions") or {})
         .get(HEADLINE_OBSERVABLE, {})
         .get("delta"),
+        # the same two under the second detector, which §3.6 promises to report
+        "t_changepoint": (summ.get("transitions") or {})
+        .get(HEADLINE_OBSERVABLE, {})
+        .get("t_changepoint"),
+        "lead_lag_steps__changepoint": (summ.get("transitions") or {})
+        .get(HEADLINE_OBSERVABLE, {})
+        .get("delta_changepoint"),
         "diverged": summ.get("diverged"),
         "grokked": tg is not None,
     }
+    row["plateau_relaxed"] = plateau_relaxed(obs, tg)
     for column in RATIO_OBSERVABLES:
         if column not in obs:
             continue
-        base, plat = _window(obs, column, tg)
+        base, plat = window_medians(obs, column, tg)
         row[f"{column}__baseline"] = base
         row[f"{column}__plateau"] = plat
         row[f"{column}__ratio"] = plat / base if base not in (0.0, None) else float("nan")
@@ -241,7 +228,7 @@ def summarise(run: Run, fourier_k: int | None) -> dict:
     col = circularity_column(row["operation"], obs.columns)
     row["circularity_column"] = col
     row["circularity"] = float(obs[col].iloc[-1]) if col else float("nan")
-    # Terminal weight norm: Tan et al.'s comparator to the trajectory dimension (section 6.4).
+    # weight_norm rides along here because it is Tan et al.'s comparator in §6.4
     for column in ("test_acc", "test_acc_novel", "weight_norm"):
         if column in obs:
             row[f"{column}__final"] = float(obs[column].iloc[-1])
@@ -250,16 +237,7 @@ def summarise(run: Run, fourier_k: int | None) -> dict:
 
 
 def final_accuracies(run_dir: Path) -> dict:
-    """Terminal train and test accuracy, and the generalisation gap between them.
-
-    Read from the last line of ``metrics.jsonl`` rather than from the observables, which
-    carry test accuracy only. The gap is ``train - test`` and not ``1 - test``: the two
-    agree wherever the network fits its training set, and where it does not they disagree
-    completely. A run that reaches training accuracy 0.01 has a gap of roughly zero and
-    not of one, because it has learned nothing to fail to transfer -- which is a different
-    object from a network that memorises perfectly and generalises not at all, and only
-    the second is what the trajectory-dimension claim of thesis section 6.4 is about.
-    """
+    """Terminal accuracies and the gap, ``train - test``: §6.4's claim is about models that fit."""
     path = run_dir / "metrics.jsonl"
     if not path.exists():
         return {}
@@ -282,11 +260,6 @@ def final_accuracies(run_dir: Path) -> dict:
 
 
 def load_bank(root: Path) -> tuple[pd.DataFrame, int | None]:
-    """The bank, and the k whose Fourier series best tracks the transition.
-
-    The returned k is the strongest *competitor* for the redundancy comparison; the
-    circularity column uses ``CIRCULARITY_K`` instead, for the reason given above it.
-    """
     runs = list(iter_runs(root))
     k = select_fourier_k(runs)
     return pd.DataFrame([summarise(r, k) for r in runs]), k
@@ -303,6 +276,16 @@ CONDITION_KEYS = [
     "lr",
     "weight_decay",
 ]
+
+
+def condition_label(row) -> str:
+    return (
+        f"{row.model} {row.operation}{int(row.modulus)} f{row.train_fraction:g} "
+        f"wd{row.weight_decay:g} lr{row.lr:g}"
+        + (" PERM" if row.label_permutation else "")
+        + ("" if row.loss == "softmax_ce" else " stablemax")
+        + ("" if row.optimizer == "adamw" else " ortho")
+    )
 
 
 def bootstrap_median_ci(
@@ -330,7 +313,6 @@ def condition_table(
     include_replicates: bool = False,
     observables: Sequence[str] = RATIO_OBSERVABLES,
 ) -> pd.DataFrame:
-    """One row per experimental condition, with bootstrap intervals over seeds."""
     if not include_replicates and "replicate" in bank:
         bank = bank[~bank.replicate]
     rows = []
@@ -356,18 +338,12 @@ def condition_table(
 
 
 def null_runs(bank: pd.DataFrame) -> pd.DataFrame:
-    """Runs that fit their training data and never generalise.
-
-    Two nulls, pooled: permuted labels (no rule to find) and the polynomial task (a real
-    rule the network memorises completely and never generalises on). Dense re-runs are
-    excluded for the same reason they are excluded from the condition table.
-    """
+    """Runs that fit and never generalise: permuted labels, and the polynomial task."""
     bank = bank[~bank.replicate] if "replicate" in bank else bank
     return bank[(bank.label_permutation) | (bank.operation == "poly")]
 
 
 def null_band(bank: pd.DataFrame, column: str = "h1_max_persistence_normalised__ratio") -> dict:
-    """The interval a ratio takes under the null models, per observable."""
     v = np.asarray(null_runs(bank)[column], dtype=float)
     v = v[np.isfinite(v)]
     lo, med, hi = bootstrap_median_ci(v)
@@ -387,11 +363,7 @@ def verdicts(
     *,
     observables: Sequence[str] = RATIO_OBSERVABLES,
 ) -> pd.DataFrame:
-    """Mark each condition above / below / inside the null band, per observable.
-
-    ``above`` requires the whole bootstrap interval over seeds to exceed the largest
-    ratio any null run produced; ``below`` requires it to fall short of the smallest.
-    """
+    """Above / below / inside the null band: ``above`` needs the whole interval to clear it."""
     out = conditions.copy()
     for column in observables:
         name = f"{column}__ratio"

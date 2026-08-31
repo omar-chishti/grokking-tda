@@ -1,32 +1,4 @@
-"""Sensitivity analysis for the scale normalisation of thesis section 3.3.1.
-
-The normalisation is the thesis's claimed methodological contribution and it rests on
-one scalar: every H1 summary is divided by the largest finite H0 death, justified in
-``tda/observables.py`` as "exactly linear in the cloud's size". That is true of a
-*similarity* transform, which rescales every pairwise distance by one factor. It is not
-true of a contraction that flattens the cloud, and if the cloud flattens then loops in
-the collapsing directions shrink faster than the connectivity scale does and the
-normalised ratio is biased. Nothing in the thesis currently tests this.
-
-Two questions, both answered from cached embeddings without recomputing a diagram:
-
-**Is the contraction a similarity?** Measured by the singular-value spectrum of the
-centred embedding over training. A similarity leaves the spectrum's *shape* alone, so a
-constant effective rank means isotropic contraction and a falling one means the cloud is
-collapsing onto a subspace --- in which case the normaliser's justification does not hold
-and what it removes has to be re-argued.
-
-**Does the verdict pattern survive a different normaliser?** The raw H1 summaries are
-stored, so dividing them by any other length scale of the same cloud is arithmetic.
-Three alternatives are swept: mean pairwise distance, diameter, and sqrt(tr Sigma), the
-root-mean-square radius. If the conditions that clear their null band are the same set
-under all four, the contribution does not depend on the choice.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.normalisation
-    uv run python -m analysis.normalisation --runs transformer_add113_f0.3_wd0.1_softmax_ce_s0
-"""
+"""Sensitivity of the scale normalisation of §3.3.1: is the contraction a similarity?"""
 
 from __future__ import annotations
 
@@ -42,21 +14,16 @@ from grokking_tda.artifacts.reader import Run
 from grokking_tda.config.schema import PointCloudCfg
 from grokking_tda.tda.pointcloud import build_point_cloud
 
-# Singular values below this fraction of the largest carry no structure, only round-off.
+# singular values below this fraction of the largest are round-off, not structure
 RANK_FLOOR = 1e-10
 
-# The alternative length scales, each a different answer to "how big is this cloud".
-# ``connectivity`` is the thesis normaliser and comes from the stored diagram, not here.
+# Alternative answers to "how big is this cloud"; ``connectivity`` is the thesis normaliser
 ALT_SCALES = ("mean_pairwise", "diameter", "rms_radius")
-
 SUMMARIES = ("h1_max_persistence", "h1_total_persistence")
 
 
 def cloud_geometry(cloud: np.ndarray) -> dict:
-    """Length scales and anisotropy summaries of one point cloud."""
-    # A diverged run's weights are NaN. ``compute_persistence`` already treats that as a
-    # result to record rather than a crash; LAPACK instead fails to converge, which would
-    # take down the whole sweep.
+    # A diverged run's weights are NaN, and LAPACK fails to converge on them.
     if not np.isfinite(cloud).all():
         return {}
     d = pdist(cloud)
@@ -71,12 +38,11 @@ def cloud_geometry(cloud: np.ndarray) -> dict:
         "mean_pairwise": float(d.mean()),
         "diameter": float(d.max()),
         "rms_radius": float(np.sqrt(var.sum() / cloud.shape[0])),
-        # sigma_1 / sigma_10 rather than sigma_1 / sigma_min: the centred embedding is
-        # rank-deficient, so the smallest retained singular value sits against the
-        # numerical floor and a true condition number is noise.
+        # sigma_1 / sigma_10: the centred embedding is rank-deficient, so sigma_min is noise
         "spectral_decay": float(s[0] / s[min(9, s.size - 1)]),
-        # Participation ratio and exponentiated spectral entropy: two standard, and
-        # differently weighted, answers to "how many directions carry this cloud".
+        # Two weightings of "how many directions carry this cloud". The normaliser is justified
+        # by being linear in the cloud's size, which holds for a similarity; if these fall, the
+        # cloud is collapsing onto a subspace and loops in the lost directions shrink faster.
         "participation_ratio": float(var.sum() ** 2 / (var**2).sum()),
         "effective_rank": float(np.exp(-(p * np.log(p)).sum())),
         "top2_variance_fraction": float(p[:2].sum()),
@@ -84,7 +50,6 @@ def cloud_geometry(cloud: np.ndarray) -> dict:
 
 
 def run_series(run_dir: Path) -> pd.DataFrame:
-    """Per-snapshot geometry, joined to the stored persistence summaries."""
     run = Run(run_dir)
     cfg = PointCloudCfg(**run.config["analysis"]["pointcloud"])
     obs = pd.read_csv(run_dir / "analysis" / "observables.csv").set_index("step")
@@ -112,41 +77,23 @@ def run_series(run_dir: Path) -> pd.DataFrame:
 
 
 def window_ratios(df: pd.DataFrame, t_g: float | None, columns) -> dict:
-    """Plateau-over-baseline for each column, under the thesis window rule."""
-    from analysis.bank import (
-        BASELINE_WINDOW,
-        NULL_BASELINE_WINDOW,
-        NULL_PLATEAU_FROM,
-        PLATEAU_FROM,
-    )
+    # through bank.window_medians, so a normaliser is compared under the rule §4.2 states,
+    # relaxed plateau included, and not under a second one written here
+    from analysis.bank import window_medians
 
-    steps, end = df["step"].to_numpy(float), float(df["step"].max())
-    if t_g:
-        lo, hi, plat = BASELINE_WINDOW[0] * t_g, BASELINE_WINDOW[1] * t_g, PLATEAU_FROM * t_g
-    else:
-        lo, hi = NULL_BASELINE_WINDOW[0] * end, NULL_BASELINE_WINDOW[1] * end
-        plat = NULL_PLATEAU_FROM * end
-
-    base_rows, plat_rows = (steps >= lo) & (steps <= hi), steps >= plat
     out = {}
     for col in columns:
-        b, a = df.loc[base_rows, col], df.loc[plat_rows, col]
-        if b.empty or a.empty:
+        base, plateau = window_medians(df, col, t_g)
+        if not (np.isfinite(base) and np.isfinite(plateau)):
             continue
-        out[f"{col}__baseline"] = float(b.median())
-        out[f"{col}__plateau"] = float(a.median())
-        out[f"{col}__ratio"] = float(a.median() / b.median()) if b.median() else np.nan
+        out[f"{col}__baseline"] = base
+        out[f"{col}__plateau"] = plateau
+        out[f"{col}__ratio"] = plateau / base if base else np.nan
     return out
 
 
 def verdict_invariance(root: Path, summaries: pd.DataFrame) -> pd.DataFrame:
-    """Condition-level above/inside/below verdicts under each candidate normaliser.
-
-    The question thesis section 4.4 turns on is not the value of any one ratio but which
-    conditions clear their null band. Rebuilding that comparison with a different
-    denominator, against a null band recomputed under the same denominator, says whether
-    the answer belongs to the data or to the choice of scale.
-    """
+    """Verdicts under each candidate normaliser, against a band recomputed under the same one."""
     from analysis.bank import CONDITION_KEYS, condition_table, load_bank, verdicts
 
     bank, _ = load_bank(root)

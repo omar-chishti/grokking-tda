@@ -1,51 +1,21 @@
-"""Do the transient training collapses contaminate the analysed checkpoints? (section 7.4)
-
-Thesis section 7.4 records three things and closes none of them: that 97 of 144 runs
-reaching training accuracy 0.99 later collapse below 0.5 and recover, that snapshots are
-not aligned to avoid those collapses, and that no analysis establishes a post-collapse
-checkpoint is representative. The first is a measurement, the second is a design fact,
-and the third is a gap that can simply be filled --- the metric grid records training
-accuracy throughout, and the snapshot steps are known, so whether any analysed snapshot
-actually sits inside a collapse is a lookup rather than an argument.
-
-Where snapshots do land in a collapse, the window ratios are recomputed with those
-checkpoints dropped. If the headline numbers do not move, a confessed threat becomes a
-closed one.
-
-Usage (from ``Code/``)::
-
-    uv run python -m analysis.instability
-"""
+"""Do the transient training collapses reach the analysed checkpoints? (§7.4)"""
 
 from __future__ import annotations
 
 import json
-import warnings
 
 import numpy as np
 import pandas as pd
 
 from analysis import cli
-from analysis.bank import (
-    BASELINE_WINDOW,
-    NULL_BASELINE_WINDOW,
-    NULL_PLATEAU_FROM,
-    PLATEAU_FROM,
-    RATIO_OBSERVABLES,
-    iter_runs,
-)
+from analysis.bank import RATIO_OBSERVABLES, iter_runs, window_medians
 
 CONVERGED = 0.99  # training accuracy that counts as having fit the training set
 COLLAPSED = 0.5  # ... and the level a collapse falls below
 
 
 def collapse_intervals(metrics: pd.DataFrame) -> list[tuple[float, float]]:
-    """Step intervals, after convergence, in which training accuracy is below the floor.
-
-    An interval runs from the last metric record above the floor to the first one back
-    above it, so a snapshot taken anywhere between two collapsed records is caught even
-    though the metric grid is coarser than the collapse.
-    """
+    """Post-convergence intervals below the floor, framed by the records either side."""
     if metrics.empty or "train_acc" not in metrics:
         return []
     steps = metrics["step"].to_numpy(float)
@@ -77,30 +47,16 @@ def contaminated_steps(snapshot_steps, intervals) -> np.ndarray:
 
 
 def ratios(obs: pd.DataFrame, t_g: float | None, keep: np.ndarray) -> dict:
-    """Window ratios over the retained snapshots, by the thesis window rule."""
     obs = obs.loc[keep]
     if obs.empty:
         return {}
-    steps, end = obs["step"].to_numpy(float), float(obs["step"].max())
-    if t_g:
-        lo, hi, plat = BASELINE_WINDOW[0] * t_g, BASELINE_WINDOW[1] * t_g, PLATEAU_FROM * t_g
-    else:
-        lo, hi = NULL_BASELINE_WINDOW[0] * end, NULL_BASELINE_WINDOW[1] * end
-        plat = NULL_PLATEAU_FROM * end
-
     out = {}
     for column in RATIO_OBSERVABLES:
         if column not in obs:
             continue
-        base = obs.loc[(steps >= lo) & (steps <= hi), column].to_numpy(float)
-        after = obs.loc[steps >= plat, column].to_numpy(float)
-        if base.size == 0 or after.size == 0:
-            continue
-        # A diverged run is all-NaN throughout; the divergence is recorded elsewhere.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            b, a = np.nanmedian(base), np.nanmedian(after)
-        out[f"{column}__ratio"] = float(a / b) if b else np.nan
+        # a diverged run is all-NaN throughout, and window_medians returns NaN for it
+        base, after = window_medians(obs, column, t_g)
+        out[f"{column}__ratio"] = float(after / base) if base else np.nan
     return out
 
 

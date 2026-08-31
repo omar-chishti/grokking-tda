@@ -12,13 +12,14 @@ import numpy as np
 import pandas as pd
 import pytest
 from analysis.bank import (
-    _window,
     bootstrap_median_ci,
     circularity_column,
     condition_table,
     null_band,
+    plateau_relaxed,
     task_modulus,
     verdicts,
+    window_medians,
 )
 
 
@@ -30,15 +31,24 @@ def series() -> pd.DataFrame:
 
 
 def test_window_is_anchored_on_t_g(series):
-    base, plateau = _window(series, "x", 1000.0)
-    assert (base, plateau) == (1.0, 4.0)
+    assert window_medians(series, "x", 1000.0) == (1.0, 4.0)
+    assert not plateau_relaxed(series, 1000.0)
 
 
 def test_window_without_t_g_splits_the_run(series):
     # 0.3-0.6 of 2000 is 600-1200, which straddles the step; the plateau is the final fifth.
-    base, plateau = _window(series, "x", None)
+    base, plateau = window_medians(series, "x", None)
     assert plateau == 4.0
     assert 1.0 <= base <= 4.0
+
+
+def test_plateau_is_relaxed_to_t_g_when_the_run_ends_at_the_transition():
+    """A run that groks in its last fifth has under two snapshots past 1.2 t_g. Measuring
+    from t_g instead is conservative: the transition is averaged into the level after it."""
+    steps = np.arange(0, 1801, 50)
+    late = pd.DataFrame({"step": steps, "x": np.where(steps < 1700, 1.0, 4.0)})
+    assert plateau_relaxed(late, 1700.0)
+    assert window_medians(late, "x", 1700.0) == (1.0, 4.0)
 
 
 def test_bootstrap_interval_degenerates_at_two_seeds():

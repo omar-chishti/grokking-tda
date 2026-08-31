@@ -89,7 +89,7 @@ after:
 - **effect** — plateau ÷ baseline
 - with no `t_g` there is no anchor, so baseline is `[0.3·end, 0.6·end]` and plateau `[0.8·end, end]`
 
-A freshly initialised embedding carries very high raw H1 persistence which decays over the first few
+A freshly initialised embedding carries high raw H1 persistence which decays over the first few
 thousand steps, and a baseline reaching into that transient makes every raw ratio look like a fall;
 hence the lower bound at `0.5·t_g`. Persistence keeps moving for a while after the accuracy
 threshold is crossed; hence `1.2·t_g`. Both bounds are stated in the thesis and neither was tuned

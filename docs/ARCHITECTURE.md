@@ -16,12 +16,11 @@ It is the map to read before changing anything.
    └──────────────────────────┘     └───────────────────────────┘     └──────────────────────────────┘
 ```
 
-Training is expensive and seed-sensitive, so it runs **once** and writes a
-**self-describing artifact**. Analysis is cheap and iterative, so it runs **many
-times** off that artifact, never touching a GPU and never retraining. The two
-layers communicate *only* through the artifact store contract (`artifacts/`). This
-is the decision everything else follows from — it is what makes the pipeline cheap
-to iterate, easy to parallelise on a cluster, and reproducible.
+Training is expensive and seed-sensitive, so it runs once and writes a self-describing
+artifact. Analysis is cheap and iterative, so it runs many times off that artifact,
+never touching a GPU. The two layers communicate only through the artifact store
+contract (`artifacts/`), so a run can be re-analysed any number of times without
+retraining, and sweeps parallelise across a cluster.
 
 ## 2. Module map
 
@@ -87,8 +86,8 @@ drift. Method code has tests; reduction code has a committed output. See `analys
    the model knowing about TDA.
 4. **Observable** (`analysis/observable.py`). *Everything* measured from a snapshot —
    H1 persistence, Fourier concentration, weight norm, LID — is the same kind of object
-   `(ctx) -> float`. This is what makes the thesis's central comparison ("what does
-   topology add over cheaper diagnostics?") a one-line config change.
+   `(ctx) -> float`, so the central comparison — what does topology add over cheaper
+   diagnostics? — is a one-line config change.
 
 ## 4. Data flow
 

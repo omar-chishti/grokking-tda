@@ -6,7 +6,7 @@
 Persistence is measured in the units of the point cloud, and under weight decay the
 embedding's overall scale drifts by orders of magnitude across training. A rise in raw
 H1 persistence is therefore ambiguous: the cloud may have changed shape, or it may
-simply have grown. The reference literature reports the raw quantity, so the ambiguity
+have grown. The reference literature reports the raw quantity, so the ambiguity
 is inherited rather than introduced — and it sits directly under the thesis's central
 claim, that topology carries something the cheap diagnostics do not.
 

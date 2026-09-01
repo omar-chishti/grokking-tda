@@ -113,7 +113,12 @@ def circularity_column(operation: str, columns, k: int | None = CIRCULARITY_K) -
 
 
 def is_replicate(run: Run) -> bool:
-    """A re-run of a condition the main programme already covers; pooling would double-count."""
+    """A re-run of a condition the main programme already covers; pooling would double-count.
+
+    The substring test is load-bearing, and ``trajectory_dim > 0`` is not the structural fix it
+    looks like: ``R9c-s5-final.runs`` sets it on the five S_5 runs, which are main programme and
+    are the non-cyclic condition of §5.3.
+    """
     return (
         "_dense_" in run.name
         or "_traj_" in run.name
@@ -130,8 +135,34 @@ def plateau_relaxed(
     a rising effect, and is reported because it departs from the rule §4.2 states.
     """
     steps = obs["step"].to_numpy(float)
-    bound = plateau_from * tg if tg else NULL_PLATEAU_FROM * float(steps.max())
+    bound = NULL_PLATEAU_FROM * float(steps.max()) if tg is None else plateau_from * tg
     return int((steps >= bound).sum()) < 2
+
+
+def plateau_bound(
+    obs: pd.DataFrame, tg: float | None, *, plateau_from: float = PLATEAU_FROM
+) -> float:
+    end = float(obs["step"].max())
+    if plateau_relaxed(obs, tg, plateau_from=plateau_from):
+        return end if tg is None else float(tg)
+    return NULL_PLATEAU_FROM * end if tg is None else plateau_from * tg
+
+
+def terminal(obs: pd.DataFrame, column: str, tg: float | None) -> float:
+    """The last finite value, provided it falls inside the plateau; otherwise NaN.
+
+    Reading position ``-1`` makes one unreadable snapshot erase the quantity, and falling back
+    to the last finite value regardless is worse: a diverged run's observable can stop
+    reporting at step 44 of 40,000, and that is not its terminal value.
+    """
+    if column not in obs:
+        return float("nan")
+    steps, values = obs["step"].to_numpy(float), obs[column].to_numpy(float)
+    finite = np.flatnonzero(np.isfinite(values))
+    if not finite.size:
+        return float("nan")
+    last = int(finite[-1])
+    return float(values[last]) if steps[last] >= plateau_bound(obs, tg) else float("nan")
 
 
 def window_medians(
@@ -143,13 +174,11 @@ def window_medians(
     plateau_from: float = PLATEAU_FROM,
 ) -> tuple[float, float]:
     steps, end = obs["step"].to_numpy(float), float(obs["step"].max())
-    if tg:
-        lo, hi, plat_lo = baseline[0] * tg, baseline[1] * tg, plateau_from * tg
+    if tg is not None:
+        lo, hi = baseline[0] * tg, baseline[1] * tg
     else:
         lo, hi = NULL_BASELINE_WINDOW[0] * end, NULL_BASELINE_WINDOW[1] * end
-        plat_lo = NULL_PLATEAU_FROM * end
-    if plateau_relaxed(obs, tg, plateau_from=plateau_from):
-        plat_lo = tg or end
+    plat_lo = plateau_bound(obs, tg, plateau_from=plateau_from)
     base = obs.loc[(steps >= lo) & (steps <= hi), column].to_numpy(float)
     plat = obs.loc[steps >= plat_lo, column].to_numpy(float)
     with warnings.catch_warnings():  # an all-NaN window is expected for a diverged run
@@ -221,17 +250,19 @@ def summarise(run: Run, fourier_k: int | None) -> dict:
         row[f"{column}__plateau"] = plat
         row[f"{column}__ratio"] = plat / base if base not in (0.0, None) else float("nan")
     if "pointcloud_scale" in obs:
-        scale = obs["pointcloud_scale"]
-        first, last = float(scale.iloc[0]), float(scale.iloc[-1])
+        scale = obs["pointcloud_scale"].to_numpy(float)
+        finite = np.flatnonzero(np.isfinite(scale))
+        first = float(scale[finite[0]]) if finite.size else float("nan")
+        last = terminal(obs, "pointcloud_scale", tg)
         row["scale_initial"], row["scale_final"] = first, last
         row["scale_collapse"] = first / last if last else float("nan")
     col = circularity_column(row["operation"], obs.columns)
     row["circularity_column"] = col
-    row["circularity"] = float(obs[col].iloc[-1]) if col else float("nan")
+    row["circularity"] = terminal(obs, col, tg) if col else float("nan")
     # weight_norm rides along here because it is Tan et al.'s comparator in §6.4
     for column in ("test_acc", "test_acc_novel", "weight_norm"):
         if column in obs:
-            row[f"{column}__final"] = float(obs[column].iloc[-1])
+            row[f"{column}__final"] = terminal(obs, column, tg)
     row.update(final_accuracies(run.directory))
     return row
 

@@ -26,7 +26,7 @@ def prepare_run_dir(run_dir: str | Path, overwrite: bool = False) -> Path:
             f"{run_dir} already contains a run (manifest.json/snapshots). "
             "Pass overwrite=true to replace it, or change run_name."
         )
-    for name in ("manifest.json", "metrics.jsonl", "events.jsonl"):
+    for name in ("manifest.json", "metrics.jsonl", "events.jsonl", "trajectory.npz"):
         (run_dir / name).unlink(missing_ok=True)
     for sub in ("snapshots", "analysis", "figures"):
         shutil.rmtree(run_dir / sub, ignore_errors=True)

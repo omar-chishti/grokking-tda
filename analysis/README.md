@@ -137,7 +137,11 @@ whether it is informative. `analysis/pid.py` records both marginals and sets
 **The Betti counter is calibrated on clean shapes.** A well-sampled synthetic circle's loop spans
 0.84 of the cloud's diameter; a grokked 128-dimensional embedding's spans about 0.08. Counts against
 real data are therefore conservative, and the meaningful comparison is null-relative
-(`life_k_vs_init`, or `tda.significance.random_init_null`).
+(`life_k_vs_init`, or `tda.significance.random_init_null`). It reads dominance as a *gap* in the
+barcode, so a cloud whose above-floor bars are all signal has no gap to find: two comparable loops
+and nothing beneath them count as zero, and one noise bar beneath them counts as two. The failure is
+directional — the cleaner the cloud, the worse the answer — so it weakens a negative and cannot
+manufacture a positive. F2 in `Documentation/Code_Audit_2026-08-31.md`.
 
 ## Figure builders
 

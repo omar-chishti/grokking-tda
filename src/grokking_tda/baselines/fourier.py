@@ -7,6 +7,8 @@ powers of a primitive root, and is the fair baseline there.
 
 from __future__ import annotations
 
+from functools import cache
+
 import numpy as np
 
 from grokking_tda.analysis.observable import ObservationContext, register_observable
@@ -27,6 +29,7 @@ def _concentration(embedding: np.ndarray, top_k: int) -> float:
     return float(top / total)
 
 
+@cache
 def _primitive_root(p: int) -> int | None:
     if p < 3:
         return None

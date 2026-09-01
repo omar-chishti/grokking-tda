@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from analysis.redundancy import _tail_p, alternative_for
 
 from grokking_tda.evaluation.changepoint import changepoint_step, changepoints
 from grokking_tda.evaluation.multiplicity import benjamini_hochberg, benjamini_yekutieli
@@ -112,3 +113,21 @@ def test_williams_beer_gives_a_dominated_source_nothing() -> None:
     b = t + rng.normal(0, 0.4, 4000)
     atoms = williams_beer_pid(a, b, t, bins=5)
     assert atoms["unique_a"] < 1e-9 < atoms["unique_b"]
+
+
+def test_changepoint_survives_a_large_offset() -> None:
+    """The segment cost must not depend on where the series sits, only on its shape."""
+    rng = np.random.default_rng(0)
+    shape = np.concatenate([rng.normal(0, 0.01, 60), rng.normal(0.2, 0.01, 60)])
+    assert changepoints(shape + 1e6) == changepoints(shape)
+
+
+def test_the_tail_follows_the_observable_declared_direction() -> None:
+    """A one-sided upper test on a quantity whose claim is a fall reports 'did not rise'."""
+    assert alternative_for("h1_max_persistence_normalised__ratio") == "greater"
+    assert alternative_for("lid__ratio") == "less"
+    assert alternative_for("h0_total_persistence__ratio") == "two-sided"
+
+    draws = np.linspace(0.9, 1.4, 20_000)
+    assert _tail_p(draws, 0.5, "greater") > 0.99  # what the file used to record for lid
+    assert _tail_p(draws, 0.5, "less") < 0.01

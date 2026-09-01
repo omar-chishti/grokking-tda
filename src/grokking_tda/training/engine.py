@@ -21,6 +21,7 @@ from grokking_tda.training.losses import build_loss
 from grokking_tda.training.optimizers import build_optimizer
 from grokking_tda.training.schedules import snapshot_steps
 from grokking_tda.training.trajectory import TrajectoryRecorder
+from grokking_tda.utils.precision import tensor_norm
 
 
 class Trainer:
@@ -93,11 +94,7 @@ class Trainer:
 
     @torch.no_grad()
     def _weight_norm(self) -> float:
-        # CPU first: MPS rejects float64 even as a cast target
-        sq = torch.zeros((), dtype=torch.float64)
-        for p in self.model.parameters():
-            sq += (p.detach().cpu().double() ** 2).sum()
-        return float(sq.sqrt())
+        return tensor_norm(self.model.parameters())
 
     def record_metrics(self) -> None:
         train_loss, train_acc = self._evaluate(self.data.train_inputs, self.data.train_targets)

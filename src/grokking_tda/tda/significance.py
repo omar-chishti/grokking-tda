@@ -23,6 +23,14 @@ def bootstrap_summary_ci(
     seed: int = 0,
     alpha: float = 0.05,
 ) -> dict:
+    """Quantiles of a summary over 80% subsamples --- not a confidence set for the full cloud.
+
+    Maximum persistence on a subsample is biased downward (fewer points, shorter bars,
+    sometimes a missing loop), so the interval is not centred on the value it is offered for;
+    Fasy et al. bound the bottleneck distance between subsample and full diagrams instead.
+    The reduction layer uses ``analysis.bank.bootstrap_median_ci``, a percentile bootstrap
+    over seeds, and that is the one the thesis quotes.
+    """
     homology = homology or HomologyCfg(maxdim=max(dim, 1))
     x = np.asarray(points, dtype=np.float64)
     n = x.shape[0]

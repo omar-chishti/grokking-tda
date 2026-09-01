@@ -67,9 +67,11 @@ def test_prepare_run_dir_overwrite_removes_stale_artifacts(tmp_path) -> None:
     (run_dir / "snapshots" / "step_00000007").mkdir(parents=True)
     (run_dir / "manifest.json").write_text("{}")
     (run_dir / "metrics.jsonl").write_text('{"step": 0}\n')
+    (run_dir / "trajectory.npz").write_bytes(b"")
     prepare_run_dir(run_dir, overwrite=True)
-    assert not (run_dir / "manifest.json").exists()
-    assert not (run_dir / "snapshots").exists()
+    # asserting on the absence of everything, rather than on the names known today, is what
+    # catches the next artefact somebody adds to a run
+    assert list(run_dir.iterdir()) == []
     # A fresh directory passes silently.
     prepare_run_dir(run_dir, overwrite=False)
 

@@ -9,6 +9,12 @@ from grokking_tda.analysis.observable import ObservationContext, register_observ
 
 
 def two_nn_dimension(points: np.ndarray) -> float:
+    """Closed-form maximum likelihood, ``d = N / sum log mu``.
+
+    Facco et al. additionally discard the largest decile of ``mu`` before fitting, because
+    the estimator is sensitive to the upper tail. That discard is not implemented here, and
+    every LID figure in the thesis is read without it.
+    """
     x = np.asarray(points, dtype=np.float64)
     n = x.shape[0]
     if n < 3:

@@ -18,6 +18,7 @@ from analysis.bank import (
     null_band,
     plateau_relaxed,
     task_modulus,
+    terminal,
     verdicts,
     window_medians,
 )
@@ -122,3 +123,19 @@ def test_unrepaired_detector_fires_at_step_zero_on_a_decaying_series():
     decaying = np.linspace(5.0, 1.0, steps.size)
     assert transition_step(steps, decaying, compare="global") == 0
     assert transition_step(steps, decaying) is None
+
+
+def test_terminal_reads_the_last_finite_value(series):
+    """One unreadable terminal snapshot must not erase the quantity."""
+    late = series.copy()
+    late.loc[late.index[-1], "x"] = np.nan
+    assert terminal(late, "x", 1000.0) == 4.0
+
+
+def test_terminal_refuses_a_value_from_before_the_plateau():
+    """A diverged run stops reporting long before the end, and the last value it did report
+    is not its terminal value --- which is what a bare ``last finite`` fallback would say."""
+    steps = np.arange(0, 40_001, 400)
+    values = np.where(steps <= 800, 0.117, np.nan)
+    dead = pd.DataFrame({"step": steps, "x": values})
+    assert np.isnan(terminal(dead, "x", 10_000.0))

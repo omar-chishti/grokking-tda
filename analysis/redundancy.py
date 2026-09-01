@@ -13,10 +13,37 @@ from analysis.bank import (
     load_bank,
     null_runs,
 )
+from grokking_tda.analysis.observable import OBSERVABLE_DIRECTION
 from grokking_tda.evaluation import benjamini_hochberg, benjamini_yekutieli
 
 N_RESAMPLES = 20_000
 Q = 0.1  # false-discovery rate, pre-registered in §3.7
+
+
+def alternative_for(column: str) -> str:
+    """Which tail the claim is in, from the observable's own declared direction.
+
+    ``auto`` becomes two-sided rather than being resolved from the data: every resolution
+    available here — the sign of the null band, the direction of the observed ratios — would
+    pick the tail using the sample under test.
+    """
+    observable = column.removesuffix("__ratio")
+    if observable not in OBSERVABLE_DIRECTION:
+        # defaulting would silently move a published row from one tail to two
+        raise KeyError(f"{observable} declares no direction; is its module imported?")
+    return {"rising": "greater", "falling": "less"}.get(
+        OBSERVABLE_DIRECTION[observable], "two-sided"
+    )
+
+
+def _tail_p(draws: np.ndarray, observed: float, alternative: str) -> float:
+    upper = (np.sum(draws >= observed) + 1) / (N_RESAMPLES + 1)
+    lower = (np.sum(draws <= observed) + 1) / (N_RESAMPLES + 1)
+    if alternative == "greater":
+        return float(upper)
+    if alternative == "less":
+        return float(lower)
+    return float(min(1.0, 2 * min(upper, lower)))
 
 
 def null_configurations(bank: pd.DataFrame, column: str) -> list[np.ndarray]:
@@ -44,6 +71,7 @@ def null_medians(
 
 def resampled_pvalues(bank: pd.DataFrame, column: str, *, seed: int = 0) -> pd.DataFrame:
     groups = null_configurations(bank, column)
+    alternative = alternative_for(column)
     rng = np.random.default_rng(seed)
     tested = bank[~bank.replicate] if "replicate" in bank else bank
     # a null must not be tested against a distribution it helps define
@@ -54,6 +82,7 @@ def resampled_pvalues(bank: pd.DataFrame, column: str, *, seed: int = 0) -> pd.D
         values = values[np.isfinite(values)]
         row = dict(zip(CONDITION_KEYS, key, strict=True))
         row["n"] = int(values.size)
+        row["alternative"] = alternative
         if values.size == 0 or len(groups) < 2:
             row["observed"], row["p"] = float("nan"), float("nan")
             rows.append(row)
@@ -62,7 +91,7 @@ def resampled_pvalues(bank: pd.DataFrame, column: str, *, seed: int = 0) -> pd.D
         # same size, so a small condition cannot look significant on a noisy median
         draws = null_medians(groups, values.size, rng=rng, draws=N_RESAMPLES)
         row["observed"] = observed
-        row["p"] = float((np.sum(draws >= observed) + 1) / (N_RESAMPLES + 1))
+        row["p"] = _tail_p(draws, observed, alternative)
         rows.append(row)
     frame = pd.DataFrame(rows)
     raw = frame["p"].to_numpy()

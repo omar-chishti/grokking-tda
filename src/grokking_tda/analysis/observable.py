@@ -60,6 +60,7 @@ class ObservationContext:
         self.modulus = int(run.task_meta["modulus"])
         self.seed = int(run.config.get("seed", 0))
         self._point_cloud: np.ndarray | None = None
+        self._point_cloud_error: Exception | None = None
         self._diagrams: dict[int, np.ndarray] | None = None
         self._weights: dict | None = None
         self._embedding: np.ndarray | None = None
@@ -72,14 +73,22 @@ class ObservationContext:
         return self._embedding
 
     def point_cloud(self) -> np.ndarray:
+        # the failure is memoised as well as the value: a bad snapshot would otherwise be
+        # reconstructed once per observable, and warn ~28 times about the same thing
+        if self._point_cloud_error is not None:
+            raise self._point_cloud_error
         if self._point_cloud is None:
-            matrix = extract_representation_matrix(
-                self.run,
-                self.snapshot,
-                self.cfg.representation,
-                self.cfg.representation_split,
-            )
-            self._point_cloud = build_point_cloud(matrix, self.cfg.pointcloud, seed=self.seed)
+            try:
+                matrix = extract_representation_matrix(
+                    self.run,
+                    self.snapshot,
+                    self.cfg.representation,
+                    self.cfg.representation_split,
+                )
+                self._point_cloud = build_point_cloud(matrix, self.cfg.pointcloud, seed=self.seed)
+            except Exception as exc:
+                self._point_cloud_error = exc
+                raise
         return self._point_cloud
 
     def _diagram_cache_path(self):

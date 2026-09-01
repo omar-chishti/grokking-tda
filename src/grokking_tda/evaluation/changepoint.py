@@ -9,8 +9,11 @@ from grokking_tda.evaluation.transitions import orient
 
 def _segment_costs(values: np.ndarray) -> np.ndarray:
     n = values.size
-    prefix = np.concatenate([[0.0], np.cumsum(values)])
-    prefix_sq = np.concatenate([[0.0], np.cumsum(values**2)])
+    # centred: the textbook sum(x^2) - sum(x)^2/n cancels catastrophically on a series
+    # whose mean dwarfs its variance, and can return a negative cost
+    centred = values - values.mean()
+    prefix = np.concatenate([[0.0], np.cumsum(centred)])
+    prefix_sq = np.concatenate([[0.0], np.cumsum(centred**2)])
     cost = np.full((n + 1, n + 1), np.inf)
     for i in range(n):
         lengths = np.arange(1, n - i + 1)

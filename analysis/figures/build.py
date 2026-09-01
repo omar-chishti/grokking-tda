@@ -393,10 +393,13 @@ def fig_interventions(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 @builder("5.3", "headtohead",
          "Topology adds little over the cheap baselines, and nothing to timing.")
 def fig_headtohead(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    path = Path("results/processed/head_to_head.csv")
+    path = Path("results/processed/thesis/head_to_head.csv")
     if not path.exists():
-        raise Missing("no head_to_head.csv — run gtda-compare")
+        raise Missing("no head_to_head.csv — run analysis.predictive")
+    # the ledger's file, not gtda-compare's: the CLI applies no replicate filter, so its
+    # folds straddle duplicate optimisation paths and its numbers are not §5.4's
     frame = pd.read_csv(path)
+    frame = frame[frame.variant == "full"]
     frame["window_steps"] = frame.window.str.lstrip("w").replace({"tc": np.nan}).astype(float)
     return frame.sort_values(["task", "window_steps", "feature_set"])
 

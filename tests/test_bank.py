@@ -17,11 +17,12 @@ from analysis.bank import (
     condition_table,
     null_band,
     plateau_relaxed,
-    task_modulus,
     terminal,
     verdicts,
     window_medians,
 )
+
+from grokking_tda.analysis.identity import task_modulus
 
 
 @pytest.fixture

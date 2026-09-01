@@ -72,3 +72,17 @@ def test_a_thin_minority_class_does_not_tune_on_nan(recwarn) -> None:
     scores = nested_scores(features, target, groups, task="classification")
     assert scores and np.isfinite(scores).all()
     assert not [w for w in recwarn if "non-finite" in str(w.message)]
+
+
+def test_winsorising_bounds_come_from_the_training_fold_only() -> None:
+    """A robustness check with a leak in it is weaker evidence than it appears: clipping the
+    whole sample first lets each test fold's target be shaped by its own contents."""
+    rng = np.random.default_rng(3)
+    features, target, groups = _grouped_frame(rng, signal=True)
+    target = target + rng.normal(scale=0.2, size=len(target))
+    plain = nested_scores(features, target, groups, task="regression")
+    clipped = nested_scores(features, target.copy(), groups, task="regression", winsor=(0.1, 0.9))
+    assert np.isfinite(plain).all() and np.isfinite(clipped).all()
+    # the caller's array must survive: an in-place clip would silently winsorise every
+    # later feature set against a target that had already been clipped once
+    assert target.max() > np.quantile(target, 0.9)

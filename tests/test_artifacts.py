@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 import torch
 
-from grokking_tda.analysis.aggregate import aggregate_runs
+from grokking_tda.analysis.aggregate import aggregate_runs, early_window_table
 from grokking_tda.analysis.observable import (
     ObservationContext,
     diagram_cache_digest,
@@ -164,3 +164,59 @@ def test_aggregate_runs_joins_config_and_summary(tiny_run, tmp_path) -> None:
     assert row["grokking_step"] == 20
     assert row["t_top__h1_max_persistence"] == 30
     assert row["delta__h1_max_persistence"] == -10
+
+
+def _early_window_run(root, name: str, seed: int, weight_decay: float = 1.0) -> None:
+    run_dir = root / name
+    (run_dir / "analysis").mkdir(parents=True)
+    (run_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "run_name": name,
+                "config": {
+                    "seed": seed,
+                    "model": {"name": "mlp"},
+                    "data": {
+                        "operation": "add",
+                        "modulus": 11,
+                        "train_fraction": 0.5,
+                        "label_permutation": False,
+                    },
+                    "train": {
+                        "loss": "softmax_ce",
+                        "steps": 10,
+                        "dense_to": 0,
+                        "optimizer": {
+                            "name": "adamw",
+                            "lr": 1e-3,
+                            "weight_decay": weight_decay,
+                        },
+                    },
+                },
+                "env": {},
+                "task_meta": {"modulus": 11},
+                "created_at": "now",
+            }
+        )
+    )
+    (run_dir / "analysis" / "summary.json").write_text(
+        json.dumps({"grokking_step": 20, "early_window_features": {"w500": {"x__mean": 1.0}}})
+    )
+
+
+def test_early_window_groups_are_structural_and_drop_replicates(tmp_path) -> None:
+    """A trajectory re-run is the same optimisation path as its main-programme twin --- same
+    config, same seed --- so a group derived from the run *name* puts the two on opposite
+    sides of a fold and the splitter trains and tests on one run."""
+    _early_window_run(tmp_path, "mlp_add11_f0.5_wd1.0_softmax_ce_s0", seed=0)
+    _early_window_run(tmp_path, "mlp_add11_f0.5_wd1.0_traj_s0", seed=0)
+    _early_window_run(tmp_path, "mlp_add11_f0.5_wd0.1_softmax_ce_s0", seed=0, weight_decay=0.1)
+
+    table = early_window_table(tmp_path, "w500")
+    assert set(table["run"]) == {
+        "mlp_add11_f0.5_wd1.0_softmax_ce_s0",
+        "mlp_add11_f0.5_wd0.1_softmax_ce_s0",
+    }
+    # the two survivors differ in weight decay, so they are two groups
+    assert table["group"].nunique() == 2
+    assert not any("_s0" in group for group in table["group"])

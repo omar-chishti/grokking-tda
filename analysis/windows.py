@@ -8,11 +8,11 @@ import pandas as pd
 from analysis import cli
 from analysis.bank import (
     RATIO_OBSERVABLES,
-    is_replicate,
     iter_runs,
     plateau_relaxed,
     window_medians,
 )
+from grokking_tda.analysis.identity import is_replicate
 
 REPORTED = "0.5-0.9 / 1.2"
 
@@ -42,7 +42,7 @@ def main() -> None:
     rows = []
     for run in iter_runs(args.root):
         t_g = run.summary.get("grokking_step")
-        if not t_g or is_replicate(run):
+        if not t_g or is_replicate(run.name, run.config):
             continue
         obs = run.observables
         row = {"run": run.name, "t_g": float(t_g), "plateau_relaxed": plateau_relaxed(obs, t_g)}

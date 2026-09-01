@@ -94,11 +94,19 @@ def nested_scores(
     task: str,
     n_outer: int = 5,
     n_inner: int = 3,
+    winsor: tuple[float, float] | None = None,
 ) -> list[float]:
     outer = _splitter(task, _n_splits(task, target, groups, n_outer))
     scores: list[float] = []
     for train_idx, test_idx in outer.split(features, target, groups):
         train_groups = groups[train_idx]
+        if winsor is not None:
+            # bounds from the training fold only, then applied to both sides of it, as the
+            # imputer and the scaler in the same pipeline already are
+            lo, hi = np.quantile(target[train_idx], winsor)
+            target = target.copy()
+            target[train_idx] = np.clip(target[train_idx], lo, hi)
+            target[test_idx] = np.clip(target[test_idx], lo, hi)
         if len(np.unique(train_groups)) < 2:
             continue
         if task == "classification" and len(np.unique(target[train_idx])) < 2:
@@ -128,7 +136,12 @@ def nested_scores(
     return scores
 
 
-def head_to_head(table: pd.DataFrame, task: str, window: str) -> pd.DataFrame:
+def head_to_head(
+    table: pd.DataFrame,
+    task: str,
+    window: str,
+    winsor: tuple[float, float] | None = None,
+) -> pd.DataFrame:
     available = [c for c in table.columns if c.endswith(("__mean", "__trend"))]
     groups = table["group"].to_numpy()
     target = table["target"].to_numpy(dtype=float)
@@ -137,7 +150,7 @@ def head_to_head(table: pd.DataFrame, task: str, window: str) -> pd.DataFrame:
         columns = feature_columns(observables, available)
         if not columns:
             continue
-        scores = nested_scores(table[columns], target, groups, task)
+        scores = nested_scores(table[columns], target, groups, task, winsor=winsor)
         rows.append(
             {
                 "window": window,

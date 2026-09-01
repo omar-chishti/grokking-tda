@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from grokking_tda.analysis.identity import condition_key, is_replicate
 from grokking_tda.artifacts.reader import Run
 from grokking_tda.utils.logging import get_logger
 
@@ -64,7 +65,12 @@ def aggregate_runs(root: str | Path) -> pd.DataFrame:
 
 
 def early_window_table(root: str | Path, window: str) -> pd.DataFrame:
-    """Early-window features per run; ``group`` is the configuration, so folds cannot leak."""
+    """Early-window features per run; ``group`` is the configuration, so folds cannot leak.
+
+    A dense or trajectory re-run is the *same optimisation path* as its main-programme twin —
+    same model, task, weight decay and seed, differing only in what was recorded — so it is
+    dropped rather than allowed into a second group.
+    """
     rows: list[dict] = []
     for manifest_path in sorted(Path(root).rglob("manifest.json")):
         run_dir = manifest_path.parent
@@ -80,9 +86,10 @@ def early_window_table(root: str | Path, window: str) -> pd.DataFrame:
         features = (summary.get("early_window_features") or {}).get(window)
         if not features:
             continue
-        name = run.run_name
+        if is_replicate(run.run_name, run.config):
+            continue
         row = _config_row(run)
-        row["group"] = name.rsplit("_s", 1)[0]
+        row["group"] = condition_key(run.config)
         row["grokking_step"] = summary.get("grokking_step")
         row["diverged"] = summary.get("diverged", False)
         row.update(features)

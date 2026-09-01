@@ -13,11 +13,10 @@ from analysis.bank import (
     HEADLINE_OBSERVABLE,
     bootstrap_median_ci,
     condition_label,
-    config_fields,
-    task_modulus,
     window_medians,
 )
 from grokking_tda.analysis import run_observables
+from grokking_tda.analysis.identity import config_fields, task_modulus
 from grokking_tda.artifacts import Run
 from grokking_tda.config.schema import AnalysisCfg
 from grokking_tda.evaluation import transition_step

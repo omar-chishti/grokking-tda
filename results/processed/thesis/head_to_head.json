@@ -1,33 +1,33 @@
 {
-  "extreme_group_held_out": "transformer_add97_f0.3_wd0.1_softmax_ce",
+  "extreme_group_held_out": "model=transformer|operation=add|modulus=97|train_fraction=0.3|label_permutation=False|loss=softmax_ce|optimizer=adamw|lr=0.001|weight_decay=0.1",
   "winsor_quantiles": [
     0.1,
     0.9
   ],
   "best_regression_by_variant": {
     "full": {
-      "window": "tc",
-      "feature_set": "lid",
-      "r2": -0.1122482122955593,
-      "fold_sd": 0.5999788512434276,
-      "n_runs": 99,
-      "n_groups": 26
+      "window": "w5000",
+      "feature_set": "fourier",
+      "r2": -0.13340900823224033,
+      "fold_sd": 0.34842879134498106,
+      "n_runs": 80,
+      "n_groups": 20
     },
     "holdout": {
-      "window": "tc",
+      "window": "w5000",
       "feature_set": "lid",
-      "r2": 0.06936190084384353,
-      "fold_sd": 0.3189536002128513,
-      "n_runs": 96,
-      "n_groups": 25
+      "r2": -0.3906163251752566,
+      "fold_sd": 0.2929946607339639,
+      "n_runs": 77,
+      "n_groups": 19
     },
     "winsorised": {
-      "window": "tc",
-      "feature_set": "lid",
-      "r2": -0.2358234628814365,
-      "fold_sd": 0.442733802364923,
-      "n_runs": 99,
-      "n_groups": 26
+      "window": "w500",
+      "feature_set": "fourier",
+      "r2": -0.05075578433886378,
+      "fold_sd": 0.13113254383654044,
+      "n_runs": 80,
+      "n_groups": 20
     }
   }
 }

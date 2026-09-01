@@ -9,11 +9,26 @@ import pandas as pd
 
 from analysis import cli
 from grokking_tda.analysis.aggregate import early_window_table
+from grokking_tda.analysis.identity import condition_key
 from grokking_tda.evaluation.headtohead import head_to_head
 from grokking_tda.evaluation.predictive import PREREGISTERED_WINDOWS
 
-# the configuration §5.4 names as the candidate driver of the negative
-EXTREME_GROUP = "transformer_add97_f0.3_wd0.1_softmax_ce"
+# the configuration §5.4 names as the candidate driver of the negative, as a condition key
+EXTREME_GROUP = condition_key(
+    {
+        "model": {"name": "transformer"},
+        "data": {
+            "operation": "add",
+            "modulus": 97,
+            "train_fraction": 0.3,
+            "label_permutation": False,
+        },
+        "train": {
+            "loss": "softmax_ce",
+            "optimizer": {"name": "adamw", "lr": 1e-3, "weight_decay": 0.1},
+        },
+    }
+)
 WINSOR = (0.10, 0.90)
 
 
@@ -24,14 +39,16 @@ def regression_variants(table: pd.DataFrame, window: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     held = late[late["group"] != EXTREME_GROUP]
-    lo, hi = late["target"].quantile(WINSOR)
-    clipped = late.assign(target=late["target"].clip(lo, hi))
 
     frames = []
-    for name, frame in (("full", late), ("holdout", held), ("winsorised", clipped)):
+    for name, frame, winsor in (
+        ("full", late, None),
+        ("holdout", held, None),
+        ("winsorised", late, WINSOR),
+    ):
         if frame["group"].nunique() < 3:
             continue
-        scored = head_to_head(frame, task="regression", window=window)
+        scored = head_to_head(frame, task="regression", window=window, winsor=winsor)
         scored["variant"] = name
         scored["n_runs"] = len(frame)
         scored["n_groups"] = frame["group"].nunique()

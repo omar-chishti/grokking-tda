@@ -7,11 +7,12 @@ import re
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
-from math import factorial
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from grokking_tda.analysis.identity import CONDITION_FIELDS, config_fields, is_replicate
 
 # Baseline is late memorisation, past the initialisation transient in raw H1; the plateau
 # starts late because persistence keeps moving after t_g
@@ -112,20 +113,6 @@ def circularity_column(operation: str, columns, k: int | None = CIRCULARITY_K) -
     return None
 
 
-def is_replicate(run: Run) -> bool:
-    """A re-run of a condition the main programme already covers; pooling would double-count.
-
-    The substring test is load-bearing, and ``trajectory_dim > 0`` is not the structural fix it
-    looks like: ``R9c-s5-final.runs`` sets it on the five S_5 runs, which are main programme and
-    are the non-cyclic condition of §5.3.
-    """
-    return (
-        "_dense_" in run.name
-        or "_traj_" in run.name
-        or run.config["train"].get("dense_to", 0) > 0
-    )
-
-
 def plateau_relaxed(
     obs: pd.DataFrame, tg: float | None, *, plateau_from: float = PLATEAU_FROM
 ) -> bool:
@@ -189,28 +176,6 @@ def window_medians(
         )
 
 
-def task_modulus(data: dict) -> int:
-    """The modulus a condition is defined by, recomputed rather than trusted: an early S_5
-    batch predates the guard and carries the default 97."""
-    if data.get("task") == "permutation_group":
-        return factorial(int(data["n_symbols"]))
-    return int(data["modulus"])
-
-
-def config_fields(config: dict) -> dict:
-    return {
-        "model": config["model"]["name"],
-        "operation": config["data"]["operation"],
-        "modulus": task_modulus(config["data"]),
-        "train_fraction": config["data"]["train_fraction"],
-        "label_permutation": config["data"]["label_permutation"],
-        "loss": config["train"]["loss"],
-        "optimizer": config["train"]["optimizer"]["name"],
-        "lr": config["train"]["optimizer"]["lr"],
-        "weight_decay": config["train"]["optimizer"]["weight_decay"],
-    }
-
-
 def summarise(run: Run, fourier_k: int | None) -> dict:
     cfg, obs, summ = run.config, run.observables, run.summary
     tg = summ.get("grokking_step")
@@ -220,7 +185,7 @@ def summarise(run: Run, fourier_k: int | None) -> dict:
         "steps": cfg["train"]["steps"],
         "seed": cfg["seed"],
         "n_snapshots": len(obs),
-        "replicate": is_replicate(run),
+        "replicate": is_replicate(run.name, run.config),
         "t_c": summ.get("train_convergence_step"),
         "t_g": tg,
         # the summary's top-level timing belongs to the raw series; the chapters quote the
@@ -296,17 +261,7 @@ def load_bank(root: Path) -> tuple[pd.DataFrame, int | None]:
     return pd.DataFrame([summarise(r, k) for r in runs]), k
 
 
-CONDITION_KEYS = [
-    "model",
-    "operation",
-    "modulus",
-    "train_fraction",
-    "label_permutation",
-    "loss",
-    "optimizer",
-    "lr",
-    "weight_decay",
-]
+CONDITION_KEYS = list(CONDITION_FIELDS)
 
 
 def condition_label(row) -> str:

@@ -11,11 +11,10 @@ import pandas as pd
 from analysis import cli
 from analysis.bank import (
     CONDITION_KEYS,
-    is_replicate,
     iter_runs,
-    task_modulus,
     window_medians,
 )
+from grokking_tda.analysis.identity import is_replicate, task_modulus
 from grokking_tda.analysis.observable import diagram_cache_digest, stored_analysis_cfg
 
 MIN_BARS = 5  # below this the percentile is meaningless
@@ -69,7 +68,7 @@ def main() -> None:
 
     rows = []
     for run in iter_runs(args.root):
-        if is_replicate(run):
+        if is_replicate(run.name, run.config):
             continue
         table = series(run)
         if table.empty:

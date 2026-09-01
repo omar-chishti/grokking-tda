@@ -1,0 +1,70 @@
+# R14 — decompose the recipe. Chapter 4 §4.5 says "the recipe as a whole determines how
+# circular the solution is", which is an admission rather than a finding: the two headline
+# regimes differ in six things at once, and the weight-decay dose sweep already showed the
+# dose alone is not it.
+#
+# The six, measured from the two manifests rather than assumed:
+#
+#   factor          reference (p=113, wd 0.1)   canonical (p=97, wd 1.0)
+#   batch size      512                          full batch
+#   learning rate   3e-3                         1e-3
+#   depth           2 blocks                     1 block
+#   activation      GELU                         ReLU
+#   MLP width       256                          512
+#   Adam epsilon    1e-6                         1e-8
+#
+# Modulus and weight decay are held at the reference regime's values (p=113, wd 0.1), so
+# the dose confound is removed by construction and every cell differs from an anchor in
+# exactly one factor. Two anchors, six single-factor flips from each, three seeds: 42 runs
+# on a uniform 200k budget, because a comparison across cells cannot also vary the budget.
+#
+# run_name is explicit: the default interpolation encodes none of these six, so all
+# fourteen cells would collide with each other and with the existing reference runs.
+
+# --- from the reference anchor ---
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-fullbatch_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-fullbatch_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-fullbatch_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-lr1e-3_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.lr=1e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-lr1e-3_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.lr=1e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-lr1e-3_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.lr=1e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-1layer_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.n_layers=1
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-1layer_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.n_layers=1
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-1layer_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.n_layers=1
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-relu_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.act=relu
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-relu_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.act=relu
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-relu_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.act=relu
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-wide_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.d_mlp=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-wide_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.d_mlp=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-wide_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.d_mlp=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-eps1e-8_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.eps=1e-8
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-eps1e-8_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.eps=1e-8
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-eps1e-8_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.eps=1e-8
+
+
+# --- from the canonical anchor ---
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-batch512_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512 train.batch_size=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-batch512_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512 train.batch_size=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-batch512_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512 train.batch_size=512
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-lr3e-3_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512 train.optimizer.lr=3e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-lr3e-3_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512 train.optimizer.lr=3e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-lr3e-3_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=512 train.optimizer.lr=3e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-2layer_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.act=relu model.d_mlp=512 model.n_layers=2
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-2layer_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.act=relu model.d_mlp=512 model.n_layers=2
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-2layer_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.act=relu model.d_mlp=512 model.n_layers=2
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-gelu_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.d_mlp=512 model.act=gelu
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-gelu_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.d_mlp=512 model.act=gelu
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-gelu_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.d_mlp=512 model.act=gelu
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-narrow_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=256
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-narrow_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=256
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-narrow_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 train.optimizer.eps=1e-8 model.n_layers=1 model.act=relu model.d_mlp=256
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-eps1e-6_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 model.n_layers=1 model.act=relu model.d_mlp=512 train.optimizer.eps=1e-6
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-eps1e-6_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 model.n_layers=1 model.act=relu model.d_mlp=512 train.optimizer.eps=1e-6
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-eps1e-6_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.lr=1e-3 model.n_layers=1 model.act=relu model.d_mlp=512 train.optimizer.eps=1e-6
+

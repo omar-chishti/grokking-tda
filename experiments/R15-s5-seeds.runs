@@ -1,0 +1,29 @@
+# R15 — ten more S_5 seeds at fraction 0.6, on a budget long enough to decide the
+# confound. §7.3.1 rests the decisive non-cyclic test on five seeds whose normalised
+# total ratios span 1.27 to 47.9, and the spread is not obviously structure: across the
+# S_5 runs the ratio tracks how long the run trained *after* it groked, Spearman 0.78.
+#
+#   seed  t_g      post-transition steps   normalised total ratio
+#   s2    89,700   10,300                   1.27
+#   s3    83,200   16,800                   5.93
+#   s1    36,300   63,700                  16.87
+#   s0    15,900   84,100                  47.88
+#
+# Two of five sit at the edge of a 100k budget, so a low ratio there cannot be told from
+# a truncated plateau. At 250k even a seed groking as late as any observed gets more
+# post-transition training than today's largest-ratio seed had, which is what makes the
+# comparison decisive rather than merely better powered.
+#
+# Seeds 5-14: the default run_name already carries the seed, so these do not collide
+# with s0-s4 and pool with them into one fifteen-seed condition. Recording matches R9c
+# exactly except for the budget, so the two sets differ in one thing.
++experiment=tf_s5_grok data.train_fraction=0.6 seed=5 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=6 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=7 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=8 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=9 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=10 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=11 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=12 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=13 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20
++experiment=tf_s5_grok data.train_fraction=0.6 seed=14 train.steps=250000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=20

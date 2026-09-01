@@ -13,6 +13,7 @@
 #   ./scripts/remote/gtda-remote status
 #   ./scripts/remote/gtda-remote analyse                    # observables + figures, remotely
 #   FORCE=1 ./scripts/remote/gtda-remote analyse gpu27      # ... redoing completed runs too
+#   ./scripts/remote/gtda-remote remaining experiments/R14-recipe.runs   # what is left
 #   ./scripts/remote/gtda-remote fetch                      # pull artifacts back
 set -euo pipefail
 
@@ -196,6 +197,23 @@ fetch() {
     echo "$(ls -d "${PROJECT_DIR}"/results/raw/*/ 2>/dev/null | wc -l) run dirs locally"
 }
 
+# The manifest lines whose run directory does not yet exist remotely. The pool is often
+# almost fully occupied, so a long sweep gets one host and the rest of it waits; this is how
+# the remainder is handed to hosts that free up later, without a second host re-running what
+# the first is already doing. A line that sets no explicit run_name is always reported: its
+# directory name is only known once Hydra has composed the config.
+remaining() {
+    local manifest=${1:-}
+    [[ -f "${manifest}" ]] || die "manifest not found: ${manifest}"
+    local existing
+    existing=$(on_shell "ls '${REMOTE_BASE}/results/raw' 2>/dev/null" | tr -d '\r')
+    while IFS= read -r line; do
+        [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
+        [[ "${line}" =~ run_name=([^[:space:]]+) ]] || { echo "${line}"; continue; }
+        grep -qxF "${BASH_REMATCH[1]}" <<< "${existing}" || echo "${line}"
+    done < "${manifest}"
+}
+
 stop() {
     [[ -f "${STATE_DIR}/hosts" ]] || die "nothing launched from here"
     while read -r host; do
@@ -211,6 +229,7 @@ case "${1:-help}" in
     analyse) shift; analyse "$@" ;;
     status) status ;;
     fetch)  shift; fetch "$@" ;;
+    remaining) shift; remaining "$@" ;;
     stop)   stop ;;
     *) sed -n '2,15p' "$0" | sed 's/^# \?//' ;;
 esac

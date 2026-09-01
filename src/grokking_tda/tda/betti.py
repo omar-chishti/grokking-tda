@@ -1,4 +1,4 @@
-"""Scale-free Betti profiles: lifetimes over the diameter, dominance as a gap in the barcode."""
+"""Scale-free Betti profiles: lifetimes over the diameter, dominance from the barcode's shape."""
 
 from __future__ import annotations
 
@@ -19,15 +19,23 @@ FLOOR = 0.05  # ... and at least this fraction of the cloud's diameter
 def dominant_count(
     lifetimes: np.ndarray, *, gap_factor: float = GAP_FACTOR, floor: float = FLOOR
 ) -> int:
+    """How many classes dominate: the bars above the largest gap, or all of them, or none.
+
+    A gap is the sharper evidence, but a cloud whose above-floor bars are *all* signal has no
+    internal gap to find --- two comparable loops with nothing beneath them is exactly a torus
+    --- and reporting zero there makes the counter worse the cleaner the cloud is.
+    """
     ordered = np.sort(np.asarray(lifetimes, dtype=float))[::-1]
     ordered = ordered[ordered > floor]
     if ordered.size == 0:
         return 0
-    if ordered.size == 1:
-        return 1
-    ratios = ordered[:-1] / np.maximum(ordered[1:], 1e-12)
-    best = int(np.argmax(ratios))
-    return best + 1 if ratios[best] >= gap_factor else 0
+    if ordered.size > 1:
+        ratios = ordered[:-1] / np.maximum(ordered[1:], 1e-12)
+        best = int(np.argmax(ratios))
+        if ratios[best] >= gap_factor:
+            return best + 1
+    # no gap: the survivors are all signal or all noise, and only the floor separates them
+    return int(ordered.size) if ordered[-1] >= gap_factor * floor else 0
 
 
 def betti_profile(

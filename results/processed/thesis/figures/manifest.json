@@ -8,10 +8,10 @@
   },
   "figures": [
     {
-      "figure": "5.3",
-      "name": "headtohead",
-      "claim": "Topology adds little over the cheap baselines, and nothing to timing.",
-      "file": "fig-5-3-headtohead.csv",
+      "figure": "6.4",
+      "name": "depth",
+      "claim": "The torus appears at the operand layer, and only after the transition.",
+      "file": "fig-6-4-depth.csv",
       "rows": 60
     }
   ]

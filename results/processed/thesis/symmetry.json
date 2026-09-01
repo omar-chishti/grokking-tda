@@ -1,0 +1,34 @@
+{
+  "by_model": {
+    "mlp": {
+      "n_runs": 5,
+      "n_acquiring": 5,
+      "median_t_symmetry": 12594.0,
+      "range_t_symmetry": [
+        10077.0,
+        14613.0
+      ],
+      "median_t_c": 100.0,
+      "median_t_g": 12100.0,
+      "median_t_symmetry_first": 12594.0,
+      "median_final_kappa": 1.0,
+      "median_memorisation_plateau": 0.0009110233513630001
+    },
+    "transformer": {
+      "n_runs": 10,
+      "n_acquiring": 10,
+      "median_t_symmetry": 6112.5,
+      "range_t_symmetry": [
+        2282.0,
+        12605.0
+      ],
+      "median_t_c": 350.0,
+      "median_t_g": 19850.0,
+      "median_t_symmetry_first": 0.0,
+      "median_final_kappa": 1.0,
+      "median_memorisation_plateau": 0.301900796592235
+    }
+  },
+  "runs_without_weights": 64,
+  "level": 0.9
+}

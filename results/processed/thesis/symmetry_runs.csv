@@ -1,0 +1,16 @@
+run,model,weight_decay,t_symmetry,t_c,t_g,t_symmetry_first,final_kappa,memorisation_plateau
+mlp_add97_f0.3_wd1.0_softmax_ce_s0,mlp,1.0,14613.0,100,14300,14613.0,1.0,0.001518372329883
+mlp_add97_f0.3_wd1.0_softmax_ce_s1,mlp,1.0,13566.0,100,13200,13566.0,1.0,0.0007591861649410001
+mlp_add97_f0.3_wd1.0_softmax_ce_s2,mlp,1.0,12594.0,100,12100,12594.0,1.0,0.001214697840623
+mlp_add97_f0.3_wd1.0_softmax_ce_s3,mlp,1.0,10077.0,100,9500,10077.0,1.0,0.0009110233513630001
+mlp_add97_f0.3_wd1.0_softmax_ce_s4,mlp,1.0,12594.0,100,12100,12594.0,1.0,0.000151837230077
+transformer_add113_f0.3_wd0.1_softmax_ce_s0,transformer,0.1,10084.0,500,13000,0.0,0.9998419719641508,0.299787431955337
+transformer_add113_f0.3_wd0.1_softmax_ce_s1,transformer,0.1,7563.0,500,12000,0.0,1.0,0.299283966422081
+transformer_add113_f0.3_wd0.1_softmax_ce_s2,transformer,0.1,12605.0,500,14000,0.0,1.0,0.30062654614448503
+transformer_add113_f0.3_wd0.1_softmax_ce_s3,transformer,0.1,5546.0,500,11500,0.0,1.0,0.303087949752807
+transformer_add113_f0.3_wd0.1_softmax_ce_s4,transformer,0.1,7563.0,500,10500,0.0,1.0,0.298612684011459
+transformer_add97_f0.3_wd1.0_softmax_ce_s0,transformer,1.0,3506.0,200,27600,0.0,1.0,0.307014882564544
+transformer_add97_f0.3_wd1.0_softmax_ce_s1,transformer,1.0,2282.0,200,28600,0.0,1.0,0.31809899210929804
+transformer_add97_f0.3_wd1.0_softmax_ce_s2,transformer,1.0,4669.0,200,30000,0.0,1.0,0.31445491313934304
+transformer_add97_f0.3_wd1.0_softmax_ce_s3,transformer,1.0,3264.0,200,34700,0.0,1.0,0.3069389611482615
+transformer_add97_f0.3_wd1.0_softmax_ce_s4,transformer,1.0,6679.0,200,25700,0.0,1.0,0.300713643431663

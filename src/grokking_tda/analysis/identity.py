@@ -55,7 +55,14 @@ def condition_key(config: dict) -> str:
 
 
 def is_replicate(run_name: str, config: dict) -> bool:
-    """A re-run of a condition the main programme already covers; pooling would double-count.
+    """Is this run outside the main programme's condition table?
+
+    Three kinds are: a dense re-run and a trajectory re-run, which repeat a condition on a
+    different snapshot schedule and would double-count it, and the R14 recipe sweep, whose cells
+    differ only in architecture and batching --- fields ``config_fields`` does not carry, so all
+    fourteen would otherwise collapse into the reference regime's condition and drag a 200k
+    budget into its bootstrap interval and the null band. The sweep has its own reduction in
+    ``analysis/recipe.py``.
 
     The substring test is load-bearing, and ``trajectory_dim > 0`` is not the structural fix it
     looks like: ``R9c-s5-final.runs`` sets it on the five S_5 runs, which are main programme and
@@ -64,5 +71,6 @@ def is_replicate(run_name: str, config: dict) -> bool:
     return (
         "_dense_" in run_name
         or "_traj_" in run_name
+        or "_recipe-" in run_name
         or config["train"].get("dense_to", 0) > 0
     )

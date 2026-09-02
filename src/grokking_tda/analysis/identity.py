@@ -54,23 +54,20 @@ def condition_key(config: dict) -> str:
     return "|".join(f"{key}={value}" for key, value in config_fields(config).items())
 
 
+# A run name carrying one of these repeats a condition the programme already covers. Dense,
+# trajectory and stride-one re-runs follow the same optimisation path as their main-programme
+# twin and differ only in what was recorded; the recipe sweep's cells differ in architecture and
+# batching, fields `config_fields` does not carry, so they would otherwise collapse into the
+# reference regime's condition and drag a 200k budget into its interval and the null band.
+# A new re-run programme adds its tag here before it launches, or it pools in silence.
+REPLICATE_TAGS = ("_dense_", "_traj_", "_stride1", "_recipe-")
+
+
 def is_replicate(run_name: str, config: dict) -> bool:
     """Is this run outside the main programme's condition table?
-
-    Three kinds are: a dense re-run and a trajectory re-run, which repeat a condition on a
-    different snapshot schedule and would double-count it, and the R14 recipe sweep, whose cells
-    differ only in architecture and batching --- fields ``config_fields`` does not carry, so all
-    fourteen would otherwise collapse into the reference regime's condition and drag a 200k
-    budget into its bootstrap interval and the null band. The sweep has its own reduction in
-    ``analysis/recipe.py``.
 
     The substring test is load-bearing, and ``trajectory_dim > 0`` is not the structural fix it
     looks like: ``R9c-s5-final.runs`` sets it on the five S_5 runs, which are main programme and
     are the non-cyclic condition of thesis §5.3.
     """
-    return (
-        "_dense_" in run_name
-        or "_traj_" in run_name
-        or "_recipe-" in run_name
-        or config["train"].get("dense_to", 0) > 0
-    )
+    return any(tag in run_name for tag in REPLICATE_TAGS) or config["train"].get("dense_to", 0) > 0

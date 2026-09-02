@@ -48,16 +48,18 @@ def factors(config: dict) -> dict:
     }
 
 
-def classify(config: dict) -> tuple[str, str | None]:
-    """``(anchor, the one factor moved away from it)``; ``None`` for an anchor itself."""
+def classify(config: dict) -> tuple[str, str]:
+    """``(anchor, the factors moved away from it)``, joined by ``+``; ``—`` for an anchor.
+
+    Two at once is the interaction design of R18. The attribution stays unambiguous because the
+    anchors differ in all six factors, so a cell two moves from one is four from the other.
+    """
     seen = factors(config)
     for anchor, settings in ANCHORS.items():
         differing = [f for f in FACTORS if seen[f] != settings[f]]
-        if not differing:
-            return anchor, None
-        if len(differing) == 1:
-            return anchor, differing[0]
-    raise ValueError(f"no anchor within one factor of {seen}")
+        if len(differing) <= 2:
+            return anchor, "+".join(differing) or "—"
+    raise ValueError(f"no anchor within two factors of {seen}")
 
 
 def main() -> None:
@@ -75,7 +77,7 @@ def main() -> None:
             {
                 "run": run.run,
                 "anchor": anchor,
-                "factor": moved or "—",
+                "factor": moved,
                 "circularity": run.circularity,
                 "ratio": getattr(run, ratio),
                 "t_g": run.t_g,
@@ -102,13 +104,28 @@ def main() -> None:
     table.to_csv(args.out / "recipe_runs.csv", index=False)
     cells.to_csv(args.out / "recipe_cells.csv", index=False)
 
-    ranked = cells[cells.factor != "—"].reindex(
-        cells[cells.factor != "—"].d_circularity.abs().sort_values(ascending=False).index
-    )
+    single = cells[(cells.factor != "—") & ~cells.factor.str.contains(r"\+")]
+    ranked = single.reindex(single.d_circularity.abs().sort_values(ascending=False).index)
+
+    # a joint move against the sum of its parts: zero means the two ingredients simply add
+    joint = {}
+    for row in cells[cells.factor.str.contains(r"\+")].itertuples():
+        parts = [single[(single.anchor == row.anchor) & (single.factor == f)]
+                 for f in row.factor.split("+")]
+        if any(part.empty for part in parts):
+            continue
+        additive = sum(float(part.d_circularity.iloc[0]) for part in parts)
+        joint[f"{row.anchor}:{row.factor}"] = {
+            "joint": float(row.d_circularity),
+            "sum_of_singles": additive,
+            "interaction": float(row.d_circularity) - additive,
+            "n": int(row.n),
+        }
     summary = {
         "anchors": {a: {"circularity": float(b.circularity.iloc[0]), "n": int(b.n.iloc[0])}
                     for a, b in base.items() if len(b)},
         "largest_single_factor": ranked.iloc[0].factor if len(ranked) else None,
+        "interactions": joint,
         "by_factor": {
             f: {a: float(v) for a, v in
                 zip(sub.anchor, sub.d_circularity, strict=True)}

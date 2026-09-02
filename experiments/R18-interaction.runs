@@ -1,0 +1,29 @@
+# R18 — do depth and the learning rate add? §4.5 isolates the two ingredients that raise
+# circularity from both anchors, but every cell there moves one factor, so the design cannot
+# see whether their effects combine.
+#
+# The 2x2 is (depth) x (learning rate) against each anchor's background. Three of its four
+# corners already exist in R14 — the anchor itself and the two single-factor cells — so only
+# the doubly-moved corner is new at each anchor. Six runs, not twenty-four.
+#
+#              lr 1e-3            lr 3e-3
+#   canonical  rC        (R14)    rC-lr3e-3   (R14)      1 block
+#   canonical  rC-2layer (R14)    THIS               2 blocks
+#   reference  THIS               rT-1layer   (R14)      1 block
+#   reference  rT-lr1e-3 (R14)    rT          (R14)      2 blocks
+#
+# Everything else is held at the anchor's own value, and the modulus, weight decay and the
+# 200k budget match R14 exactly, or the new corner is not comparable with the three old ones.
+# The interaction is the joint move minus the sum of the two singles; zero means they add.
+#
+# run_name keeps the _recipe- tag, which is what keeps these out of the condition table.
+
+# --- canonical background: two blocks AND the reference rate ---
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-2layer-lr3e-3_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.eps=1e-8 model.act=relu model.d_mlp=512 model.n_layers=2 train.optimizer.lr=3e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-2layer-lr3e-3_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.eps=1e-8 model.act=relu model.d_mlp=512 model.n_layers=2 train.optimizer.lr=3e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rC-2layer-lr3e-3_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false train.batch_size=null train.optimizer.eps=1e-8 model.act=relu model.d_mlp=512 model.n_layers=2 train.optimizer.lr=3e-3
+
+# --- reference background: one block AND the canonical rate ---
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-1layer-lr1e-3_s0 seed=0 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.n_layers=1 train.optimizer.lr=1e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-1layer-lr1e-3_s1 seed=1 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.n_layers=1 train.optimizer.lr=1e-3
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_recipe-rT-1layer-lr1e-3_s2 seed=2 train.steps=200000 train.snapshot_schedule=linear train.n_snapshots=120 train.metric_every=500 train.capture_representations=false model.n_layers=1 train.optimizer.lr=1e-3

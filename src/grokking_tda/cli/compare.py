@@ -10,7 +10,7 @@ import pandas as pd
 
 from grokking_tda.analysis.aggregate import early_window_table
 from grokking_tda.evaluation.headtohead import head_to_head
-from grokking_tda.evaluation.predictive import PREREGISTERED_WINDOWS
+from grokking_tda.evaluation.predictive import PREREGISTERED_WINDOWS, before_the_event
 from grokking_tda.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -29,7 +29,7 @@ def main() -> None:
 
     frames = []
     for window in (w.strip() for w in str(args.windows).split(",") if w.strip()):
-        table = early_window_table(args.root, window)
+        table = before_the_event(early_window_table(args.root, window))
         if table.empty:
             logger.warning("no features at window %s", window)
             continue

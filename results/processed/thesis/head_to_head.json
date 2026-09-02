@@ -6,28 +6,61 @@
   ],
   "best_regression_by_variant": {
     "full": {
-      "window": "w5000",
+      "window": "tc",
       "feature_set": "fourier",
-      "r2": -0.13340900823224033,
-      "fold_sd": 0.34842879134498106,
-      "n_runs": 80,
+      "r2": 0.13904316062810654,
+      "fold_sd": 0.3504783283984385,
+      "n_runs": 81,
       "n_groups": 20
     },
     "holdout": {
-      "window": "w5000",
-      "feature_set": "lid",
-      "r2": -0.3906163251752566,
-      "fold_sd": 0.2929946607339639,
-      "n_runs": 77,
-      "n_groups": 19
+      "window": "w500",
+      "feature_set": "topology",
+      "r2": -0.07477045102557316,
+      "fold_sd": 0.4730621293544637,
+      "n_runs": 78,
+      "n_groups": 20
     },
     "winsorised": {
-      "window": "w500",
-      "feature_set": "fourier",
-      "r2": -0.05075578433886378,
-      "fold_sd": 0.13113254383654044,
-      "n_runs": 80,
+      "window": "tc",
+      "feature_set": "lid",
+      "r2": 0.014451481174251457,
+      "fold_sd": 0.10893223298502341,
+      "n_runs": 81,
       "n_groups": 20
     }
+  },
+  "unguarded": {
+    "full": {
+      "window": "w5000",
+      "feature_set": "fourier",
+      "r2": 0.32863939828991284,
+      "fold_sd": 0.2533273305748498,
+      "n_runs": 83,
+      "n_groups": 21
+    },
+    "holdout": {
+      "window": "w1000",
+      "feature_set": "fourier",
+      "r2": 0.07826215380944719,
+      "fold_sd": 0.536379589392949,
+      "n_runs": 80,
+      "n_groups": 20
+    },
+    "winsorised": {
+      "window": "w5000",
+      "feature_set": "fourier",
+      "r2": 0.18742589032942084,
+      "fold_sd": 0.2557198308478019,
+      "n_runs": 83,
+      "n_groups": 21
+    }
+  },
+  "dropped_by_window": {
+    "w500": 2,
+    "w1000": 7,
+    "w2000": 9,
+    "w5000": 21,
+    "tc": 2
   }
 }

@@ -10,6 +10,7 @@ from grokking_tda.evaluation.headtohead import (
     feature_columns,
     nested_scores,
 )
+from grokking_tda.evaluation.predictive import before_the_event, window_end_step
 
 
 def test_feature_columns_does_not_overmatch_a_longer_name() -> None:
@@ -86,3 +87,25 @@ def test_winsorising_bounds_come_from_the_training_fold_only() -> None:
     # the caller's array must survive: an in-place clip would silently winsorise every
     # later feature set against a target that had already been clipped once
     assert target.max() > np.quantile(target, 0.9)
+
+
+def test_window_end_step_is_the_run_s_own_convergence_for_tc() -> None:
+    assert window_end_step("w5000", None) == 5000
+    assert window_end_step("tc", 1200) == 1200
+    assert window_end_step("tc", None) is None
+
+
+def test_the_window_may_not_close_after_the_step_it_predicts() -> None:
+    """A run that groks at 500 has its w5000 features measured after the event, so its fit
+    reads the label off its own window. Twenty-one of eighty-three did, and they were the
+    whole of the positive R^2 in the published grid."""
+    table = pd.DataFrame(
+        {
+            "run": ["early", "late", "never"],
+            "grokking_step": [500.0, 40000.0, np.nan],
+            "window_step": [5000, 5000, 5000],
+        }
+    )
+    kept = before_the_event(table)
+    # the non-grokker stays: it is the negative class, not a leak
+    assert list(kept["run"]) == ["late", "never"]

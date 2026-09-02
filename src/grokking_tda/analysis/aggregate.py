@@ -9,6 +9,7 @@ import pandas as pd
 
 from grokking_tda.analysis.identity import condition_key, is_replicate
 from grokking_tda.artifacts.reader import Run
+from grokking_tda.evaluation.predictive import window_end_step
 from grokking_tda.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -91,6 +92,7 @@ def early_window_table(root: str | Path, window: str) -> pd.DataFrame:
         row = _config_row(run)
         row["group"] = condition_key(run.config)
         row["grokking_step"] = summary.get("grokking_step")
+        row["window_step"] = window_end_step(window, summary.get("train_convergence_step"))
         row["diverged"] = summary.get("diverged", False)
         row.update(features)
         rows.append(row)

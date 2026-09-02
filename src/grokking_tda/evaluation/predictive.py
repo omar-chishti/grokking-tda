@@ -9,6 +9,27 @@ import pandas as pd
 PREREGISTERED_WINDOWS: tuple[int, ...] = (500, 1000, 2000, 5000)
 
 
+def window_end_step(window: str, train_convergence: int | None) -> int | None:
+    """The step a named window closes at. ``tc`` is the run's own train-convergence step."""
+    if window == "tc":
+        return train_convergence
+    return int(window[1:]) if window.startswith("w") else None
+
+
+def before_the_event(table: pd.DataFrame) -> pd.DataFrame:
+    """Drop runs whose window closes at or after their own grokking step.
+
+    The window above is a step count and knows nothing of where a given run's transition falls,
+    so for the fastest conditions it closes late and the features are read after the event they
+    are asked to predict. Twenty-one of eighty-three grokked runs were in that position at five
+    thousand steps, and they carried the whole of the positive R^2 in the grid. Non-grokkers are
+    kept: they are the negative class of the classification, not a leak.
+    """
+    grokked = table["grokking_step"].notna()
+    after = table["window_step"].isna() | (table["grokking_step"] > table["window_step"])
+    return table[~grokked | after]
+
+
 def _trend(steps: np.ndarray, values: np.ndarray) -> float:
     mask = np.isfinite(values)
     if mask.sum() < 2:

@@ -11,7 +11,7 @@ from analysis import cli
 from grokking_tda.analysis.aggregate import early_window_table
 from grokking_tda.analysis.identity import condition_key
 from grokking_tda.evaluation.headtohead import head_to_head
-from grokking_tda.evaluation.predictive import PREREGISTERED_WINDOWS
+from grokking_tda.evaluation.predictive import PREREGISTERED_WINDOWS, before_the_event
 
 # the configuration §5.4 names as the candidate driver of the negative, as a condition key
 EXTREME_GROUP = condition_key(
@@ -62,19 +62,25 @@ def main() -> None:
     ap.add_argument("--windows", default=",".join(f"w{w}" for w in PREREGISTERED_WINDOWS) + ",tc")
     args = ap.parse_args()
 
-    frames = []
+    frames: list[pd.DataFrame] = []
+    tables: dict[str, pd.DataFrame] = {}
     for window in (w.strip() for w in args.windows.split(",") if w.strip()):
         table = early_window_table(args.root, window)
         if table.empty:
             continue
+        tables[window] = table
 
-        classified = table.assign(target=table["grokking_step"].notna().astype(float))
-        scored = head_to_head(classified, task="classification", window=window)
-        scored["variant"] = "full"
-        scored["n_runs"] = len(table)
-        scored["n_groups"] = table["group"].nunique()
-        frames.append(scored)
-        frames.append(regression_variants(table, window))
+        # both grids: the guarded one is the result, the leaked one is what it corrects
+        for guarded, frame in ((True, before_the_event(table)), (False, table)):
+            classified = frame.assign(target=frame["grokking_step"].notna().astype(float))
+            scored = head_to_head(classified, task="classification", window=window)
+            scored["variant"] = "full"
+            scored["n_runs"] = len(frame)
+            scored["n_groups"] = frame["group"].nunique()
+            regressed = regression_variants(frame, window)
+            for part in (scored, regressed):
+                part["guarded"] = guarded
+            frames.extend((scored, regressed))
 
     frames = [f for f in frames if not f.empty]
     if not frames:
@@ -85,7 +91,7 @@ def main() -> None:
     result.to_csv(args.out / "head_to_head.csv", index=False)
 
     for task in ("classification", "regression"):
-        sub = result[result.task == task]
+        sub = result[(result.task == task) & result.guarded]
         if sub.empty:
             continue
         print(f"\n{task}, {'AUC' if task == 'classification' else 'R^2'} (mean +- fold sd):")
@@ -94,12 +100,11 @@ def main() -> None:
         )
         print(pivot.round(3).to_string())
 
-    late = result[(result.task == "regression")]
-    best = late.loc[late.groupby("variant").score_mean.idxmax()] if not late.empty else late
-    summary = {
-        "extreme_group_held_out": EXTREME_GROUP,
-        "winsor_quantiles": list(WINSOR),
-        "best_regression_by_variant": {
+    def best_by_variant(frame: pd.DataFrame) -> dict:
+        if frame.empty:
+            return {}
+        best = frame.loc[frame.groupby("variant").score_mean.idxmax()]
+        return {
             r.variant: {
                 "window": r.window,
                 "feature_set": r.feature_set,
@@ -109,6 +114,17 @@ def main() -> None:
                 "n_groups": int(r.n_groups),
             }
             for r in best.itertuples()
+        }
+
+    regression = result[result.task == "regression"]
+    summary = {
+        "extreme_group_held_out": EXTREME_GROUP,
+        "winsor_quantiles": list(WINSOR),
+        "best_regression_by_variant": best_by_variant(regression[regression.guarded]),
+        "unguarded": best_by_variant(regression[~regression.guarded]),
+        "dropped_by_window": {
+            window: int(len(table) - len(before_the_event(table)))
+            for window, table in tables.items()
         },
     }
     (args.out / "head_to_head.json").write_text(json.dumps(summary, indent=2))

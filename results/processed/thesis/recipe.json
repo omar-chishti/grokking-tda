@@ -1,0 +1,39 @@
+{
+  "anchors": {
+    "reference": {
+      "circularity": 0.7671166191855076,
+      "n": 3
+    },
+    "canonical": {
+      "circularity": 0.3346541511857674,
+      "n": 3
+    }
+  },
+  "largest_single_factor": "n_layers",
+  "by_factor": {
+    "act": {
+      "canonical": 0.199398637919104,
+      "reference": 0.06672063470755818
+    },
+    "batch_size": {
+      "canonical": -0.1717869020951051,
+      "reference": 0.09529489407346392
+    },
+    "d_mlp": {
+      "reference": 0.08087909201896337,
+      "canonical": -0.006673441732451713
+    },
+    "eps": {
+      "canonical": -0.09262858722205541,
+      "reference": -0.009441685826702906
+    },
+    "lr": {
+      "canonical": 0.336649821971234,
+      "reference": -0.20809814629738432
+    },
+    "n_layers": {
+      "canonical": 0.5255210629559468,
+      "reference": -0.1320994460857413
+    }
+  }
+}

@@ -75,6 +75,11 @@ A manifest is one line of Hydra overrides per run, `#` for comments — see `exp
 expensive tail of an ordered manifest, and runs `JOBS_PER_HOST` of them concurrently. The model is
 small enough that three concurrent runs share one GPU comfortably.
 
+A second `launch` while the first is still going is safe: it picks from the hosts that are idle,
+and carries the busy ones forward in `results/.remote/hosts`, which is what `stop` and `status`
+read. `analyse` pushes the source first, so a fix to `scripts/remote/analyse.sh` committed here is
+actually the one that runs there.
+
 Every host writes into the one shared `results/raw/` on `/vol/bitbucket`. `fetch` rsyncs that into
 the local `results/raw/`, taking the analysis outputs, metrics, events and manifests but not the
 snapshot weights, which are gigabytes; pass `--all` for those. Analysis then runs on the laptop

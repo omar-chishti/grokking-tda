@@ -100,7 +100,9 @@ launch() {
 or relax MIN_FREE_MB / MAX_LOAD"
     echo "${n_hosts} idle hosts: ${hosts[*]}"
 
-    rm -rf "${STATE_DIR}"; mkdir -p "${STATE_DIR}"
+    # The state dir is what `stop` and `status` read. Wiping it stranded any host a previous
+    # launch was still using, so only the slices this launch overwrites are truncated.
+    mkdir -p "${STATE_DIR}"
     for host in "${hosts[@]}"; do : > "${STATE_DIR}/${host}.slice"; done
 
     # Round-robin, so no host inherits the whole expensive tail of an ordered manifest.
@@ -115,6 +117,15 @@ or relax MIN_FREE_MB / MAX_LOAD"
     rsync -az --rsh="ssh ${SHELL_OPTS[*]}" \
         "${STATE_DIR}/" "${JUMP_HOST}:${REMOTE_BASE}/slices/"
 
+    local previous="" started=0
+    if [[ -f "${STATE_DIR}/hosts" ]]; then
+        while IFS= read -r host; do
+            [[ -n "${host}" ]] || continue
+            case " ${hosts[*]} " in *" ${host} "*) continue ;; esac
+            previous+="${host}"$'\n'
+        done < "${STATE_DIR}/hosts"
+    fi
+
     : > "${STATE_DIR}/hosts"
     for host in "${hosts[@]}"; do
         [[ -s "${STATE_DIR}/${host}.slice" ]] || continue
@@ -126,13 +137,17 @@ or relax MIN_FREE_MB / MAX_LOAD"
                 'bash scripts/remote/worker.sh ${REMOTE_BASE}/slices/${host}.slice ${JOBS_PER_HOST} ${REMOTE_BASE}/results'
         " 2>/dev/null; then
             echo "${host}" >> "${STATE_DIR}/hosts"
+            started=$((started + 1))
             echo "  ${host}: $(wc -l < "${STATE_DIR}/${host}.slice") runs"
         else
             echo "  ${host}: unreachable, skipped (re-run launch to pick it up)" >&2
         fi
     done
-    local started
-    started=$(wc -l < "${STATE_DIR}/hosts")
+    # carried before the check, so a launch that starts nothing still cannot lose them
+    printf '%s' "${previous}" >> "${STATE_DIR}/hosts"
+    if [[ -n "${previous}" ]]; then
+        echo "  still tracking $(printf '%s' "${previous}" | tr '\n' ' ')from an earlier launch"
+    fi
     (( started > 0 )) || die "every host failed to start"
 }
 
@@ -152,12 +167,20 @@ status() {
             "$(on_host "${host}" "tmux has-session -t ${TMUX_SESSION} 2>/dev/null && echo running || echo finished" 2>/dev/null || echo unreachable)"
     done
 
+    # Remote slices accumulate across launches, so counting all of them reads as a fraction of
+    # two unrelated totals. Count only what the hosts above were given.
+    local slices=""
+    for host in "${hosts[@]:-}"; do
+        [[ -n "${host}" ]] && slices+=" slices/${host}.slice"
+    done
+    [[ -n "${slices}" ]] || slices=" /dev/null"
+
     echo "=== runs (shared results tree) ==="
     on_shell "
         cd '${REMOTE_BASE}' || exit 0
-        queued=\$(cat slices/*.slice 2>/dev/null | grep -cvE '^[[:space:]]*(#|\$)' || echo 0)
+        queued=\$(cat${slices} 2>/dev/null | grep -cvE '^[[:space:]]*(#|\$)' || true)
         started=\$(ls -d results/raw/*/ 2>/dev/null | wc -l)
-        echo \"\${started} run dirs started of \${queued} queued\"
+        echo \"\${started} run dirs in the tree, \${queued} queued on the hosts above\"
         [ -s results/logs/failures.txt ] && { echo '--- FAILURES ---'; cat results/logs/failures.txt; }
         [ -d results/raw ] && python3 scripts/remote/summarise.py results/raw
     "
@@ -169,6 +192,10 @@ analyse() {
     local host=${1:-}
     [[ -n "${host}" ]] || host=$(available_hosts | head -1)
     [[ -n "${host}" ]] || die "no idle host; pass one explicitly, e.g. $0 analyse gpu26"
+    # analyse.sh runs from the remote checkout: without this a fix to it is committed here and
+    # still absent there, which is how an unfinished run was nearly summarised at partial values.
+    echo "pushing current source"
+    push_source
     echo "analysing every run on ${host} (CPU work, on the shared tree)"
     on_host "${host}" "
         export PATH=\"\$HOME/.local/bin:\$PATH\" UV_CACHE_DIR='${UV_CACHE}'
@@ -187,8 +214,11 @@ analyse() {
 fetch() {
     local all=${1:-}
     mkdir -p "${PROJECT_DIR}/results/raw"
-    local filters=(--include='*/' --include='analysis/***' --include='figures/***'
-                   --include='metrics.jsonl' --include='events.jsonl'
+    # snapshots/ is excluded before the directory include, so rsync never descends into it:
+    # a bank of this size carries tens of thousands of snapshot directories, and walking them
+    # over NFS costs an hour and creates the same number of empty directories here.
+    local filters=(--exclude='snapshots/' --include='*/' --include='analysis/***'
+                   --include='figures/***' --include='metrics.jsonl' --include='events.jsonl'
                    --include='manifest.json' --exclude='*')
     [[ "${all}" == "--all" ]] && filters=()
     echo "fetching ${REMOTE_BASE}/results/raw -> results/raw ${all}"

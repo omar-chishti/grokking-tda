@@ -94,10 +94,16 @@ def main() -> None:
 
     # what one factor is worth: the cell against its own anchor
     base = {a: cells[(cells.anchor == a) & (cells.factor == "—")] for a in ANCHORS}
+    absent = [anchor for anchor, cell in base.items() if cell.empty]
+    if absent:
+        raise SystemExit(
+            f"no anchor cell for {', '.join(absent)} under {args.root}: an effect here is a "
+            "difference from its anchor, so without one the table would be written full of "
+            "blanks instead of failing"
+        )
+
     cells["d_circularity"] = [
-        row.circularity - base[row.anchor].circularity.iloc[0]
-        if len(base[row.anchor]) else float("nan")
-        for row in cells.itertuples()
+        row.circularity - base[row.anchor].circularity.iloc[0] for row in cells.itertuples()
     ]
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -123,7 +129,7 @@ def main() -> None:
         }
     summary = {
         "anchors": {a: {"circularity": float(b.circularity.iloc[0]), "n": int(b.n.iloc[0])}
-                    for a, b in base.items() if len(b)},
+                    for a, b in base.items()},
         "largest_single_factor": ranked.iloc[0].factor if len(ranked) else None,
         "interactions": joint,
         "by_factor": {

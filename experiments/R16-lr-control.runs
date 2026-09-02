@@ -1,0 +1,22 @@
+# R16 — the arm §5.7 is missing. The section's dissociation compares the MLP under StableMax with
+# OrthoGrad against OrthoGrad alone, and reads the difference as the solution each induces. But the
+# two arms differ in three things, not one:
+#
+#   arm                        fraction   loss           lr       ratio   circularity
+#   StableMax + OrthoGrad      0.3        stablemax_ce   1e-3     9.07    0.997
+#   OrthoGrad alone            0.4        softmax_ce     1e-2     0.98    0.302
+#
+# The fraction is conceded in the text and bounded by the fraction sweep. The learning rate is not,
+# and it is the parameter the same section shows decides whether StableMax is stable at all — so as
+# run, the contrast confounds the loss with the rate.
+#
+# This is the cell that separates them: OrthoGrad alone, at the StableMax arm's OWN rate and
+# fraction. Everything matches the 9.07 arm except the loss.
+#
+#   if the ratio stays near 0.98  -> the loss is what matters, and the dissociation holds as stated
+#   if it rises toward 9.07       -> the learning rate was doing the work, and §5.7 must be rewritten
+#
+# Three seeds; the MLP groks in about 900 steps under OrthoGrad, so these are minutes each.
++experiment=tf_mod97_orthograd model=mlp data=mod_add_p97 train.optimizer.lr=1e-3 seed=0 train.steps=40000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd model=mlp data=mod_add_p97 train.optimizer.lr=1e-3 seed=1 train.steps=40000 train.capture_representations=false train.n_snapshots=150
++experiment=tf_mod97_orthograd model=mlp data=mod_add_p97 train.optimizer.lr=1e-3 seed=2 train.steps=40000 train.capture_representations=false train.n_snapshots=150

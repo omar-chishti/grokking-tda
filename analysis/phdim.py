@@ -13,6 +13,7 @@ from grokking_tda.artifacts.reader import Run
 from grokking_tda.tda.phdim import ph_dimension_fit
 
 WINDOWS = (100, 200, 400)
+STRIDE_FACTORS = (1, 2, 3, 5)  # recorded every 20 steps, so effective strides 20-100
 PROJECTIONS = (0, 64, 32)  # 0 keeps the stored 128 dimensions
 STRIDE = 50
 CALIBRATION_DIMS = (1, 2, 3, 4)
@@ -39,6 +40,46 @@ def series(points: np.ndarray, steps: np.ndarray, window: int, *, seed: int = 0)
             {
                 "step": int(steps[end - 1]),
                 **ph_dimension_fit(points[end - window : end], seed=seed),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _median(values: list[dict], key: str) -> float:
+    return float(np.median([v[key] for v in values])) if values else float("nan")
+
+
+def stride_sweep(
+    points: np.ndarray, steps: np.ndarray, window: int, *, seed: int = 0
+) -> pd.DataFrame:
+    """PH-dimension against the *iterate* stride, at a fixed number of points per window.
+
+    Birdal et al. fit on consecutive iterates; these trajectories were recorded every twentieth
+    optimiser step, and the stride is the one parameter §A.6 cannot sweep downward, because a
+    finer sampling is not recoverable from a coarser recording. What is recoverable is the
+    gradient: coarsen 20 to 40, 60 and 100 and see whether the estimate moves. Holding the window
+    at a fixed number of *points* rather than steps is what makes a difference attributable to
+    the sampling rate instead of to how much of training the window covers.
+    """
+    rows = []
+    for factor in STRIDE_FACTORS:
+        thinned, thinned_steps = points[::factor], steps[::factor]
+        if len(thinned) < window:
+            continue
+        values = [
+            ph_dimension_fit(thinned[end - window : end], seed=seed)
+            for end in range(window, len(thinned) + 1, STRIDE)
+        ]
+        finite = [v for v in values if np.isfinite(v["ph_dim"])]
+        rows.append(
+            {
+                "stride": factor * 20,
+                "n_windows": len(values),
+                "n_finite": len(finite),
+                "ph_dim_terminal": values[-1]["ph_dim"] if values else float("nan"),
+                "ph_dim_median": _median(finite, "ph_dim"),
+                "slope_median": _median(finite, "slope"),
+                "steps_spanned": int(thinned_steps[window - 1] - thinned_steps[0]),
             }
         )
     return pd.DataFrame(rows)

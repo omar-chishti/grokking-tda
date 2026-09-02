@@ -10,6 +10,7 @@ import pandas as pd
 from scipy.spatial.distance import pdist
 
 from analysis import cli
+from analysis.bank import CONDITION_KEYS
 from grokking_tda.artifacts.reader import Run
 from grokking_tda.config.schema import PointCloudCfg
 from grokking_tda.tda.pointcloud import build_point_cloud
@@ -94,7 +95,7 @@ def window_ratios(df: pd.DataFrame, t_g: float | None, columns) -> dict:
 
 def verdict_invariance(root: Path, summaries: pd.DataFrame) -> pd.DataFrame:
     """Verdicts under each candidate normaliser, against a band recomputed under the same one."""
-    from analysis.bank import CONDITION_KEYS, condition_table, load_bank, verdicts
+    from analysis.bank import condition_table, load_bank, verdicts
 
     bank, _ = load_bank(root)
     ratios = summaries.set_index("run")
@@ -110,6 +111,23 @@ def verdict_invariance(root: Path, summaries: pd.DataFrame) -> pd.DataFrame:
         observables=columns,
     )
     return table[[*CONDITION_KEYS, "n_runs", "n_grokked", *[f"{c}__verdict" for c in columns]]]
+
+
+def in_window_drift(bank: pd.DataFrame) -> pd.DataFrame:
+    """How much the cloud's scale moves *between the two windows an effect is read across*.
+
+    §3.3.1 motivates the correction with the contraction over the whole run, which reaches
+    $239\\times$; but the baseline window opens at $0.5\\,t_g$, so neither compared window touches
+    initialisation and that is not the drift the ratio suffers. The quotient of the raw and
+    normalised ratios *is* that drift, because the two differ only by the scale divided out.
+    """
+    raw, norm = "h1_max_persistence__ratio", "h1_max_persistence_normalised__ratio"
+    # the condition table excludes re-runs, so this must too, or the two disagree on the same run
+    bank = bank[~bank.replicate] if "replicate" in bank else bank
+    drift = (bank[raw] / bank[norm]).replace([np.inf, -np.inf], np.nan)
+    out = bank[["run", *CONDITION_KEYS, "scale_collapse"]].copy()
+    out["in_window_drift"] = drift
+    return out.dropna(subset=["in_window_drift"])
 
 
 def main() -> None:
@@ -161,6 +179,25 @@ def main() -> None:
     frame.to_csv(args.out / "normalisation.csv", index=False)
 
     if not args.runs:
+        from analysis.bank import load_bank
+
+        bank, _ = load_bank(args.root)
+        drift = in_window_drift(bank)
+        drift.to_csv(args.out / "in_window_drift.csv", index=False)
+        d = drift["in_window_drift"]
+        ref = drift[
+            (drift.modulus == 113) & (drift.weight_decay == 0.1) & (drift.operation == "add")
+        ]
+        print(
+            f"\nscale drift between the compared windows, n={len(d)}: median {d.median():.3f}"
+            f"  IQR {d.quantile(.25):.3f}-{d.quantile(.75):.3f}"
+            f"  (whole-run collapse reaches {drift.scale_collapse.max():.0f}x)"
+        )
+        print(
+            f"  reference regime: median {ref['in_window_drift'].median():.3f}"
+            f" over {len(ref)} runs"
+        )
+
         table = verdict_invariance(args.root, frame)
         table.to_csv(args.out / "normaliser_verdicts.csv", index=False)
         print("\nconditions clearing their null band, by normaliser:")

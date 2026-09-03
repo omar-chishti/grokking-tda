@@ -18,6 +18,7 @@ from analysis.figures.style import BRONZE, INK, RULE, SIENNA, SLATE
 
 PROCESSED = Path("results-sidequest/processed")
 HERO = "mlp_addsub97_f0.3_wd1.0_sq-addsub_s4"
+MARKED_RESIDUE = 24  # shown as b and -b on the two panels, to check the reflection by eye
 NULL = "transformer_addsub113_f0.3_wd0.1_PERM_sq-addsub_s0"
 REFERENCE = "transformer_addsub113_f0.3_wd0.1_sq-addsub_s2"
 CHANCE = np.sqrt(2.0)  # two uncorrelated centred loops of equal norm
@@ -74,10 +75,14 @@ def s1_mirrored_thread(variant=style.THESIS, out_dir=None) -> str:
         threads = [fig.add_subplot(grid[0, i]) for i in (0, 1)]
         unrolled = fig.add_subplot(grid[1, :])
 
+    modulus = int(run["b"].max()) + 1
     xy = run[["x", "y"]].to_numpy()
     centre = xy.mean(0)
     radius = float(np.hypot(*(xy - centre).T).mean())
     lim = radius * 1.28
+
+    b0 = run[(run["operator"] == "add") & (run["b"] == 0)][["x", "y"]].to_numpy()[0]
+    mirror = (b0 - centre) / np.linalg.norm(b0 - centre) * radius * 1.24
 
     for ax, operator, colour, name in ((threads[0], "add", INK, "$a + b$"),
                                        (threads[1], "sub", BRONZE, "$a - b$")):
@@ -86,6 +91,9 @@ def s1_mirrored_thread(variant=style.THESIS, out_dir=None) -> str:
         ax.axis("off")
         ax.add_patch(mpl.patches.Circle(centre, radius, fill=False, color=RULE,
                                         lw=style.HAIRLINE, ls=(0, (1, 3)), zorder=0))
+        # the fixed line of the reflection, which is the shift the anchors agree on
+        ax.plot(*np.array([centre - mirror, centre + mirror]).T,
+                color=RULE, lw=style.HAIRLINE, zorder=1)
         _thread(ax, frame, colour, width=style.HAIRLINE * 1.5, alpha=0.72)
         # device 11: the group's own step, drawn once, at emphasis weight -- the same mark on
         # both panels, and the geometry it lands in is the comparison
@@ -94,6 +102,13 @@ def s1_mirrored_thread(variant=style.THESIS, out_dir=None) -> str:
             "arrowstyle": "-|>,head_width=0.22,head_length=0.48", "color": colour,
             "lw": style.EMPHASIS * 1.6, "shrinkA": 0, "shrinkB": 0})
         ax.plot(*p0, "o", color=colour, ms=2.6, zorder=5)
+        # one residue and its negative, marked on each panel: under the reflection the two land
+        # in the same place, which is the claim of B.3 at a single point
+        marked = MARKED_RESIDUE if operator == "add" else modulus - MARKED_RESIDUE
+        q = frame[frame["b"] == marked][["x", "y"]].to_numpy()[0]
+        ax.plot(*q, "o", mfc="none", mec=colour, ms=6.4, mew=style.DATA, zorder=5)
+        style.direct_label(ax, *q, f"${'' if operator == 'add' else '-'}{MARKED_RESIDUE}$",
+                           colour, dx=4.5, size=7.0)
         ax.set_xlim(centre[0] - lim, centre[0] + lim)
         ax.set_ylim(centre[1] - lim, centre[1] + lim)
         style.panel_title(ax, name, colour=colour, pad=2.0)
@@ -113,7 +128,6 @@ def s1_mirrored_thread(variant=style.THESIS, out_dir=None) -> str:
         style.direct_label(unrolled, len(turns) - 1, turns[-1],
                            "$a + b$" if operator == "add" else "$a - b$", colour, dx=3.0)
 
-    modulus = int(run["b"].max()) + 1
     null = loops[loops["run"] == NULL]
     null = null[null["a0"] == null["a0"].iloc[0]]
     for operator in ("add", "sub"):
@@ -173,8 +187,13 @@ def s2_shift_landscape(variant=style.THESIS, out_dir=None) -> str:
     median = land[(land["run"] == REFERENCE) & (land["family"] == "reflected")]
     at_zero = median[median["shift"] == 0]["residual"].median()
     if variant is not style.TALK:  # on a slide the takeaway line carries these
-        style.value(axes[0], 0.06, 0.30, f"{at_zero:.3f}", "residual at $s = 0$")
-        style.value(axes[0], 0.06, 0.10, "16/16", "anchors agreeing")
+        style.value(axes[0], 0.06, 0.16, f"{at_zero:.3f}", "residual at $s = 0$")
+        style.value(axes[0], 0.42, 0.16, "16/16", "anchors agree")
+    at_null = land[(land["run"] == NULL) & (land["family"] == "rotated")]
+    if variant is not style.TALK:
+        style.value(axes[1], 0.06, 0.30,
+                    f"{at_null[at_null['shift'] == 0]['residual'].median():.3f}",
+                    "best rotation, $s = 0$", colour=SLATE)
     style.value(axes[0], 0.06, 0.62, "reflected", "", colour=BRONZE)
     style.value(axes[0], 0.06, 0.48, "rotated", "", colour=SLATE)
     return _save(fig, "s2-shift-landscape", variant, out_dir)
@@ -219,9 +238,13 @@ def s3_leak_split(variant=style.THESIS, out_dir=None) -> str:
             .dropna()))
 
     axes[0].set_ylabel("held-out accuracy")
-    # named on the plateau, where the two are flat and furthest apart
+    # the memorisation plateau, defined as the text defines it: after train convergence and
+    # before the transition, so the figure and the numbers beside it cannot disagree
     plateau = wide[wide["run"].str.startswith("transformer")]
-    plateau = plateau[(plateau["step"] > 2000) & (plateau["step"] < 4000)]
+    plateau = plateau[(plateau["step"] >= 1500) & (plateau["add"] < 0.5)]
+    if variant is not style.TALK:
+        style.value(axes[0], 0.05, 0.90, f"{plateau['add'].median():.3f}", "plateau, $a + b$")
+        style.value(axes[0], 0.05, 0.66, f"{plateau['sub'].median():.3f}", "plateau, $a - b$")
     style.direct_label(axes[0], 6.5e3, plateau["add"].median(), "$a + b$", INK,
                        ha="right", dy=5.0)
     style.direct_label(axes[0], 6.5e3, plateau["sub"].median(), "$a - b$", BRONZE,

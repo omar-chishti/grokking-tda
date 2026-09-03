@@ -1,0 +1,59 @@
+# R19 — the same five trajectory conditions, recorded at every optimiser step.
+#
+# Why. Birdal et al. estimate dim_PH on 200 *consecutive* iterates: train to convergence,
+# then run 200 more steps and fit on those. Section 6.4 estimates it on 200 iterates at
+# stride 20, which span 4,000 steps — not a coarser version of the same measurement but a
+# different arc of the trajectory, twenty times longer, where drift dominates the local
+# diffusion the fractal structure lives in. A finer sampling is not recoverable from a
+# coarser recording, so the stride is the one parameter section A.6 cannot sweep, and it is
+# the one deviation from the protocol being tested against.
+#
+# One recording at stride 1 gives both: stride 20 is a decimation of it, so the comparison
+# is within-run with nothing else varying. Every line below is its twin in R12 or R13 with
+# `trajectory_every` changed and the run renamed; the recorder draws its projection from its own
+# generator and touches no other RNG, so recording every step does not perturb the optimisation.
+# Measured: a decimated stride-one recording matches its stride-twenty twin to 1.9e-5 -- float32
+# rounding in the projection -- for 2,943 of 3,001 recorded points, and diverges only over the
+# last thousand steps, where accumulated GPU non-determinism finally tells. Nothing below depends
+# on that agreement: every comparison here is a decimation of one recording against itself.
+#
+# The set is the one the correlation needs: five conditions whose measured gaps run
+# 0.00, 0.07-0.71, 0.00-0.70, 0.80, 0.99, covering the range continuously.
+#
+# `_stride1` is already in REPLICATE_TAGS (identity.py), so these cannot pool into the
+# condition table. Storage: steps x 128 x 4 bytes, so 60k steps is 30 MB; 25 runs ~ 600 MB.
+
+# --- p=113, wd 0.1, 60k steps (gap 0.00; the reference regime) ---------------------
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_stride1_s0 seed=0 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1 train.dense_from=8000 train.dense_to=18000
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_stride1_s1 seed=1 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1 train.dense_from=8000 train.dense_to=18000
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_stride1_s2 seed=2 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1 train.dense_from=8000 train.dense_to=18000
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_stride1_s3 seed=3 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1 train.dense_from=8000 train.dense_to=18000
++experiment=tang_repro run_name=transformer_add113_f0.3_wd0.1_stride1_s4 seed=4 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1 train.dense_from=8000 train.dense_to=18000
+
+# --- p=97, f=0.4, orthograd lr 1e-2, 20k steps (gaps 0.07-0.71) -------------------
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_stride1_s0 seed=0 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_stride1_s1 seed=1 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_stride1_s2 seed=2 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_stride1_s3 seed=3 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_orthograd run_name=transformer_add97_f0.4_wd0.0_ortho_stride1_s4 seed=4 train.steps=20000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
+
+# --- p=97, f=0.3, stablemax + orthograd, 40k steps (gaps 0.00-0.70) ---------------
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_stride1_s0 seed=0 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_stride1_s1 seed=1 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_stride1_s2 seed=2 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_stride1_s3 seed=3 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok run_name=transformer_add97_f0.3_wd0.0_stablemax_stride1_s4 seed=4 train.loss=stablemax_ce train.optimizer.name=orthograd_adamw train.optimizer.weight_decay=0.0 train.steps=40000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
+
+# --- p=97, f=0.2, wd 1.0, 60k steps (gap 0.80; the semi-grokking edge) ------------
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_stride1_s0 seed=0 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_stride1_s1 seed=1 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_stride1_s2 seed=2 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_stride1_s3 seed=3 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok run_name=transformer_add97_f0.2_wd1.0_stride1_s4 seed=4 data.train_fraction=0.2 train.steps=60000 train.capture_representations=false train.n_snapshots=150 train.trajectory_dim=128 train.trajectory_every=1
+
+# --- p=97, permuted labels, 40k steps (gap 0.99; the trajectory-level null) -------
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_stride1_s0 seed=0 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_stride1_s1 seed=1 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_stride1_s2 seed=2 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_stride1_s3 seed=3 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1
++experiment=tf_mod97_grok data.label_permutation=true train.steps=40000 run_name=transformer_add97_permuted_stride1_s4 seed=4 train.capture_representations=false train.n_snapshots=200 train.trajectory_dim=128 train.trajectory_every=1

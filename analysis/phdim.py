@@ -3,20 +3,26 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from analysis import cli
-from analysis.bank import bootstrap_median_ci
+from analysis.bank import bootstrap_median_ci, load_bank
 from grokking_tda.artifacts.reader import Run
 from grokking_tda.tda.phdim import ph_dimension_fit
 
 WINDOWS = (100, 200, 400)
-STRIDE_FACTORS = (1, 2, 3, 5)  # recorded every 20 steps, so effective strides 20-100
+STRIDES = (1, 5, 20, 40, 60, 100)  # in optimiser steps, so a run can only report its own and up
 PROJECTIONS = (0, 64, 32)  # 0 keeps the stored 128 dimensions
 STRIDE = 50
 CALIBRATION_DIMS = (1, 2, 3, 4)
+# alpha-stable Levy walks, whose image has Hausdorff dimension alpha: Simsekli et al.'s own
+# model class, and the ladder the Gaussian one cannot supply, since a Brownian path has
+# dimension min(2, k) in every ambient dimension and three of its four rungs coincide.
+ALPHAS = (1.0, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.5, 2.0)
+N_ITERATES = 200  # Birdal et al.'s protocol: the final consecutive iterates, and only those
 
 
 def calibrate(window: int, *, seed: int = 0, repeats: int = 5) -> list[dict]:
@@ -29,6 +35,43 @@ def calibrate(window: int, *, seed: int = 0, repeats: int = 5) -> list[dict]:
             walk = np.cumsum(rng.normal(size=(window, dim)), axis=0)
             rows.append(
                 {"window": window, "true_dim": dim, "repeat": repeat, **ph_dimension_fit(walk)}
+            )
+    return rows
+
+
+def calibrate_alpha(
+    window: int,
+    *,
+    stride: int = 20,
+    dim: int = 128,
+    repeats: int = 10,
+    seed: int = 0,
+) -> list[dict]:
+    """What the estimator returns on walks whose image dimension is known to be ``alpha``.
+
+    Drawn directly in the projected dimensions rather than drawn in parameter space and then
+    projected: a linear combination of alpha-stable variates is alpha-stable with the same index,
+    so this *is* the projected walk and not an approximation of one. Sampled at the stride the
+    real trajectories are read at, so what is calibrated is the measurement rather than the
+    estimator in isolation.
+    """
+    from scipy.stats import levy_stable
+
+    rows = []
+    for alpha in ALPHAS:
+        for repeat in range(repeats):
+            increments = levy_stable.rvs(
+                alpha, 0.0, size=(window * stride, dim), random_state=seed * 1000 + repeat
+            )
+            walk = np.cumsum(increments, axis=0)[::stride][:window]
+            rows.append(
+                {
+                    "window": window,
+                    "stride": stride,
+                    "alpha": alpha,
+                    "repeat": repeat,
+                    **ph_dimension_fit(walk, seed=repeat),
+                }
             )
     return rows
 
@@ -50,20 +93,21 @@ def _median(values: list[dict], key: str) -> float:
 
 
 def stride_sweep(
-    points: np.ndarray, steps: np.ndarray, window: int, *, seed: int = 0
+    points: np.ndarray, steps: np.ndarray, window: int, *, every: int = 20, seed: int = 0
 ) -> pd.DataFrame:
     """PH-dimension against the *iterate* stride, at a fixed number of points per window.
 
-    Birdal et al. fit on consecutive iterates; these trajectories were recorded every twentieth
-    optimiser step, and the stride is the one parameter §A.6 cannot sweep downward, because a
-    finer sampling is not recoverable from a coarser recording. What is recoverable is the
-    gradient: coarsen 20 to 40, 60 and 100 and see whether the estimate moves. Holding the window
-    at a fixed number of *points* rather than steps is what makes a difference attributable to
-    the sampling rate instead of to how much of training the window covers.
+    Birdal et al. fit on consecutive iterates. A recording made every ``every`` steps can be
+    thinned but not refined, so a run reports the strides at or above its own recording rate and
+    R19 exists to supply the rest. Holding the window at a fixed number of *points* rather than
+    steps is what makes a difference attributable to the sampling rate instead of to how much of
+    training the window covers.
     """
     rows = []
-    for factor in STRIDE_FACTORS:
-        thinned, thinned_steps = points[::factor], steps[::factor]
+    for stride in STRIDES:
+        if stride % every:
+            continue
+        thinned, thinned_steps = points[:: stride // every], steps[:: stride // every]
         if len(thinned) < window:
             continue
         values = [
@@ -73,7 +117,7 @@ def stride_sweep(
         finite = [v for v in values if np.isfinite(v["ph_dim"])]
         rows.append(
             {
-                "stride": factor * 20,
+                "stride": stride,
                 "n_windows": len(values),
                 "n_finite": len(finite),
                 "ph_dim_terminal": values[-1]["ph_dim"] if values else float("nan"),
@@ -85,12 +129,32 @@ def stride_sweep(
     return pd.DataFrame(rows)
 
 
+def birdal_protocol(
+    points: np.ndarray, steps: np.ndarray, *, n_iterates: int = N_ITERATES, seed: int = 0
+) -> dict:
+    """The published protocol: train to convergence, then fit on the final *consecutive* iterates.
+
+    Only meaningful on a stride-one recording. On a coarser one the same 200 points span twenty
+    times the training, which is the objection this answers rather than a coarser version of it.
+    """
+    window = points[-n_iterates:]
+    return {
+        "n_iterates": len(window),
+        "steps_spanned": int(steps[-1] - steps[-len(window)]),
+        **ph_dimension_fit(window, seed=seed),
+    }
+
+
 def project(points: np.ndarray, dim: int, seed: int) -> np.ndarray:
     if dim <= 0 or dim >= points.shape[1]:
         return points
     rng = np.random.default_rng(seed)
     matrix = rng.normal(scale=1.0 / np.sqrt(dim), size=(points.shape[1], dim))
     return points @ matrix
+
+
+def recording_every(run: Run) -> int:
+    return int(run.config["train"].get("trajectory_every", 20))
 
 
 def condition_of(name: str) -> str:
@@ -117,16 +181,12 @@ def draw_sweep(runs: list, window: int = 200, seed: int = 0) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim: int) -> dict:
+def _correlate(terminal: pd.Series, bank: pd.DataFrame) -> dict:
     """Terminal dimension against the generalisation gap; runs that never fit are dropped."""
     from scipy import stats
 
-    sub = table[(table.window == window) & (table.projection_dim == dim)]
-    terminal = (
-        sub.sort_values("step").groupby("run").tail(5).groupby("run").ph_dim.median().dropna()
-    )
-    merged = bank.set_index("run").join(terminal.rename("ph_dim"), how="inner")
-    merged = merged[merged.fits_train_set & merged.ph_dim.notna()]
+    joined = bank.set_index("run").join(terminal.rename("ph_dim"), how="inner")
+    merged = joined[joined.fits_train_set & joined.ph_dim.notna()]
     if len(merged) < 8:
         return {"n": int(len(merged))}
 
@@ -152,8 +212,6 @@ def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim
     return {
         "weight_norm_vs_gap": comparator,
         "n": int(len(merged)),
-        "window": window,
-        "projection_dim": dim,
         "gap_range": [float(gap.min()), float(gap.max())],
         "gap_distinct_values": int(np.unique(np.round(gap, 2)).size),
         "ph_dim_range": [float(dimension.min()), float(dimension.max())],
@@ -161,9 +219,88 @@ def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim
         "spearman_p": float(rho.pvalue),
         "pearson_r": float(pearson.statistic),
         "pearson_p": float(pearson.pvalue),
-        "n_excluded_not_fitting": int((~bank.set_index("run").join(
-            terminal.rename("ph_dim"), how="inner").fits_train_set).sum()),
+        "n_excluded_not_fitting": int((~joined.fits_train_set).sum()),
     }
+
+
+def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim: int) -> dict:
+    sub = table[(table.window == window) & (table.projection_dim == dim)]
+    terminal = (
+        sub.sort_values("step").groupby("run").tail(5).groupby("run").ph_dim.median().dropna()
+    )
+    return {"window": window, "projection_dim": dim} | _correlate(terminal, bank)
+
+
+def stride_main(runs: list, args) -> None:
+    """The sampling-rate axis §A.6 could not sweep downward until R19 recorded at stride one."""
+    window = args.stride_window
+    frames, protocol = [], []
+    for run_dir in runs:
+        run = Run(run_dir)
+        trajectory = run.trajectory()
+        if trajectory is None:
+            continue
+        steps, points = trajectory
+        every = recording_every(run)
+        frame = stride_sweep(points, steps, window, every=every)
+        if frame.empty:
+            continue
+        frame.insert(0, "recorded_every", every)
+        frame.insert(0, "condition", condition_of(run.run_name))
+        frame.insert(0, "run", run.run_name)
+        frames.append(frame)
+        if every == 1:
+            protocol.append(
+                {"run": run.run_name, "condition": condition_of(run.run_name)}
+                | birdal_protocol(points, steps)
+            )
+        print(f"  {run.run_name}  every {every}", flush=True)
+
+    table = pd.concat(frames, ignore_index=True)
+    args.out.mkdir(parents=True, exist_ok=True)
+    table.to_csv(args.out / "phdim_stride.csv", index=False)
+
+    summary: dict = {"window": window, "strides": {}, "protocol": {}}
+    # a run set outside the thesis tree has no committed bank, so summarise it here rather
+    # than write one into `results/processed/thesis/` and move the run count the chapters quote
+    bank_path = args.bank or args.out / "bank.csv"
+    bank = pd.read_csv(bank_path) if bank_path.exists() else load_bank(args.root)[0]
+    if bank is not None:
+        for stride, sub in table.groupby("stride"):
+            terminal = sub.set_index("run").ph_dim_terminal.dropna()
+            summary["strides"][f"s{stride}"] = {"n_runs": int(len(terminal))} | _correlate(
+                terminal, bank
+            )
+        if protocol:
+            fits = pd.DataFrame(protocol)
+            summary["protocol"] = {
+                "n_iterates": N_ITERATES,
+                "n_runs": int(len(fits)),
+                "ph_dim_median": float(fits.ph_dim.median()),
+                "steps_spanned": int(fits.steps_spanned.median()),
+            } | _correlate(fits.set_index("run").ph_dim.dropna(), bank)
+            fits.to_csv(args.out / "phdim_protocol.csv", index=False)
+
+    print("\nmedian terminal dimension by stride, and its correlation with the gap:")
+    for stride, sub in table.groupby("stride"):
+        block = summary["strides"].get(f"s{stride}", {})
+        rho = block.get("spearman_rho")
+        print(
+            f"  stride {stride:4d}  n {len(sub):3d}  dim {sub.ph_dim_terminal.median():.3f}  "
+            f"span {int(sub.steps_spanned.median()):6d} steps  "
+            + (f"rho {rho:+.3f} (p={block['spearman_p']:.3g}, n={block['n']})" if rho else "")
+        )
+    if summary["protocol"]:
+        block = summary["protocol"]
+        print(
+            f"\nBirdal et al.'s protocol, the last {N_ITERATES} consecutive iterates on "
+            f"{block['n_runs']} runs: dim {block['ph_dim_median']:.3f}, "
+            f"rho {block.get('spearman_rho', float('nan')):+.3f} "
+            f"(p={block.get('spearman_p', float('nan')):.3g}, n={block.get('n')})"
+        )
+    (args.out / "phdim_stride.json").write_text(json.dumps(summary, indent=2))
+    written = "phdim_stride.csv, .json" + (" and phdim_protocol.csv" if protocol else "")
+    print(f"\nwritten to {args.out}/{written}")
 
 
 def main() -> None:
@@ -173,11 +310,35 @@ def main() -> None:
     ap.add_argument("--projection-seeds", type=int, default=2)
     ap.add_argument("--draw-sweep", action="store_true",
                     help="only sweep the number of subsamples per size, and stop")
+    ap.add_argument("--stride-sweep", action="store_true",
+                    help="only sweep the sampling rate, with Birdal et al.'s protocol, and stop")
+    ap.add_argument("--stride-window", type=int, default=200,
+                    help="points per window in the stride sweep; the window the chapters quote")
+    ap.add_argument("--bank", type=Path, default=None,
+                    help="the bank to correlate against; defaults to one beside --out")
+    ap.add_argument("--alpha-calibration", action="store_true",
+                    help="only calibrate on alpha-stable walks of known image dimension, and stop")
     args = ap.parse_args()
+
+    if args.alpha_calibration:
+        table = pd.DataFrame(
+            [row for window in args.windows for row in calibrate_alpha(window)]
+        )
+        args.out.mkdir(parents=True, exist_ok=True)
+        table.to_csv(args.out / "phdim_alpha_calibration.csv", index=False)
+        print("estimator on alpha-stable walks, whose image dimension is alpha:\n")
+        summary = table.groupby(["window", "alpha"]).ph_dim.agg(["median", "std"])
+        print(summary.round(3).to_string())
+        print(f"\nwritten to {args.out}/phdim_alpha_calibration.csv")
+        return
 
     runs = sorted(p.parent for p in args.root.glob("*/trajectory.npz"))
     if not runs:
         raise SystemExit(f"no trajectory.npz under {args.root}")
+
+    if args.stride_sweep:
+        stride_main(runs, args)
+        return
 
     if args.draw_sweep:
         table = draw_sweep(runs)

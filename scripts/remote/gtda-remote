@@ -22,7 +22,7 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=config.sh
 source "${SCRIPT_DIR}/config.sh"
 
-STATE_DIR="${PROJECT_DIR}/results/.remote"
+STATE_DIR="${PROJECT_DIR}/${RESULTS_DIR}/.remote"
 
 die() { echo "error: $*" >&2; exit 1; }
 
@@ -113,7 +113,7 @@ or relax MIN_FREE_MB / MAX_LOAD"
     done < "${manifest}"
     echo "${i} runs across ${n_hosts} hosts, ${JOBS_PER_HOST} concurrent each"
 
-    on_shell "mkdir -p '${REMOTE_BASE}/slices' '${REMOTE_BASE}/results/logs'"
+    on_shell "mkdir -p '${REMOTE_BASE}/slices' '${REMOTE_BASE}/${RESULTS_DIR}/logs'"
     rsync -az --rsh="ssh ${SHELL_OPTS[*]}" \
         "${STATE_DIR}/" "${JUMP_HOST}:${REMOTE_BASE}/slices/"
 
@@ -134,7 +134,7 @@ or relax MIN_FREE_MB / MAX_LOAD"
             export PATH=\"\$HOME/.local/bin:\$PATH\" UV_CACHE_DIR='${UV_CACHE}'
             cd '${REMOTE_BASE}'
             tmux new-session -d -s ${TMUX_SESSION} \
-                'bash scripts/remote/worker.sh ${REMOTE_BASE}/slices/${host}.slice ${JOBS_PER_HOST} ${REMOTE_BASE}/results'
+                'bash scripts/remote/worker.sh ${REMOTE_BASE}/slices/${host}.slice ${JOBS_PER_HOST} ${REMOTE_BASE}/${RESULTS_DIR}'
         " 2>/dev/null; then
             echo "${host}" >> "${STATE_DIR}/hosts"
             started=$((started + 1))
@@ -179,10 +179,10 @@ status() {
     on_shell "
         cd '${REMOTE_BASE}' || exit 0
         queued=\$(cat${slices} 2>/dev/null | grep -cvE '^[[:space:]]*(#|\$)' || true)
-        started=\$(ls -d results/raw/*/ 2>/dev/null | wc -l)
+        started=\$(ls -d ${RESULTS_DIR}/raw/*/ 2>/dev/null | wc -l)
         echo \"\${started} run dirs in the tree, \${queued} queued on the hosts above\"
-        [ -s results/logs/failures.txt ] && { echo '--- FAILURES ---'; cat results/logs/failures.txt; }
-        [ -d results/raw ] && python3 scripts/remote/summarise.py results/raw
+        [ -s ${RESULTS_DIR}/logs/failures.txt ] && { echo '--- FAILURES ---'; cat ${RESULTS_DIR}/logs/failures.txt; }
+        [ -d ${RESULTS_DIR}/raw ] && python3 scripts/remote/summarise.py ${RESULTS_DIR}/raw
     "
 }
 
@@ -203,7 +203,7 @@ analyse() {
         cd '${REMOTE_BASE}'
         tmux kill-session -t ${TMUX_SESSION}-an 2>/dev/null || true
         tmux new-session -d -s ${TMUX_SESSION}-an \
-            'FORCE=${FORCE:-} bash scripts/remote/analyse.sh ${REMOTE_BASE}/results/raw ${JOBS_PER_HOST}'
+            'FORCE=${FORCE:-} bash scripts/remote/analyse.sh ${REMOTE_BASE}/${RESULTS_DIR}/raw ${JOBS_PER_HOST}'
     "
     echo "started; poll with: $0 status"
 }
@@ -213,7 +213,7 @@ analyse() {
 # figures — kilobytes per run. Pass --all to mirror the raw snapshots too.
 fetch() {
     local all=${1:-}
-    mkdir -p "${PROJECT_DIR}/results/raw"
+    mkdir -p "${PROJECT_DIR}/${RESULTS_DIR}/raw"
     # snapshots/ is excluded before the directory include, so rsync never descends into it:
     # a bank of this size carries tens of thousands of snapshot directories, and walking them
     # over NFS costs an hour and creates the same number of empty directories here.
@@ -221,10 +221,10 @@ fetch() {
                    --include='figures/***' --include='metrics.jsonl' --include='events.jsonl'
                    --include='manifest.json' --exclude='*')
     [[ "${all}" == "--all" ]] && filters=()
-    echo "fetching ${REMOTE_BASE}/results/raw -> results/raw ${all}"
+    echo "fetching ${REMOTE_BASE}/${RESULTS_DIR}/raw -> ${RESULTS_DIR}/raw ${all}"
     rsync -az --rsh="ssh ${SHELL_OPTS[*]}" "${filters[@]}" \
-        "${JUMP_HOST}:${REMOTE_BASE}/results/raw/" "${PROJECT_DIR}/results/raw/"
-    echo "$(ls -d "${PROJECT_DIR}"/results/raw/*/ 2>/dev/null | wc -l) run dirs locally"
+        "${JUMP_HOST}:${REMOTE_BASE}/${RESULTS_DIR}/raw/" "${PROJECT_DIR}/${RESULTS_DIR}/raw/"
+    echo "$(ls -d "${PROJECT_DIR}/${RESULTS_DIR}"/raw/*/ 2>/dev/null | wc -l) run dirs locally"
 }
 
 # The manifest lines whose run directory does not yet exist remotely. The pool is often
@@ -236,7 +236,7 @@ remaining() {
     local manifest=${1:-}
     [[ -f "${manifest}" ]] || die "manifest not found: ${manifest}"
     local existing
-    existing=$(on_shell "ls '${REMOTE_BASE}/results/raw' 2>/dev/null" | tr -d '\r')
+    existing=$(on_shell "ls '${REMOTE_BASE}/${RESULTS_DIR}/raw' 2>/dev/null" | tr -d '\r')
     while IFS= read -r line; do
         [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
         [[ "${line}" =~ run_name=([^[:space:]]+) ]] || { echo "${line}"; continue; }

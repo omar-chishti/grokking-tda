@@ -61,6 +61,25 @@ def register_configs() -> None:
             task="permutation_group", operation="compose", modulus=120, train_fraction=0.5
         ),
     )
+    # the operator as a token: one model, both operations, R24 (a side quest, not the programme)
+    cs.store(
+        group="data",
+        name="mod_addsub_p113",
+        node=DataCfg(task="modular_multiop", operation="add+sub", modulus=113,
+                     train_fraction=0.3),
+    )
+    cs.store(
+        group="data",
+        name="mod_addsub_p97",
+        node=DataCfg(task="modular_multiop", operation="add+sub", modulus=97,
+                     train_fraction=0.3),
+    )
+    cs.store(
+        group="data",
+        name="mod_addsub_p11_smoke",
+        node=DataCfg(task="modular_multiop", operation="add+sub", modulus=11,
+                     train_fraction=0.5),
+    )
     smoke = DataCfg("modular_arithmetic", "add", 11, 0.5)
     cs.store(group="data", name="mod_add_p11_smoke", node=smoke)
 

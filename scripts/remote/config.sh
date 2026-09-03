@@ -11,6 +11,9 @@ JUMP_HOST="${JUMP_HOST:-imperial}"           # a Host entry in ~/.ssh/config
 # NFS-mounted on every DoC machine. One shared checkout, one shared environment,
 # one shared results tree — so no per-node bootstrap and no per-node fetch.
 REMOTE_BASE="${REMOTE_BASE:-/vol/bitbucket/${REMOTE_USER}/grokking-tda}"
+# Which results tree under it. The default is the thesis bank; a side quest sets this so
+# that its runs cannot be loaded by anything that reads the bank.
+RESULTS_DIR="${RESULTS_DIR:-results}"
 UV_CACHE="${UV_CACHE:-/vol/bitbucket/${REMOTE_USER}/.uv-cache}"
 
 # Lab 210 GPU workstations. `probe` filters this down to what is actually idle.

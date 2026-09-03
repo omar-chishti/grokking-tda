@@ -21,6 +21,7 @@ class GrokkingMLP(HookedModule):
         hidden_dim: int = 256,
         depth: int = 2,
         act: str = "relu",
+        n_operands: int = 2,
     ) -> None:
         super().__init__()
         if depth < 1:
@@ -28,7 +29,9 @@ class GrokkingMLP(HookedModule):
         self.embed = nn.Embedding(vocab_size, embedding_dim)
         act_cls = _ACTIVATIONS[act]
         layers: list[nn.Module] = []
-        current = embedding_dim * 2  # two operands concatenated
+        # every token but "="; two for a binary operation, three when the operator is one
+        self.n_operands = n_operands
+        current = embedding_dim * n_operands
         self.hook_hidden = HookPoint()
         for _ in range(depth):
             layers += [nn.Linear(current, hidden_dim), act_cls()]
@@ -39,7 +42,7 @@ class GrokkingMLP(HookedModule):
         self.hidden_hook = "hook_hidden"  # what AnalysisCfg.representation="hidden" reads
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
-        operands = tokens[:, :2]  # ignore "=" token
+        operands = tokens[:, : self.n_operands]  # ignore "=" token
         embedded = self.embed(operands).flatten(start_dim=1)
         hidden = self.hook_hidden(self.mlp(embedded))
         return self.unembed(hidden)
@@ -53,6 +56,7 @@ def build_mlp(model_cfg, meta: TaskMeta) -> GrokkingMLP:
     return GrokkingMLP(
         vocab_size=meta.vocab_size,
         num_classes=meta.num_classes,
+        n_operands=meta.seq_len - 1,
         embedding_dim=model_cfg.embedding_dim,
         hidden_dim=model_cfg.hidden_dim,
         depth=model_cfg.depth,

@@ -60,7 +60,7 @@ def condition_key(config: dict) -> str:
 # batching, fields `config_fields` does not carry, so they would otherwise collapse into the
 # reference regime's condition and drag a 200k budget into its interval and the null band.
 # A new re-run programme adds its tag here before it launches, or it pools in silence.
-REPLICATE_TAGS = ("_dense_", "_traj_", "_stride1", "_recipe-")
+REPLICATE_TAGS = ("_dense_", "_traj_", "_stride1", "_recipe-", "_sq-")
 
 
 def is_replicate(run_name: str, config: dict) -> bool:

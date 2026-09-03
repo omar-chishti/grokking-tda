@@ -1,0 +1,41 @@
+# R24 — the operator as a transformation. A SIDE QUEST, not the main programme.
+#
+# One model, both a+b and a-b, with the operator as a token. The question is whether the network
+# reuses one circle traversed in opposite directions, or builds two. Persistence cannot answer it:
+# the diagrams are over Z/2 where -1 = +1, and a rotation and a reflection of a circle have the
+# same barcode. The degree of the induced map on H_1 is what separates them.
+#
+# Design, measurements and what each outcome would mean:
+#   Documentation/SideQuest_Orientation_2026-09-03.md
+#
+# LAUNCH WITH A SEPARATE RESULTS TREE, or these runs enter the thesis bank:
+#   RESULTS_DIR=results-sidequest REMOTE_USER=oc525 ./scripts/remote/gtda-remote launch \
+#       experiments/R24-addsub.runs
+# The `_sq-` tag in the run name is the second guard (identity.REPLICATE_TAGS); the separate tree
+# is the first, and the reason nothing in results/ can move.
+#
+# The question is about a circle, so it is asked where a circle exists. The canonical regime's
+# terminal circularity is 0.256 and §4.5 shows it is where the signature is *absent*; both arms
+# below are configurations whose single-operation behaviour the bank already characterises, so
+# each joint run has a twin to be read against.
+
+# --- Arm A: the reference recipe, p=113, terminal circularity 0.759, single-op t_g ~12,000 ---
+# 100,000 steps is eight times that, and the joint task carries twice the data at the same
+# fraction, which usually brings the transition earlier rather than later.
++experiment=tang_repro data=mod_addsub_p113 seed=0 train.steps=100000 train.n_snapshots=120 run_name=transformer_addsub113_f0.3_wd0.1_sq-addsub_s0
++experiment=tang_repro data=mod_addsub_p113 seed=1 train.steps=100000 train.n_snapshots=120 run_name=transformer_addsub113_f0.3_wd0.1_sq-addsub_s1
++experiment=tang_repro data=mod_addsub_p113 seed=2 train.steps=100000 train.n_snapshots=120 run_name=transformer_addsub113_f0.3_wd0.1_sq-addsub_s2
++experiment=tang_repro data=mod_addsub_p113 seed=3 train.steps=100000 train.n_snapshots=120 run_name=transformer_addsub113_f0.3_wd0.1_sq-addsub_s3
++experiment=tang_repro data=mod_addsub_p113 seed=4 train.steps=100000 train.n_snapshots=120 run_name=transformer_addsub113_f0.3_wd0.1_sq-addsub_s4
+
+# --- Arm B: the MLP, p=97, terminal circularity 0.988 — the roundest embedding in the bank ---
++experiment=mlp_mod97_grok data=mod_addsub_p97 seed=0 train.steps=60000 train.n_snapshots=100 train.snapshot_schedule=linear run_name=mlp_addsub97_f0.3_wd1.0_sq-addsub_s0
++experiment=mlp_mod97_grok data=mod_addsub_p97 seed=1 train.steps=60000 train.n_snapshots=100 train.snapshot_schedule=linear run_name=mlp_addsub97_f0.3_wd1.0_sq-addsub_s1
++experiment=mlp_mod97_grok data=mod_addsub_p97 seed=2 train.steps=60000 train.n_snapshots=100 train.snapshot_schedule=linear run_name=mlp_addsub97_f0.3_wd1.0_sq-addsub_s2
++experiment=mlp_mod97_grok data=mod_addsub_p97 seed=3 train.steps=60000 train.n_snapshots=100 train.snapshot_schedule=linear run_name=mlp_addsub97_f0.3_wd1.0_sq-addsub_s3
++experiment=mlp_mod97_grok data=mod_addsub_p97 seed=4 train.steps=60000 train.n_snapshots=100 train.snapshot_schedule=linear run_name=mlp_addsub97_f0.3_wd1.0_sq-addsub_s4
+
+# --- Arm C: the null. Every measurement below returns a number on noise, and without this a
+# winding of +-1 on five seeds means nothing. Permuted labels: memorises, never generalises. ---
++experiment=tang_repro data=mod_addsub_p113 data.label_permutation=true seed=0 train.steps=60000 train.n_snapshots=80 run_name=transformer_addsub113_f0.3_wd0.1_PERM_sq-addsub_s0
++experiment=tang_repro data=mod_addsub_p113 data.label_permutation=true seed=1 train.steps=60000 train.n_snapshots=80 run_name=transformer_addsub113_f0.3_wd0.1_PERM_sq-addsub_s1

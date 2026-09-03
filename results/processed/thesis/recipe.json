@@ -10,7 +10,20 @@
     }
   },
   "largest_single_factor": "n_layers",
-  "interactions": {},
+  "interactions": {
+    "canonical:lr+n_layers": {
+      "joint": 0.5166768458822673,
+      "sum_of_singles": 0.8621708849271807,
+      "interaction": -0.3454940390449135,
+      "n": 3
+    },
+    "reference:lr+n_layers": {
+      "joint": -0.41548443307709326,
+      "sum_of_singles": -0.34019759238312564,
+      "interaction": -0.07528684069396763,
+      "n": 3
+    }
+  },
   "by_factor": {
     "act": {
       "canonical": 0.199398637919104,

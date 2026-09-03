@@ -8,11 +8,11 @@
   },
   "figures": [
     {
-      "figure": "5.3",
-      "name": "headtohead",
-      "claim": "Topology adds little over the cheap baselines, and nothing to timing.",
-      "file": "fig-5-3-headtohead.csv",
-      "rows": 60
+      "figure": "4.4",
+      "name": "robustness",
+      "claim": "Five of sixteen conditions clear the null; one runs below it.",
+      "file": "fig-4-4-robustness.csv",
+      "rows": 23
     }
   ]
 }

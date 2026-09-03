@@ -76,9 +76,13 @@ The series passed through is the one the chapters quote, the scale-normalised H1
 (`bank.HEADLINE_OBSERVABLE`). The summary's top-level `lead_lag_steps` belongs to the raw series.
 Both are in the frame under names that say which: `t_top` and `t_top__raw`.
 
-**Dense re-runs are separated.** The twenty R12 runs repeat existing conditions on a different
-snapshot schedule, which moves every window median. They are excluded from the condition table and
-the null band, and kept for the trajectory analyses of Chapter 6.
+**Repeats are separated.** `is_replicate` keys on the tags in `identity.REPLICATE_TAGS`: the
+twenty R12 dense runs and the twenty trajectory re-runs repeat existing conditions on a different
+snapshot schedule, which moves every window median, and the forty-eight recipe cells of R14 and R18
+sit outside the condition table by construction. All are excluded from the condition table, the null
+band, the circularity association and the head-to-head; the trajectory ones are kept for Chapter 6.
+**A re-run programme adds its own tag there before it launches**, or it silently pools into the
+condition it repeats.
 
 ## Window rule (§4.2)
 
@@ -116,7 +120,7 @@ member has to be chosen downstream, and the two downstream roles want different 
   series best tracks test accuracy across grokking runs, and returns `k = 20`.
 - **The circularity measure**, for §4.5. A circle is power in a few modes, so a large `k` measures
   something else; this uses `CIRCULARITY_K = 5`. `thesis_numbers.circularity_k_sensitivity` reports
-  the association at every member, so the claim does not rest on the choice (ρ spans 0.63–0.72).
+  the association at every member, so the claim does not rest on the choice (ρ spans 0.67–0.75).
 
 Under multiplication and division the grokked circle is ordered by discrete logarithm, so
 `circularity_column` selects the group-reordered variant there; the residue-axis transform is blind

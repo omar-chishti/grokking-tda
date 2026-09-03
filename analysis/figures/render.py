@@ -18,6 +18,19 @@ from matplotlib.patches import Rectangle
 from analysis.figures import style as S
 
 
+def _text_width(fig, ax, text: str, size: float) -> float:
+    """How wide ``text`` would be in the axes' own data units, for a collision test.
+
+    Measured rather than estimated: the strings here are digits in a proportional face, and a
+    per-character guess is wrong by enough to place a label on its neighbour.
+    """
+    probe = ax.text(0, 0, text, fontsize=size, alpha=0.0)
+    box = probe.get_window_extent(renderer=fig.canvas.get_renderer())
+    probe.remove()
+    (x0, _), (x1, _) = ax.transData.inverted().transform([(box.x0, 0), (box.x1, 0)])
+    return abs(x1 - x0)
+
+
 def _spearman(x, y) -> tuple[float, float]:
     """Rank correlation on the rows a panel actually draws, so it cannot drift from them."""
     from scipy import stats
@@ -89,6 +102,8 @@ def _condition_row(**conditions):
     frame = _load("fig-4-4-robustness.csv")
     for key, value in conditions.items():
         frame = frame[frame[key] == value]
+    if len(frame) != 1:
+        raise ValueError(f"{len(frame)} conditions match {conditions}; name one")
     row = frame.iloc[0]
     return SimpleNamespace(
         lo=float(row["h1_max_persistence_normalised__lo"]),
@@ -591,6 +606,8 @@ def circularity(variant: S.Variant) -> str:
 
     ax.set_yscale("log")
     ax.set_xlim(0.05, 1.02)
+    # autoscale stops at the largest ratio, 13.78, which clips the marker drawn on it
+    ax.set_ylim(0.14, 20.0)
     ax.set_xticks([0.1, 0.3, 0.5, 0.7, 0.9])
     ax.set_yticks([0.3, 1, 3, 10])
     ax.set_yticklabels(["0.3", "1", "3", "10"])
@@ -618,7 +635,7 @@ def circularity(variant: S.Variant) -> str:
     ax2.spines["bottom"].set_bounds(0.97, 1.03)
     ax2.spines["bottom"].set_color(S.RULE)
 
-    lx, ly, lw_, lh = 0.585, 0.045, 0.400, 0.235
+    lx, ly, lw_, lh = 0.600, 0.045, 0.400, 0.235   # right edge flush with the axis end
     ax.add_patch(plt.Rectangle((lx, ly), lw_, lh, transform=ax.transAxes, facecolor="none",
                                edgecolor=S.RULE, lw=S.HAIRLINE, zorder=6))
     ax.text(lx + 0.028, ly + lh - 0.030, "run", transform=ax.transAxes, color=S.INK,
@@ -769,7 +786,7 @@ def noncyclic(variant: S.Variant) -> str:
         _logx(ax, 100)
         ax.set_xlim(0, d.step.max())
         S.seed_comb(ax, sorted(d.groupby("run").t_g.first()), height=0.06)
-    top.set_ylim(-0.03, 1.06)
+    top.set_ylim(-0.03, 1.28)   # headroom: at seventeen seeds the curves reached the tally row
     top.set_yticks([0, 0.5, 1.0])
     top.set_yticklabels(["0", "0.5", "1"])
     top.set_xticklabels([])
@@ -794,16 +811,26 @@ def noncyclic(variant: S.Variant) -> str:
 
     S.null_band(right, *band)
     right.axvline(1.0, color=S.SIENNA, lw=S.HAIRLINE, zorder=1)
+    ends = {}
     for run in runs:
         g = d[d.run == run].sort_values("step").dropna(subset=["step_over_tg"])
         colour = S.SLATE if run == censored else S.INK
         ratio = _baseline_ratio(g, "h1_total_persistence_normalised")
         right.plot(g.step_over_tg, ratio.values, color=colour, lw=0.9, zorder=3)
-        S.direct_label(right, g.step_over_tg.iloc[-1], ratio.iloc[-1], f"{ratio.iloc[-1]:.1f}",
-                       colour, dx=4, size=6.6 * variant.scale)
+        # the label belongs to the last point still inside the frame, not past its edge
+        seen = g.step_over_tg <= 8.0
+        ends[run] = (g.step_over_tg[seen].iloc[-1], ratio[seen.values].iloc[-1])
         if run == censored:
-            right.scatter([g.step_over_tg.iloc[-1]], [ratio.iloc[-1]], s=17, marker="o",
+            right.scatter([ends[run][0]], [ends[run][1]], s=17, marker="o",
                           facecolors="none", edgecolors=S.SLATE, linewidths=0.8, zorder=5)
+    # seventeen end labels overprint each other and the curves; the claim is about the
+    # ensemble, so only its edges and the censored seed are named
+    highest = max(ends, key=lambda r: ends[r][1])
+    lowest = min((r for r in ends if r != censored), key=lambda r: ends[r][1])
+    for run in (highest, lowest, censored):
+        x, y = ends[run]
+        S.direct_label(right, x, y, f"{y:.1f}", S.SLATE if run == censored else S.INK,
+                       dx=4, size=6.6 * variant.scale)
 
     right.set_xscale("log")
     right.set_yscale("log")
@@ -820,7 +847,7 @@ def noncyclic(variant: S.Variant) -> str:
     S.panel_title(right, r"$S_5$   rescaled by $t_g$", pad=7)
     S.annotate(right, 1.0, 0.045, r"$t_g$", colour=S.SIENNA, ha="left", style="normal",
                size=6.6 * variant.scale, transform=right.get_xaxis_transform())
-    S.annotate(right, 0.030, band[1] * 1.10, "null", colour=S.INK, style="normal",
+    S.annotate(right, 0.030, band[0] * 0.72, "null", colour=S.INK, style="normal", va="top",
                size=6.2 * variant.scale, transform=right.get_yaxis_transform())
 
     if variant.name == "thesis":
@@ -937,13 +964,24 @@ def pid(variant: S.Variant) -> str:
              ("unique_b", "unique to Fourier", S.BRONZE),
              ("synergistic", "synergistic", S.SLATE)]
     regimes = [("pooled", "pooled"), ("canonical", "canonical regime")]
-    span = (0.0, float(d.total.max()) * 1.16)
+    right = float(d.total.max()) * 1.16
+    for key, _ in regimes:                      # the interval whiskers reach further than the bars
+        block = d[d.regime == key].set_index("atom")
+        if block.empty or "unique_a" not in block.index:
+            continue
+        before = sum(float(block.bits[a]) for a, _, _ in atoms[:atoms.index(
+            next(t for t in atoms if t[0] == "unique_a"))])
+        hi = float(block.ci_hi["unique_a"])
+        if np.isfinite(hi):
+            right = max(right, (before + hi) * 1.30)
+    span = (0.0, right)
 
     fig = S.figure(S.FULL, 0.330, variant)
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.036, right=0.952, bottom=0.255, top=0.955)
     size = 6.6 * variant.scale
 
+    ax.set_xlim(*span)
     ya = ax.get_yaxis_transform()  # x in axes fractions, y in rows
     for frac, (_, name, colour) in zip((0.0, 0.215, 0.475, 0.775), atoms, strict=True):
         ax.add_patch(Rectangle((frac, -1.36), 0.020, 0.30, transform=ya, clip_on=False,
@@ -959,21 +997,29 @@ def pid(variant: S.Variant) -> str:
         row = i * 1.62
         ax.text(0.0, row - 0.78, label, ha="left", va="bottom", color=S.INK,
                 family=S.SMALLCAPS, fontsize=size * 1.04)
-        left, zeros_drawn = 0.0, 0
+        # every segment is named under the bar. The thin ones put their names within a few
+        # thousandths of a nat of each other, so a name that will not clear the one before it
+        # slides right until it does and takes a leader back to the segment it belongs to.
+        # A second line is not available: the row beneath is only 1.62 away and carries a title.
+        left, occupied = 0.0, -np.inf
+        pad = 0.012 * (span[1] - span[0])
         for atom, _, colour in atoms:
             width = float(block.bits[atom])
             ax.barh([row], [width], left=left, height=0.50, color=colour, zorder=3,
                     edgecolor=variant.ground or "white", linewidth=0.5)
             if width <= 0.004:  # a structural zero, ticked where the segment would have been
                 ax.plot([left, left], [row - 0.29, row + 0.29], color=colour, lw=1.3, zorder=4)
-                lift = 2.5 + 9.0 * (zeros_drawn := zeros_drawn + 1) - 9.0
-                ax.annotate(f"{width:.3f}", xy=(left, row - 0.29), xytext=(0, lift),
-                            textcoords="offset points", ha="center", va="bottom",
-                            color=S.INK, fontsize=size)
-            else:
-                ax.annotate(f"{width:.3f}", xy=(left + 0.5 * width, row + 0.29),
-                            xytext=(0, -2.5), textcoords="offset points", ha="center",
-                            va="top", color=S.INK, fontsize=size)
+            text = f"{width:.3f}"
+            centre = left + 0.5 * width
+            half = 0.5 * _text_width(fig, ax, text, size)
+            at = max(centre, occupied + pad + half)
+            occupied = at + half
+            if at - centre > 0.004:
+                ax.plot([centre, centre, at], [row + 0.27, row + 0.325, row + 0.325],
+                        color=S.RULE, lw=S.HAIRLINE, zorder=2, solid_joinstyle="round")
+            ax.annotate(text, xy=(at, row + 0.33), xytext=(0, -1.0),
+                        textcoords="offset points", ha="center", va="top",
+                        color=S.INK, fontsize=size)
             intervals.append((row, left, atom, colour))
             left += width
         total, n = float(block.total.iloc[0]), int(block.n.iloc[0])
@@ -997,7 +1043,6 @@ def pid(variant: S.Variant) -> str:
         ax.annotate(r"unique to $H_1$, $95\%$", xy=(left + hi, row - 0.44), xytext=(4, 0),
                     textcoords="offset points", ha="left", va="center", color=S.INK,
                     alpha=0.62, fontsize=size * 0.94)
-        span = (span[0], max(span[1], (left + hi) * 1.30))
 
     ylim = (2.55, -1.95)
     ax.set_ylim(*ylim)
@@ -1007,7 +1052,7 @@ def pid(variant: S.Variant) -> str:
     S.range_frame(ax, x=span, y=ylim)
     ax.spines["left"].set_visible(False)
 
-    S.annotate(ax, 1.0, 1.05, "Gaussian MMI,  Williams\u2013Beer lattice",
+    S.annotate(ax, 1.0, 1.005, "Gaussian MMI,  Williams\u2013Beer lattice",
                colour=S.INK, ha="right", va="bottom", style="normal",
                size=6.4 * variant.scale)
 
@@ -1258,13 +1303,17 @@ def interventions(variant: S.Variant) -> str:
                              bottom=0.135, top=0.395, wspace=0.070)
     strip = fig.add_subplot(lower[0, 0])
     bars = fig.add_subplot(lower[0, 1])
+    # three arms, differing pairwise in one thing: the loss at a rate, the rate at a loss
     pairs = [
         _condition_row(block="intervention", model="mlp", loss="stablemax_ce",
-                       optimizer="orthograd_adamw"),
+                       optimizer="orthograd_adamw", lr=1e-3),
         _condition_row(block="intervention", model="mlp", loss="softmax_ce",
-                       optimizer="orthograd_adamw"),
+                       optimizer="orthograd_adamw", lr=1e-3),
+        _condition_row(block="intervention", model="mlp", loss="softmax_ce",
+                       optimizer="orthograd_adamw", lr=1e-2),
     ]
-    labels = [r"StableMax $+\perp$Grad", r"$\perp$Grad"]
+    labels = [r"StableMax $+\perp$Grad, $10^{-3}$", r"$\perp$Grad, $10^{-3}$",
+              r"$\perp$Grad, $10^{-2}$"]
     colours = [S.BRONZE if r.verdict == "above" else S.INK for r in pairs]
 
     S.null_band(strip, 0.75, 1.32, horizontal=False)
@@ -1275,8 +1324,8 @@ def interventions(variant: S.Variant) -> str:
                       facecolors=colour if row.verdict == "above" else "none", edgecolors=colour)
     strip.set_xscale("log")
     strip.set_xlim(0.55, 14.0)
-    strip.set_ylim(1.7, -0.7)
-    strip.set_yticks([0, 1])
+    strip.set_ylim(len(pairs) - 0.3, -0.7)
+    strip.set_yticks(range(len(pairs)))
     strip.set_yticklabels([f"{lab}    $t_g$ {r.t_g:,.0f}" for lab, r in zip(labels, pairs,
                                                                            strict=True)],
                           fontsize=6.8 * variant.scale)

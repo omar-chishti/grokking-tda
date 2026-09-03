@@ -1,4 +1,7 @@
 run,anchor,factor,circularity,ratio,t_g
+transformer_add113_f0.3_wd0.1_recipe-rC-2layer-lr3e-3_s0,canonical,lr+n_layers,0.8513309970680347,6.8407724327188015,12000.0
+transformer_add113_f0.3_wd0.1_recipe-rC-2layer-lr3e-3_s1,canonical,lr+n_layers,0.8437332275897172,17.83342768189299,12000.0
+transformer_add113_f0.3_wd0.1_recipe-rC-2layer-lr3e-3_s2,canonical,lr+n_layers,0.9054489194746372,10.478214193362946,11500.0
 transformer_add113_f0.3_wd0.1_recipe-rC-2layer_s0,canonical,n_layers,0.881618560395611,4.271278839556073,98500.0
 transformer_add113_f0.3_wd0.1_recipe-rC-2layer_s1,canonical,n_layers,0.5536515439063007,1.2656729472070567,90500.0
 transformer_add113_f0.3_wd0.1_recipe-rC-2layer_s2,canonical,n_layers,0.8601752141417142,2.699799352728353,75500.0
@@ -20,6 +23,9 @@ transformer_add113_f0.3_wd0.1_recipe-rC-narrow_s2,canonical,d_mlp,0.327980709453
 transformer_add113_f0.3_wd0.1_recipe-rC_s0,canonical,—,0.4368462018812275,1.1139626704454013,106500.0
 transformer_add113_f0.3_wd0.1_recipe-rC_s1,canonical,—,0.3035233064545271,1.0999087868485053,113000.0
 transformer_add113_f0.3_wd0.1_recipe-rC_s2,canonical,—,0.3346541511857674,0.912236779516392,105000.0
+transformer_add113_f0.3_wd0.1_recipe-rT-1layer-lr1e-3_s0,reference,lr+n_layers,0.3516321861084143,1.2923122250878976,37500.0
+transformer_add113_f0.3_wd0.1_recipe-rT-1layer-lr1e-3_s1,reference,lr+n_layers,0.4108600211621237,1.529281048734369,31000.0
+transformer_add113_f0.3_wd0.1_recipe-rT-1layer-lr1e-3_s2,reference,lr+n_layers,0.3129643810555579,0.8755287495814269,37500.0
 transformer_add113_f0.3_wd0.1_recipe-rT-1layer_s0,reference,n_layers,0.5374775558568313,1.6311148552281463,11500.0
 transformer_add113_f0.3_wd0.1_recipe-rT-1layer_s1,reference,n_layers,0.6564702865573905,2.1059275394375523,9500.0
 transformer_add113_f0.3_wd0.1_recipe-rT-1layer_s2,reference,n_layers,0.6350171730997662,1.5679744731651073,10500.0

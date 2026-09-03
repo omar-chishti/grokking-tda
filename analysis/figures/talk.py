@@ -43,12 +43,33 @@ def _canvas(ratio: float = 64.0 / 148.0, *, plate: bool = False):
     return S.figure(width, ratio, S.TALK)
 
 
+WORDS = ("zero", "one", "two", "three", "four", "five",
+         "six", "seven", "eight", "nine", "ten")
+
+
+def _words(n: int) -> str:
+    return WORDS[n]
+
+
 def _pt(factor: float) -> float:
     return factor * S.TALK.scale
 
 
 def _save(fig, name: str, out: Path | None) -> str:
     return S.save(fig, name, S.TALK, out_dir=out or OUTPUT_ROOT, svg=False, suffix="")
+
+
+def _stages(out: Path | None, name: str, count: int, draw: Callable[[int], object]) -> str:
+    """A figure that builds on the slide: one file per stage, the last under the plain name.
+
+    Every stage runs the same drawing code with a stage number, so an intermediate state
+    cannot disagree with the finished figure, and the finished figure is the one the deck
+    and the checklist already know by name.
+    """
+    for stage in range(1, count + 1):
+        suffix = "" if stage == count else f"-{chr(96 + stage)}"
+        path = _save(draw(stage), f"{name}{suffix}", out)
+    return path
 
 
 def _accuracy_axis(ax, *, end: float, label: bool = True) -> None:
@@ -67,20 +88,31 @@ def _accuracy_axis(ax, *, end: float, label: bool = True) -> None:
 @draws("01", "phenomenon")
 def phenomenon(out: Path | None) -> str:
     """Fitting and generalising, two orders of magnitude apart."""
+    return _stages(out, "talk-01-phenomenon", 3, _phenomenon)
+
+
+def _phenomenon(stage: int):
+    """1 the run to the end of the plateau · 2 the transition · 3 the ratio between them."""
     d = R._load("fig-1-1-hero.csv")
     t_c, t_g = float(d.t_c.dropna().iloc[0]), float(d.t_g.dropna().iloc[0])
     acc = d.dropna(subset=["test_acc"]).sort_values("step")
+    end = float(acc.step.max())
+    # Stage one truncates the series, never the axis: the run so far, on the axis it will
+    # be read against, so nothing moves when the rest of it arrives.
+    shown = acc if stage > 1 else acc[acc.step <= 0.62 * t_g]
 
     fig = _canvas()
     ax = fig.add_axes([0.098, 0.155, 0.892, 0.815])
 
-    ax.axvspan(t_c, t_g, facecolor=S.INK, alpha=0.04, lw=0, zorder=0)
     ax.axvline(t_c, color=S.RULE, lw=S.HAIRLINE, zorder=1)
-    ax.axvline(t_g, color=S.SIENNA, lw=S.HAIRLINE, zorder=1)
-    ax.plot(acc.step, acc.train_acc, color=S.RULE, lw=1.0, zorder=2)
-    ax.plot(acc.step, acc.test_acc, color=S.INK, lw=1.4, zorder=4)
+    if stage > 1:
+        ax.axvspan(t_c, t_g, facecolor=S.INK, alpha=0.04, lw=0, zorder=0)
+        ax.axvline(t_g, color=S.SIENNA, lw=S.HAIRLINE, zorder=1)
+    ax.plot(shown.step, shown.train_acc, color=S.RULE, lw=1.0, zorder=2)
+    ax.plot(shown.step, shown.test_acc, color=S.INK, lw=1.4, zorder=4)
 
-    _accuracy_axis(ax, end=float(acc.step.max()))
+    _accuracy_axis(ax, end=end)
+    S.range_frame(ax, x=(0.0, end), y=(0, 1))  # the spine spans the run in every stage
     ax.set_ylabel("accuracy")
     S.direct_label(ax, 900, 1.00, "train", S.BRONZE, dy=-4, va="top", size=_pt(7.6))
     S.direct_label(ax, 900, 0.305, "test", S.INK, dy=4, va="bottom", size=_pt(7.6))
@@ -88,17 +120,19 @@ def phenomenon(out: Path | None) -> str:
     trans = ax.get_xaxis_transform()
     ax.text(t_c * 1.35, 0.055, r"$t_c$ = 200", transform=trans, ha="left", va="bottom",
             color=S.INK, fontsize=_pt(7.2))
-    ax.text(t_g * 0.62, 0.055, r"$t_g$ = 28,600", transform=trans, ha="right", va="bottom",
-            color=S.SIENNA, fontsize=_pt(7.2), zorder=6)
+    if stage > 1:
+        ax.text(t_g * 0.62, 0.055, r"$t_g$ = 28,600", transform=trans, ha="right", va="bottom",
+                color=S.SIENNA, fontsize=_pt(7.2), zorder=6)
 
-    y = 0.660
-    ax.annotate("", xy=(t_c, y), xytext=(t_g, y), xycoords=trans, textcoords=trans,
-                arrowprops=dict(arrowstyle="<->", color=S.BRONZE, lw=S.HAIRLINE,
-                                shrinkA=0, shrinkB=0, mutation_scale=7))
-    ax.text(t_c * 3.4, y + 0.030, r"$143\times$", transform=trans, ha="center", va="bottom",
-            color=S.BRONZE, style="italic", fontsize=_pt(8.6))
+    if stage > 2:
+        y = 0.660
+        ax.annotate("", xy=(t_c, y), xytext=(t_g, y), xycoords=trans, textcoords=trans,
+                    arrowprops=dict(arrowstyle="<->", color=S.BRONZE, lw=S.HAIRLINE,
+                                    shrinkA=0, shrinkB=0, mutation_scale=7))
+        ax.text(t_c * 3.4, y + 0.030, r"$143\times$", transform=trans, ha="center",
+                va="bottom", color=S.BRONZE, style="italic", fontsize=_pt(8.6))
 
-    return _save(fig, "talk-01-phenomenon", out)
+    return fig
 
 
 @draws("02", "leak")
@@ -252,6 +286,69 @@ def scale(out: Path | None) -> str:
     return _save(fig, "talk-04-scale", out)
 
 
+@draws("04b", "flip")
+def flip(out: Path | None) -> str:
+    """What the scale correction buys: the same sixteen conditions, read twice."""
+    d = R._load("fig-4-4-robustness.csv")
+    d = d[d.block == "condition"].sort_values("h1_max_persistence_normalised__med")
+    raw, norm = "h1_max_persistence", "h1_max_persistence_normalised"
+    bands = {c: (float(d[f"{c}__null_lo"].iloc[0]), float(d[f"{c}__null_hi"].iloc[0]))
+             for c in (raw, norm)}
+
+    fig = _canvas()
+    ax = fig.add_axes([0.150, 0.180, 0.700, 0.660])
+
+    # the two readings are two vertical axes; a condition is the line between them, so the
+    # correction is the slope rather than a claim about it
+    for x, column in ((0.0, raw), (1.0, norm)):
+        lo, hi = bands[column]
+        ax.add_patch(plt.Rectangle((x - 0.075, lo), 0.150, hi - lo, facecolor=S.RULE, alpha=0.22,
+                               edgecolor="none", zorder=0))
+        ax.plot([x, x], [0.045, 4.2], color=S.RULE, lw=S.HAIRLINE, zorder=0.5)
+
+    cleared = 0
+    for row in d.itertuples():
+        a, b = getattr(row, f"{raw}__med"), getattr(row, f"{norm}__med")
+        verdict = getattr(row, f"{norm}__verdict")
+        above = verdict == "above"
+        cleared += above
+        colour = S.BRONZE if above else (S.SLATE if verdict == "below" else S.INK)
+        ax.plot([0.0, 1.0], [a, b], color=colour, lw=S.DATA if above else S.SECONDARY,
+                alpha=1.0 if above else 0.55, zorder=3 if above else 2, solid_capstyle="round")
+        for x, v in ((0.0, a), (1.0, b)):
+            ax.scatter([x], [v], s=17 if above else 11, marker="o", zorder=4,
+                       linewidths=0.8, edgecolors=colour,
+                       facecolors=colour if above else "none")
+
+    ax.set_yscale("log")
+    ax.set_xlim(-0.30, 1.30)
+    ax.set_ylim(0.042, 4.2)
+    ax.set_yticks([0.1, 0.3, 1, 3])
+    ax.set_yticklabels(["0.1", "0.3", "1", "3"])
+    ax.minorticks_off()
+    ax.set_xticks([])
+    ax.set_ylabel(r"plateau $\div$ baseline")
+    for spine in ("top", "right", "bottom"):
+        ax.spines[spine].set_visible(False)
+    ax.spines["left"].set_color(S.RULE)
+
+    # heads above, counts below the frame, and each band's range on its own outer side, so
+    # nothing that names an axis sits where the lines between the two axes run
+    for x, head, band, count, side in (
+        (0.0, "raw", bands[raw], "none of sixteen clear", -1),
+        (1.0, "normalised", bands[norm], f"{_words(cleared)} of sixteen clear", +1),
+    ):
+        ax.text(x, 4.55, head.upper(), ha="center", va="bottom", color=S.BRONZE,
+                fontsize=_pt(7.6))
+        ax.text(x, -0.085, count, ha="center", va="top", color=S.INK, fontsize=_pt(7.4),
+                transform=ax.get_xaxis_transform())
+        ax.text(x + side * 0.105, band[1], f"null {band[0]:.2f}–{band[1]:.2f}",
+                ha="left" if side > 0 else "right", va="bottom", color=S.INK, alpha=0.62,
+                fontsize=_pt(6.6))
+
+    return _save(fig, "talk-04b-flip", out)
+
+
 @draws("05", "signature")
 def signature(out: Path | None) -> str:
     """Divided by a scale intrinsic to the same cloud, one regime rises and one does not."""
@@ -284,6 +381,11 @@ def _short_fields(row) -> tuple[str, ...]:
 @draws("06", "robustness")
 def robustness(out: Path | None) -> str:
     """Five conditions clear the null band, ten sit inside it and one runs backwards."""
+    return _stages(out, "talk-06-robustness", 2, _robustness)
+
+
+def _robustness(stage: int):
+    """1 the sixteen conditions against the null · 2 the circularity that separates them."""
     obs = "h1_max_persistence_normalised"
     d = R._load("fig-4-4-robustness.csv")
     conditions = d[d.block == "condition"].reset_index(drop=True)
@@ -357,12 +459,21 @@ def robustness(out: Path | None) -> str:
     rho = R._claims()["circularity_association"][f"{obs}__ratio"]["spearman_rho"]
     S.annotate(axc, 0.5, -0.055, rf"$\rho = {rho:.2f}$", ha="center", va="top", size=_pt(7.2))
 
-    return _save(fig, "talk-06-robustness", out)
+    if stage < 2:  # the column is the answer, and it is worth a click of its own
+        axc.set_visible(False)
+        axcn.set_visible(False)
+
+    return fig
 
 
 @draws("07", "circularity")
 def circularity(out: Path | None) -> str:
     """What separates the regimes is how circular the solution is, not whether it generalises."""
+    return _stages(out, "talk-07-circularity", 2, _circularity)
+
+
+def _circularity(stage: int):
+    """1 seventy-one runs against circularity · 2 the same runs against final accuracy."""
     d = R._load("fig-4-6-circularity.csv").dropna(
         subset=["circularity", "h1_max_persistence_normalised__ratio"])
     y = d["h1_max_persistence_normalised__ratio"]
@@ -389,7 +500,9 @@ def circularity(out: Path | None) -> str:
 
     for target in (ax, ax2):
         target.set_yscale("log")
-        target.set_ylim(0.14, 14.0)
+        # the largest ratio is 13.78, so a top of 14 clipped its marker against the axes:
+        # a limit has to clear the data by more than the radius of the glyph on it
+        target.set_ylim(0.14, 20.0)
         target.set_yticks([0.3, 1, 3, 10])
         target.minorticks_off()
     ax.set_yticklabels(["0.3", "1", "3", "10"])
@@ -429,11 +542,15 @@ def circularity(out: Path | None) -> str:
             a.add_patch(plt.Rectangle((0.055 + 0.036 * k, y_ - 0.060), 0.036, 0.120,
                                       facecolor=S.SEQUENTIAL(0.15 + 0.15 * k), edgecolor="none"))
 
-    S.key(fig, (0.585, 0.318, 0.240, 0.200),
+    # right edge flush with the end of the main axis, which sits at 0.799 of the figure
+    S.key(fig, (0.559, 0.318, 0.240, 0.200),
           [("transformer", glyph("o")), ("MLP", glyph("s")), ("weight decay", ramp)],
           heading="run")
 
-    return _save(fig, "talk-07-circularity", out)
+    if stage < 2:  # the panel with no variance in it lands harder on its own click
+        ax2.set_visible(False)
+
+    return fig
 
 
 @draws("08", "basis")
@@ -511,7 +628,9 @@ def noncyclic(out: Path | None) -> str:
     S.panel_title(left, r"$S_5$   absolute steps", pad=7)
     R._seed_tally(left, len(runs), len(steps), size=_pt(7.0), name="seeds grokked", y=0.905,
                   pitch=0.032)
-    S.annotate(left, 0.050 + 0.032 * len(runs), 0.905,
+    # under the tally rather than beside it: seven glyphs plus the range reach the panel's
+    # right-hand third, where the transitions are
+    S.annotate(left, 0.050, 0.680,
                f"over {steps[0] / 1000:.1f}–{steps[-1] / 1000:.1f}k steps", colour=S.SIENNA,
                ha="left", va="center", style="normal", size=_pt(7.0))
 
@@ -523,18 +642,19 @@ def noncyclic(out: Path | None) -> str:
         colour = S.SLATE if run == censored else S.INK
         ratio = R._baseline_ratio(g, "h1_total_persistence_normalised")
         right.plot(g.step_over_tg, ratio.values, color=colour, lw=1.0, zorder=3)
-        ends.append([float(g.step_over_tg.iloc[-1]), float(ratio.iloc[-1]), colour])
+        seen = g.step_over_tg <= 8.0   # the label belongs inside the frame, not past its edge
+        ends.append([float(g.step_over_tg[seen].iloc[-1]), float(ratio[seen.values].iloc[-1]),
+                     colour, run == censored])
         if run == censored:
-            right.scatter([g.step_over_tg.iloc[-1]], [ratio.iloc[-1]], s=20, marker="o",
+            right.scatter([ends[-1][0]], [ends[-1][1]], s=20, marker="o",
                           facecolors="none", edgecolors=S.SLATE, linewidths=0.9, zorder=5)
-    # two seeds finish within a few per cent of each other, so the labels are pushed apart in
-    # log space before they are drawn: a pair that overprints reports one number, not two
+    # seventeen numbers is not what a room reads in six seconds, and pushing them apart in log
+    # space walks them off the frame. The claim is about the ensemble, so name only its edges
+    # and the seed that is inside the band.
     ends.sort(key=lambda e: e[1])
-    drawn = 0.0
-    for x, value, colour in ends:
-        y = max(value, drawn * 1.34)
-        drawn = y
-        S.direct_label(right, x, y, f"{value:.1f}", colour, dx=4, size=_pt(7.0))
+    named = [ends[-1], ends[0]] + [e for e in ends if e[3]]
+    for x, value, colour, _ in named:
+        S.direct_label(right, x, value, f"{value:.1f}", colour, dx=4, size=_pt(7.0))
     right.set_xscale("log")
     right.set_yscale("log")
     right.set_xlim(0.06, 8.0)
@@ -550,7 +670,7 @@ def noncyclic(out: Path | None) -> str:
     S.panel_title(right, r"$S_5$   rescaled by $t_g$", pad=7)
     S.annotate(right, 1.0, 0.045, r"$t_g$", colour=S.SIENNA, ha="left", style="normal",
                size=_pt(7.0), transform=right.get_xaxis_transform())
-    S.annotate(right, 0.030, band[1] * 1.12, "null", colour=S.INK, style="normal",
+    S.annotate(right, 0.030, band[0] * 0.70, "null", colour=S.INK, style="normal", va="top",
                size=_pt(6.8), transform=right.get_yaxis_transform())
 
     return _save(fig, "talk-09-noncyclic", out)
@@ -559,6 +679,11 @@ def noncyclic(out: Path | None) -> str:
 @draws("10", "lag")
 def lag(out: Path | None) -> str:
     """Topology lags where a signature exists; the large apparent leads are where none does."""
+    return _stages(out, "talk-10-lag", 2, _lag)
+
+
+def _lag(stage: int):
+    """1 the signed lag by condition · 2 the permuted-label control under it."""
     obs = "h1_max_persistence_normalised"
     d = R._load("fig-5-5-lag.csv")
     timed = d[(d.observable == obs) & d.delta.notna()]
@@ -594,9 +719,10 @@ def lag(out: Path | None) -> str:
     for a in (ax, axn):
         a.set_xscale("symlog", linthresh=3000, linscale=0.55)
         a.set_xlim(-limit, limit)
-        a.axvspan(-limit, 0, facecolor=S.BRONZE, alpha=0.045, lw=0, zorder=0)
-        a.axvspan(0, limit, facecolor=S.SLATE, alpha=0.045, lw=0, zorder=0)
-        a.axvline(0, color=S.INK, lw=0.6, zorder=1)
+        if a is ax or stage > 1:  # an empty tinted strip reads as a box waiting to be filled
+            a.axvspan(-limit, 0, facecolor=S.BRONZE, alpha=0.045, lw=0, zorder=0)
+            a.axvspan(0, limit, facecolor=S.SLATE, alpha=0.045, lw=0, zorder=0)
+            a.axvline(0, color=S.INK, lw=0.6, zorder=1)
 
     for i, r in t.iterrows():
         colour = S.BRONZE if r.clears else S.INK
@@ -618,19 +744,23 @@ def lag(out: Path | None) -> str:
     S.annotate(ax, 0.47, 1.012, "lags", colour=S.INK, ha="right", style="normal", size=_pt(7.6))
     S.annotate(ax, 0.53, 1.012, "leads", colour=S.SLATE, ha="left", style="normal", size=_pt(7.6))
 
-    axn.scatter(nulls.t_top, np.zeros(len(nulls)), s=18, marker="o", facecolors="none",
-                edgecolors=S.INK, linewidths=0.8, zorder=4)
+    if stage > 1:  # a detector with no transition to find is the second half of the claim
+        axn.scatter(nulls.t_top, np.zeros(len(nulls)), s=18, marker="o", facecolors="none",
+                    edgecolors=S.INK, linewidths=0.8, zorder=4)
     axn.set_ylim(-1.1, 1.1)
     axn.set_yticks([])
-    axn.text(LAG_COLUMNS[0][0], 0.0, "permuted labels", ha="left", va="center",
-             transform=axn.get_yaxis_transform(), color=S.INK, clip_on=False, fontsize=size)
+    if stage > 1:
+        axn.text(LAG_COLUMNS[0][0], 0.0, "permuted labels", ha="left", va="center",
+                 transform=axn.get_yaxis_transform(), color=S.INK, clip_on=False,
+                 fontsize=size)
     axn.spines["left"].set_visible(False)
     axn.set_xlabel(r"signed lag  $\Delta = t_g - t_{\mathrm{top}}$   (steps)")
     axn.set_xticks([-1e5, -1e4, 0, 1e4, 1e5])
     axn.set_xticklabels(["$-10^5$", "$-10^4$", "0", "$10^4$", "$10^5$"])
     axn.spines["bottom"].set_color(S.RULE)
-    S.annotate(axn, 0.02, 0.78, "$t_{top}$ only", colour=S.INK, ha="left", style="normal",
-               size=size)
+    if stage > 1:
+        S.annotate(axn, 0.02, 0.78, "$t_{top}$ only", colour=S.INK, ha="left", style="normal",
+                   size=size)
 
     axr.axvspan(*BAND, facecolor=S.RULE, alpha=0.30, lw=0, zorder=0)
     axr.barh(range(len(t)), t.ratio, height=0.46, zorder=3,
@@ -647,7 +777,7 @@ def lag(out: Path | None) -> str:
     S.annotate(axr, 0.5, 1.012, r"$H_1^{\max}/s$", colour=S.INK, ha="center", style="normal",
                size=size)
 
-    return _save(fig, "talk-10-lag", out)
+    return fig
 
 
 @draws("11", "interventions")
@@ -656,9 +786,12 @@ def interventions(out: Path | None) -> str:
     d = R._load("fig-5-6-interventions.csv")
     arms = {
         ("softmax_ce", "adamw", 0.001): ("weight decay", S.RULE, 0.9, "solid"),
-        ("softmax_ce", "orthograd_adamw", 0.01): (r"$\perp$Grad", S.INK, 1.1, "solid"),
+        ("softmax_ce", "orthograd_adamw", 0.01):
+            (r"$\perp$Grad, $10^{-2}$", S.INK, 1.1, "solid"),
+        ("softmax_ce", "orthograd_adamw", 0.001):
+            (r"$\perp$Grad, $10^{-3}$", S.SLATE, 1.3, (0, (4, 2))),
         ("stablemax_ce", "orthograd_adamw", 0.001):
-            (r"StableMax $+\perp$Grad", S.BRONZE, 1.3, "solid"),
+            (r"StableMax $+\perp$Grad, $10^{-3}$", S.BRONZE, 1.3, "solid"),
     }
 
     fig = _canvas()
@@ -683,33 +816,44 @@ def interventions(out: Path | None) -> str:
         ax.text(0.625, y, name, transform=ax.transAxes, color=S.INK, va="center",
                 fontsize=_pt(7.0))
 
+    # three arms, each one move from the next: the loss at a fixed rate, the rate at a fixed loss
     pairs = [R._condition_row(block="intervention", model="mlp", loss="stablemax_ce",
-                              optimizer="orthograd_adamw"),
+                              optimizer="orthograd_adamw", lr=1e-3),
              R._condition_row(block="intervention", model="mlp", loss="softmax_ce",
-                              optimizer="orthograd_adamw")]
-    labels = [r"StableMax $+\perp$Grad", r"$\perp$Grad"]
+                              optimizer="orthograd_adamw", lr=1e-3),
+             R._condition_row(block="intervention", model="mlp", loss="softmax_ce",
+                              optimizer="orthograd_adamw", lr=1e-2)]
+    labels = [r"StableMax $+\perp$Grad, $10^{-3}$", r"$\perp$Grad, $10^{-3}$",
+              r"$\perp$Grad, $10^{-2}$"]
     S.null_band(strip, *BAND, horizontal=False)
+    # a row carries a name above its marker and a value below it, so the rows are spaced by
+    # more than one unit or the value of each lands on the name of the next
+    PITCH = 1.75
     for i, row in enumerate(pairs):
+        y = PITCH * i
         colour = S.BRONZE if row.verdict == "above" else S.INK
-        strip.plot([row.lo, row.hi], [i, i], color=colour, lw=S.EMPHASIS,
+        strip.plot([row.lo, row.hi], [y, y], color=colour, lw=S.EMPHASIS,
                    solid_capstyle="butt", zorder=3)
-        strip.scatter([row.med], [i], s=26, marker="o", zorder=4, linewidths=0.9,
+        strip.scatter([row.med], [y], s=26, marker="o", zorder=4, linewidths=0.9,
                       facecolors=colour if row.verdict == "above" else "none", edgecolors=colour)
         # each arm is named at its own marker: two rows whose names sit at the far left and
         # whose markers sit an order of magnitude apart read as unrelated
         # each arm is named at its own marker; the alignment follows where in the frame the
         # marker sits, or a caption centred near an edge runs off it
         at = (np.log(row.med) - np.log(0.55)) / (np.log(24.0) - np.log(0.55))
-        ha = "left" if at < 0.32 else ("right" if at > 0.68 else "center")
-        strip.text(row.med, i - 0.30, labels[i], ha=ha, va="bottom", color=S.INK,
-                   fontsize=_pt(7.2))
-        # the grokking steps are the left panel's job; this one carries the geometry
-        S.value(strip, row.med, i + 0.32, f"{row.med:.2f}",
-                f"circularity {row.circularity:.2f}", colour=colour, ha=ha, va="top",
-                transform=strip.transData)
+        ha = "left" if at < 0.32 else ("right" if at > 0.72 else "center")
+        # the name sits on the row's own baseline at the frame's left edge, so three rows
+        # stack without a name landing on the value of the row above it
+        # clear of the null band, which owns the left of the frame and carries its own gloss
+        strip.text(0.255, y - 0.34, labels[i], ha="left", va="bottom", color=S.INK,
+                   fontsize=_pt(6.8), transform=strip.get_yaxis_transform())
+        # the grokking steps are the left panel's job; this one carries the geometry, on one
+        # line: a second line under three rows lands on the name of the row beneath it
+        strip.text(row.med, y + 0.38, f"{row.med:.2f}   circularity {row.circularity:.2f}",
+                   ha=ha, va="top", color=colour, style="italic", fontsize=_pt(7.0))
     strip.set_xscale("log")
     strip.set_xlim(0.55, 24.0)
-    strip.set_ylim(2.05, -0.95)
+    strip.set_ylim(PITCH * (len(pairs) - 1) + 1.50, -0.90)
     strip.set_yticks([])
     strip.set_xticks([1, 3, 10])
     strip.set_xticklabels(["1", "3", "10"])
@@ -717,9 +861,9 @@ def interventions(out: Path | None) -> str:
     strip.spines["left"].set_visible(False)
     strip.spines["bottom"].set_color(S.RULE)
     strip.set_xlabel(r"plateau $\div$ baseline,   normalised $H_1^{\max}$")
-    S.annotate(strip, 1.0, 0.975, "null", colour=S.INK, ha="center", va="top", style="normal",
+    S.annotate(strip, 1.0, 0.978, "null", colour=S.INK, ha="center", va="top", style="normal",
                size=_pt(6.8), transform=strip.get_xaxis_transform())
-    S.panel_title(strip, "the same architecture, twice", pad=7)
+    S.panel_title(strip, "the same architecture, three times", pad=7)
 
     return _save(fig, "talk-11-interventions", out)
 

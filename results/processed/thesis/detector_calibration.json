@@ -61,21 +61,21 @@
   },
   "changepoint": {
     "observable": "h1_max_persistence_normalised",
-    "n_grokking_runs": 89,
-    "n_located_proxy": 89,
-    "n_located_changepoint": 79,
-    "n_located_by_both": 79,
+    "n_grokking_runs": 93,
+    "n_located_proxy": 93,
+    "n_located_changepoint": 81,
+    "n_located_by_both": 81,
     "median_separation_steps": 14575.0,
     "median_separation_over_t_g": 1.3086458333333333,
-    "sign_agreement": 0.31645569620253167,
-    "n_lagging_proxy": 65,
-    "n_lagging_changepoint": 6
+    "sign_agreement": 0.3333333333333333,
+    "n_lagging_proxy": 69,
+    "n_lagging_changepoint": 8
   },
   "unrepaired_detector": {
-    "n_runs": 216,
-    "n_located": 216,
-    "n_at_step_zero": 194,
-    "n_grokking": 146,
-    "n_lead_is_tg": 135
+    "n_runs": 226,
+    "n_located": 226,
+    "n_at_step_zero": 204,
+    "n_grokking": 156,
+    "n_lead_is_tg": 145
   }
 }

@@ -248,6 +248,7 @@ def fig_robustness(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
         "label_permutation",
         "loss",
         "optimizer",
+        "lr",   # two intervention arms differ only here; figure 5.6 names one of them
         "n_runs",
         "n_grokked",
         "t_g_median",
@@ -269,7 +270,6 @@ def fig_robustness(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
     main = bank[~bank.replicate]
     nulls = {"permuted": main[main.label_permutation], "poly": main[main.operation == "poly"]}
-    out["lr"] = np.nan
     for name, runs in nulls.items():
         # "null" alone round-trips through read_csv as a missing value
         row = {"block": "null model", "operation": name, "n_runs": len(runs), "n_grokked": 0,
@@ -413,8 +413,10 @@ def fig_pid(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for regime, estimators in d.get("regimes", {}).items():
         for estimator, block in estimators.items():
-            total = block.get("atoms", {}).get("total", {}).get("estimate")
-            for atom, value in block.get("atoms", {}).items():
+            atoms = block.get("atoms", {})
+            # a regime the estimator skipped writes NaN scalars in place of atom records
+            total = atoms["total"]["estimate"] if isinstance(atoms.get("total"), dict) else None
+            for atom, value in atoms.items():
                 if atom == "total" or not isinstance(value, dict):
                     continue
                 rows.append({

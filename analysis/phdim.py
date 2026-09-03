@@ -136,11 +136,16 @@ def birdal_correlation(table: pd.DataFrame, bank: pd.DataFrame, window: int, dim
     # Tan et al.'s comparator, which they report beating the dimension
     comparator: dict = {}
     if "weight_norm__final" in merged:
-        norm = merged[["generalisation_gap", "weight_norm__final"]].dropna()
-        if len(norm) >= 8:
-            r = stats.spearmanr(norm.generalisation_gap, norm.weight_norm__final)
-            comparator = {
-                "n": int(len(norm)),
+        # reported over the whole set and over the decayed subset alone, because the norm of a
+        # vector that was never shrunk is not the quantity Tan et al. compare against
+        columns = ["generalisation_gap", "weight_norm__final", "weight_decay"]
+        norm = merged[[c for c in columns if c in merged]].dropna()
+        for label, subset in (("all", norm), ("weight_decayed", norm[norm.weight_decay > 0])):
+            if len(subset) < 8:
+                continue
+            r = stats.spearmanr(subset.generalisation_gap, subset.weight_norm__final)
+            comparator[label] = {
+                "n": int(len(subset)),
                 "spearman_rho": float(r.statistic),
                 "spearman_p": float(r.pvalue),
             }

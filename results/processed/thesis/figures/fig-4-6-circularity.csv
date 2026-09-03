@@ -1,4 +1,7 @@
 run,model,operation,modulus,train_fraction,weight_decay,seed,circularity,circularity_column,h1_max_persistence__ratio,h1_max_persistence_normalised__ratio,h1_total_persistence_normalised__ratio,test_acc__final
+mlp_add97_f0.3_wd0.0_softmax_ce_s0,mlp,add,97,0.3,0.0,0,0.8855410163532499,fourier_concentration_k5,2.479054995327719,3.9100247602100433,3.714180864841445,1.0
+mlp_add97_f0.3_wd0.0_softmax_ce_s1,mlp,add,97,0.3,0.0,1,0.9999030305314844,fourier_concentration_k5,6.366449325828719,13.775872994860812,8.083201057870344,1.0
+mlp_add97_f0.3_wd0.0_softmax_ce_s2,mlp,add,97,0.3,0.0,2,0.9991419023376318,fourier_concentration_k5,3.2177102949539833,5.289228660717486,5.794952231591669,1.0
 mlp_add97_f0.3_wd0.0_stablemax_ce_s0,mlp,add,97,0.3,0.0,0,0.9980418537800546,fourier_concentration_k5,4.7867169046479505,7.36054027571698,2.4297275184182365,1.0
 mlp_add97_f0.3_wd0.0_stablemax_ce_s1,mlp,add,97,0.3,0.0,1,0.9954460859264616,fourier_concentration_k5,5.663795218019083,10.784373005261454,6.065672649829234,0.9996963143348694
 mlp_add97_f0.3_wd1.0_softmax_ce_s0,mlp,add,97,0.3,1.0,0,0.9038182268415554,fourier_concentration_k5,1.6519235707272861,3.223276355543278,8.267078136760771,1.0

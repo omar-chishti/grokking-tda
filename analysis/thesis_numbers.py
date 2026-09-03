@@ -63,7 +63,7 @@ def minimum_detectable_effect(
     return out
 
 
-SEED_COUNTS = tuple(range(2, 13))
+SEED_COUNTS = tuple(range(2, 19))  # up to the seventeen seeds of the non-cyclic condition
 
 
 def mde_by_seed_count(bank: pd.DataFrame, counts=SEED_COUNTS) -> pd.DataFrame:

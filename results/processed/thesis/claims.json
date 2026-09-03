@@ -1,13 +1,14 @@
 {
   "generated_from": "/Users/omar/Desktop/Imperial/Individual Project/Code/results/raw",
-  "n_runs_loaded": 168,
-  "n_main_programme": 128,
-  "n_dense": 40,
-  "n_grokked": 102,
+  "n_runs_loaded": 226,
+  "n_main_programme": 138,
+  "n_dense": 88,
+  "n_grokked": 156,
   "plateau_relaxed": {
-    "n_runs": 13,
+    "n_runs": 14,
     "n_main_programme": 10,
     "runs": [
+      "transformer_add113_f0.3_wd0.1_recipe-rT-lr1e-3_s0",
       "transformer_add97_f0.3_wd0.1_softmax_ce_s1",
       "transformer_add97_f0.3_wd0.1_softmax_ce_s2",
       "transformer_add97_f0.3_wd0.1_softmax_ce_s4",
@@ -28,8 +29,8 @@
     "min_with_decay": 6.842824248874547,
     "max_with_decay": 238.8615502024279,
     "min_all": 0.2546303956940862,
-    "max_all": 238.8615502024279,
-    "initial_median": 15.075989723205566
+    "max_all": 512.1767325783096,
+    "initial_median": 15.283698081970217
   },
   "null_bands": {
     "h1_max_persistence__ratio": {
@@ -349,9 +350,9 @@
     }
   },
   "instability": {
-    "runs_with_metrics": 215,
-    "reached_099": 210,
-    "collapsed_after": 136
+    "runs_with_metrics": 227,
+    "reached_099": 222,
+    "collapsed_after": 146
   },
   "commutativity_s5": {
     "group": "S_5",
@@ -363,18 +364,28 @@
     "train_fraction": 0.6
   },
   "s5_measured_plateau": {
-    "n": 7,
+    "n": 17,
     "runs": [
       "transformer_compose120_f0.6_wd1.0_softmax_ce_s0",
       "transformer_compose120_f0.6_wd1.0_softmax_ce_s1",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s10",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s11",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s12",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s13",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s14",
       "transformer_compose120_f0.6_wd1.0_softmax_ce_s2",
       "transformer_compose120_f0.6_wd1.0_softmax_ce_s3",
       "transformer_compose120_f0.6_wd1.0_softmax_ce_s4",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s5",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s6",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s7",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s8",
+      "transformer_compose120_f0.6_wd1.0_softmax_ce_s9",
       "transformer_compose97_f0.6_wd1.0_softmax_ce_s0",
       "transformer_compose97_f0.6_wd1.0_softmax_ce_s1"
     ],
-    "median": 0.0352430567145347,
-    "min": 0.03081597201526165,
+    "median": 0.032638890668749754,
+    "min": 0.0279513895511627,
     "max": 0.0394097231328487
   },
   "modular_addition_measured_plateau": {

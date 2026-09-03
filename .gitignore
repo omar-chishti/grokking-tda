@@ -57,4 +57,5 @@ results-sidequest/.remote/
 # (Documentation/SideQuest_Orientation_2026-09-03.md §5). Same rule as above: the tidy
 # tables are tracked, the artifact store is not.
 results-sidequest/raw/*
+results-sidequest/figures/*
 results-sidequest/*.log

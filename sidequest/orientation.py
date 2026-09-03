@@ -98,22 +98,27 @@ def antisymmetry(forward: np.ndarray, backward: np.ndarray) -> float:
     return float(np.corrcoef(forward, backward)[0, 1])
 
 
-def alignment(target: np.ndarray, source: np.ndarray, *, reverse: bool) -> tuple[float, int]:
-    """Relative residual of ``target`` against the best cyclic re-indexing of ``source``.
+def residual_profile(target: np.ndarray, source: np.ndarray, *, reverse: bool) -> np.ndarray:
+    """Relative residual of ``target`` against every cyclic re-indexing of ``source``.
 
     ``reverse`` reads the source backwards -- the map b -> -b. Both families are searched over all
     p shifts, because the two loops start at whatever offset the operator token imposes and only
-    their shape is at issue.
+    their shape is at issue. Two uncorrelated centred loops of equal norm sit at sqrt(2).
     """
     p = len(target)
     t = target - target.mean(axis=0, keepdims=True)
     s = source - source.mean(axis=0, keepdims=True)
     index = np.arange(p)
     scale = np.linalg.norm(t) + 1e-12
-    residuals = [
+    return np.array([
         np.linalg.norm(t - s[(k - index) % p if reverse else (k + index) % p]) / scale
         for k in range(p)
-    ]
+    ])
+
+
+def alignment(target: np.ndarray, source: np.ndarray, *, reverse: bool) -> tuple[float, int]:
+    """The best cyclic re-indexing of ``source`` onto ``target``, and its residual."""
+    residuals = residual_profile(target, source, reverse=reverse)
     best = int(np.argmin(residuals))
     return float(residuals[best]), best
 
@@ -260,6 +265,39 @@ def trace(run: Run, every: int) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def export(run: Run) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """The two loops as drawn, and the search landscape behind §9.4 — the geometry the figures need.
+
+    ``measure`` keeps only the minimum of each search; a figure of a search has to show what was
+    refused as well as what was chosen.
+    """
+    snapshot = run.snapshots()[-1]
+    meta = run.task_meta
+    modulus, ops = int(meta["modulus"]), operators_of(meta["operation"])
+    rng = np.random.default_rng(0)
+    anchors = rng.choice(modulus, size=min(N_ANCHORS, modulus), replace=False)
+    traced = loops(run, snapshot, anchors)
+    first, second = ops
+
+    drawn, searched = [], []
+    for k, a0 in enumerate(anchors):
+        lo_a, lo_b = traced[first][k], traced[second][k]
+        basis = _plane(np.vstack([lo_a - lo_a.mean(0), lo_b - lo_b.mean(0)]))
+        for name, loop in ((first, lo_a), (second, lo_b)):
+            xy = (loop - loop.mean(axis=0, keepdims=True)) @ basis.T
+            drawn.append(pd.DataFrame({
+                "run": run.run_name, "a0": int(a0), "operator": name,
+                "b": np.arange(modulus), "x": xy[:, 0], "y": xy[:, 1],
+            }))
+        for family, reverse in (("reflected", True), ("rotated", False)):
+            searched.append(pd.DataFrame({
+                "run": run.run_name, "a0": int(a0), "family": family,
+                "shift": np.arange(modulus),
+                "residual": residual_profile(lo_b, lo_a, reverse=reverse),
+            }))
+    return pd.concat(drawn, ignore_index=True), pd.concat(searched, ignore_index=True)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--root", type=Path, default=Path("results-sidequest/raw"))
@@ -269,6 +307,8 @@ def main() -> None:
     ap.add_argument("--trace", type=int, metavar="EVERY",
                     help="also measure at every EVERY-th snapshot, to date the reflection")
     ap.add_argument("--only", help="restrict to runs whose name contains this")
+    ap.add_argument("--export", action="store_true",
+                    help="also write the projected loops and the shift landscapes, for the figures")
     args = ap.parse_args()
 
     runs = [Run(d) for d in sorted(args.root.iterdir()) if (d / "manifest.json").exists()]
@@ -276,6 +316,7 @@ def main() -> None:
         raise SystemExit(f"no runs under {args.root}")
 
     tables, summaries, leaks, traces = [], [], [], []
+    drawn, searched = [], []
     for run in runs:
         if run.config["data"].get("task") != "modular_multiop":
             continue
@@ -288,6 +329,10 @@ def main() -> None:
             leaks.append(leak_by_operator(run))
         if args.trace:
             traces.append(trace(run, args.trace))
+        if args.export:
+            a, b = export(run)
+            drawn.append(a)
+            searched.append(b)
         print(f"  {run.run_name:52s} antisym {summary['winding_antisymmetry']:+.3f}  "
               f"overlap {summary['overlap_median']:.2f}  "
               f"reflected {summary['residual_reflected_median']:.2f}  "
@@ -302,6 +347,9 @@ def main() -> None:
         pd.concat(leaks, ignore_index=True).to_csv(args.out / "leak_by_operator.csv", index=False)
     if traces:
         pd.concat(traces, ignore_index=True).to_csv(args.out / "orientation_trace.csv", index=False)
+    if drawn:
+        pd.concat(drawn, ignore_index=True).to_csv(args.out / "loops.csv", index=False)
+        pd.concat(searched, ignore_index=True).to_csv(args.out / "shift_landscape.csv", index=False)
     print(f"\nwritten to {args.out}")
 
 

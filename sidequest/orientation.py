@@ -268,6 +268,7 @@ def main() -> None:
                                                             "one forward pass per snapshot")
     ap.add_argument("--trace", type=int, metavar="EVERY",
                     help="also measure at every EVERY-th snapshot, to date the reflection")
+    ap.add_argument("--only", help="restrict to runs whose name contains this")
     args = ap.parse_args()
 
     runs = [Run(d) for d in sorted(args.root.iterdir()) if (d / "manifest.json").exists()]
@@ -277,6 +278,8 @@ def main() -> None:
     tables, summaries, leaks, traces = [], [], [], []
     for run in runs:
         if run.config["data"].get("task") != "modular_multiop":
+            continue
+        if args.only and args.only not in run.run_name:
             continue
         table, summary = measure(run)
         tables.append(table)

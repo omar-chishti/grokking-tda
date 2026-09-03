@@ -1,0 +1,117 @@
+[
+  {
+    "run": "transformer_addsub113_f0.3_wd0.1_sq-addsub_s0",
+    "model": "transformer",
+    "modulus": 113,
+    "operators": [
+      "add",
+      "sub"
+    ],
+    "step": 100000,
+    "n_anchors": 16,
+    "monotonicity_median": 0.6216814159292035,
+    "planarity_median": 0.2519207493667798,
+    "winding_add_median": 1.5000001555777889,
+    "winding_sub_median": -0.4999998431590384,
+    "product_median": -18.500000953727803,
+    "fraction_opposite": 0.9375,
+    "winding_antisymmetry": -0.9939833634689695,
+    "fraction_reversed": 0.625,
+    "residual_reflected_median": 0.2236778867649768,
+    "residual_rotated_median": 1.2534401944763767,
+    "overlap_median": 0.9412484765052795,
+    "operator_difference_in_plane": 0.10433887856428466
+  },
+  {
+    "run": "transformer_addsub113_f0.3_wd0.1_sq-addsub_s1",
+    "model": "transformer",
+    "modulus": 113,
+    "operators": [
+      "add",
+      "sub"
+    ],
+    "step": 100000,
+    "n_anchors": 16,
+    "monotonicity_median": 0.5265486725663717,
+    "planarity_median": 0.28927181646977834,
+    "winding_add_median": 1.3280923386135903e-07,
+    "winding_sub_median": 1.3280923386135906e-07,
+    "product_median": -7.589099720936054e-08,
+    "fraction_opposite": 0.625,
+    "winding_antisymmetry": -0.8935341843318404,
+    "fraction_reversed": 1.0,
+    "residual_reflected_median": 0.10806928779392541,
+    "residual_rotated_median": 1.2608079896873086,
+    "overlap_median": 0.9335066676139832,
+    "operator_difference_in_plane": 0.11633338782600601
+  },
+  {
+    "run": "transformer_addsub113_f0.3_wd0.1_sq-addsub_s2",
+    "model": "transformer",
+    "modulus": 113,
+    "operators": [
+      "add",
+      "sub"
+    ],
+    "step": 100000,
+    "n_anchors": 16,
+    "monotonicity_median": 0.752212389380531,
+    "planarity_median": 0.31466244715017694,
+    "winding_add_median": -1.0000002555005074,
+    "winding_sub_median": 1.000000103718526,
+    "product_median": -73.50001175563827,
+    "fraction_opposite": 1.0,
+    "winding_antisymmetry": -0.9973231963163128,
+    "fraction_reversed": 0.8125,
+    "residual_reflected_median": 0.17324860269516645,
+    "residual_rotated_median": 1.2135636705769721,
+    "overlap_median": 0.9821661412715912,
+    "operator_difference_in_plane": 0.1361842437427501
+  },
+  {
+    "run": "transformer_addsub113_f0.3_wd0.1_sq-addsub_s3",
+    "model": "transformer",
+    "modulus": 113,
+    "operators": [
+      "add",
+      "sub"
+    ],
+    "step": 100000,
+    "n_anchors": 16,
+    "monotonicity_median": 0.5641592920353982,
+    "planarity_median": 0.3636663229827076,
+    "winding_add_median": 3.5000004389058317,
+    "winding_sub_median": -3.499999604104933,
+    "product_median": -25.000000632466833,
+    "fraction_opposite": 1.0,
+    "winding_antisymmetry": -0.9930938755117308,
+    "fraction_reversed": 0.5625,
+    "residual_reflected_median": 0.16898902448302644,
+    "residual_rotated_median": 1.2745400593243863,
+    "overlap_median": 0.9605056643486023,
+    "operator_difference_in_plane": 0.1293156069848354
+  },
+  {
+    "run": "transformer_addsub113_f0.3_wd0.1_sq-addsub_s4",
+    "model": "transformer",
+    "modulus": 113,
+    "operators": [
+      "add",
+      "sub"
+    ],
+    "step": 100000,
+    "n_anchors": 16,
+    "monotonicity_median": 0.6371681415929203,
+    "planarity_median": 0.411298621549828,
+    "winding_add_median": -10.000000430057334,
+    "winding_sub_median": 10.00000012649337,
+    "product_median": -120.00000546435261,
+    "fraction_opposite": 1.0,
+    "winding_antisymmetry": -0.9972134277185897,
+    "fraction_reversed": 0.3125,
+    "residual_reflected_median": 0.09006666099370358,
+    "residual_rotated_median": 1.2785605055768905,
+    "overlap_median": 0.9973011016845703,
+    "operator_difference_in_plane": 0.019047233188610572
+  }
+]

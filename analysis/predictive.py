@@ -32,7 +32,7 @@ EXTREME_GROUP = condition_key(
 WINSOR = (0.10, 0.90)
 
 
-def regression_variants(table: pd.DataFrame, window: str) -> pd.DataFrame:
+def regression_variants(table: pd.DataFrame, window: str, **kwargs) -> pd.DataFrame:
     late = table[table["grokking_step"].notna()].copy()
     late["target"] = np.log10(late["grokking_step"].astype(float))
     if late["group"].nunique() < 3:
@@ -48,7 +48,7 @@ def regression_variants(table: pd.DataFrame, window: str) -> pd.DataFrame:
     ):
         if frame["group"].nunique() < 3:
             continue
-        scored = head_to_head(frame, task="regression", window=window, winsor=winsor)
+        scored = head_to_head(frame, task="regression", window=window, winsor=winsor, **kwargs)
         scored["variant"] = name
         scored["n_runs"] = len(frame)
         scored["n_groups"] = frame["group"].nunique()

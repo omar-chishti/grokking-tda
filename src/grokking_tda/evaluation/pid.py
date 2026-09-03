@@ -30,8 +30,13 @@ def gaussian_pid(
 
     Under MMI the weaker source's unique atom is zero by construction, so a zero here means
     dominated, not uninformative. ``williams_beer_pid`` is the estimator that can tell them apart.
+
+    Source A may be multivariate, which is what a vectorised diagram needs: the atoms are then
+    the decomposition against a source of that width, and the covariance costs a degree of
+    freedom per column.
     """
-    a = np.asarray(source_a, dtype=float).reshape(-1, 1)
+    a = np.asarray(source_a, dtype=float)
+    a = a.reshape(-1, 1) if a.ndim == 1 else a
     b = np.asarray(source_b, dtype=float).reshape(-1, 1)
     t = np.asarray(target, dtype=float).reshape(-1, 1)
     data = np.hstack([a, b, t])
@@ -43,7 +48,8 @@ def gaussian_pid(
     data = data[keep]
     if normal_scores:
         data = _to_normal_scores(data)
-    a, b, t = data[:, :1], data[:, 1:2], data[:, 2:3]
+    width = a.shape[1]
+    a, b, t = data[:, :width], data[:, width : width + 1], data[:, width + 1 :]
 
     mi_a, mi_b = _gaussian_mi(a, t), _gaussian_mi(b, t)
     mi_joint = _gaussian_mi(np.hstack([a, b]), t)

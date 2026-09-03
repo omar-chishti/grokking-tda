@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import r2_score, roc_auc_score
@@ -26,6 +28,11 @@ FOURIER = ("fourier_concentration", "fourier_concentration_group") + tuple(
 )
 CHEAP = ("weight_norm", "lid")
 
+# A vectorised diagram carries hundreds of columns for eighty runs, which a ridge reports as a
+# worse score whatever the topology says, so the block is compressed to this many components —
+# fitted inside each training fold, never on the whole table.
+COMPONENTS = 10
+
 # baselines is nested in baselines+topology, so their difference is the topological block
 FEATURE_SETS: dict[str, tuple[str, ...]] = {
     "weight_norm": CHEAP[:1],
@@ -42,20 +49,29 @@ def feature_columns(observables: tuple[str, ...], available: list[str]) -> list[
     return [column for column in available if column in wanted]
 
 
-def _estimator(task: str) -> tuple[Pipeline, dict]:
+def _prepare(*extra) -> Pipeline:
+    return Pipeline(
+        [("impute", SimpleImputer(strategy="median")), ("scale", StandardScaler()), *extra]
+    )
+
+
+def _estimator(task: str, compress: list[str] | None = None) -> tuple[Pipeline, dict]:
     if task == "classification":
         model = LogisticRegression(max_iter=2000)
         grid = {"model__C": [0.01, 0.1, 1.0, 10.0]}
     else:
         model = Ridge()
         grid = {"model__alpha": [0.1, 1.0, 10.0, 100.0]}
-    pipeline = Pipeline(
-        [
-            ("impute", SimpleImputer(strategy="median")),
-            ("scale", StandardScaler()),
-            ("model", model),
-        ]
-    )
+    if compress:
+        # only the vector block is compressed; the baselines pass through at full width, so
+        # they stay nested in baselines+vector and the difference is still the topological block
+        compressed = _prepare(("pca", PCA(COMPONENTS, random_state=0)))
+        prepare = ColumnTransformer(
+            [("vector", compressed, compress)], remainder=_prepare()
+        )
+        pipeline = Pipeline([("prepare", prepare), ("model", model)])
+    else:
+        pipeline = _prepare(("model", model))
     return pipeline, grid
 
 
@@ -95,6 +111,7 @@ def nested_scores(
     n_outer: int = 5,
     n_inner: int = 3,
     winsor: tuple[float, float] | None = None,
+    compress: list[str] | None = None,
 ) -> list[float]:
     outer = _splitter(task, _n_splits(task, target, groups, n_outer))
     scores: list[float] = []
@@ -111,7 +128,7 @@ def nested_scores(
             continue
         if task == "classification" and len(np.unique(target[train_idx])) < 2:
             continue
-        pipeline, grid = _estimator(task)
+        pipeline, grid = _estimator(task, compress)
         inner = _n_splits(task, target[train_idx], train_groups, n_inner)
         train_x, train_y = features.iloc[train_idx], target[train_idx]
         if _tunable(task, train_y, train_groups, inner):
@@ -141,27 +158,33 @@ def head_to_head(
     task: str,
     window: str,
     winsor: tuple[float, float] | None = None,
+    feature_sets: dict[str, tuple[str, ...]] | None = None,
+    compressed: tuple[str, ...] = (),
 ) -> pd.DataFrame:
     available = [c for c in table.columns if c.endswith(("__mean", "__trend"))]
     groups = table["group"].to_numpy()
     target = table["target"].to_numpy(dtype=float)
     rows = []
-    for name, observables in FEATURE_SETS.items():
+    for name, observables in (feature_sets or FEATURE_SETS).items():
         columns = feature_columns(observables, available)
         if not columns:
             continue
-        scores = nested_scores(table[columns], target, groups, task, winsor=winsor)
-        rows.append(
-            {
-                "window": window,
-                "task": task,
-                "feature_set": name,
-                "n_features": len(columns),
-                "n_folds": len(scores),
-                "score_mean": float(np.mean(scores)) if scores else float("nan"),
-                "score_std": float(np.std(scores)) if scores else float("nan"),
-            }
+        compress = [c for c in columns if c.startswith(compressed)] if compressed else None
+        scores = nested_scores(
+            table[columns], target, groups, task, winsor=winsor, compress=compress or None
         )
+        row = {
+            "window": window,
+            "task": task,
+            "feature_set": name,
+            "n_features": len(columns),
+            "n_folds": len(scores),
+            "score_mean": float(np.mean(scores)) if scores else float("nan"),
+            "score_std": float(np.std(scores)) if scores else float("nan"),
+        }
+        if compressed:
+            row["n_compressed"] = len(compress or ())
+        rows.append(row)
     frame = pd.DataFrame(rows)
     # the headline: what the topological block adds
     if {"baselines", "baselines+topology"} <= set(frame["feature_set"]):

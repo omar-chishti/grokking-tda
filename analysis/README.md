@@ -30,6 +30,8 @@ circularity.py       two non-spectral circularity measures, the residual after
                      circularity, and a column-shuffle null            (thesis 4.5)
 predictive.py        the head-to-head, extreme condition held out, target winsorised
                                                                        (thesis 5.4)
+vectorise.py         the same head-to-head and decomposition against landscapes and
+                     images rather than scalar summaries              (thesis 5.4, 5.5)
 pid.py               decomposition per regime: two redundancy functions, two source
                      pairings, cluster bootstrap and null              (thesis 5.5)
 redundancy.py        resampled-null p-values across the grid, BH and BY   (thesis 3.7, 4.4)

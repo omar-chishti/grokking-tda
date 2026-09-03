@@ -16,6 +16,7 @@ from grokking_tda.tda.trajectory import (
     crocker_from_diagrams,
     crocker_matrix,
 )
+from grokking_tda.tda.vectorise import diagram_extent, landscape, persistence_image
 
 __all__ = [
     "auto_crocker",
@@ -26,9 +27,12 @@ __all__ = [
     "crocker_from_diagrams",
     "crocker_matrix",
     "diagram_distance",
+    "diagram_extent",
+    "landscape",
     "max_persistence",
     "n_features",
     "persistence_entropy",
+    "persistence_image",
     "random_init_null",
     "total_persistence",
     "trajectory_velocity",

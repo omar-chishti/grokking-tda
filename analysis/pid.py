@@ -26,6 +26,12 @@ SOURCES_A = {
     "terminal": "h1_max_persistence_normalised__plateau",
 }
 
+# The vectorised source of §5.4: the diagram as a landscape and an image rather than as one
+# number. Three components, because the Gaussian estimator spends a degree of freedom on each
+# and the smallest regime carries twenty-odd runs.
+VECTOR_COMPONENTS = 3
+VECTOR_SOURCE = "vector"
+
 ESTIMATORS = {"gaussian_mmi": gaussian_pid, "williams_beer": williams_beer_pid}
 # Resampling creates ties, which a binned estimator reads as dependence, so only the
 # permutation null is reported for the Williams-Beer atoms
@@ -78,7 +84,7 @@ def permute_within_clusters(
 
 
 def decompose(
-    frame: pd.DataFrame, estimator, *, source_a: str = SOURCE_A,
+    frame: pd.DataFrame, estimator, *, source_a: str | list[str] = SOURCE_A,
     bootstrap: bool = True, seed: int = 0,
 ) -> dict:
     a = frame[source_a].to_numpy(float)
@@ -86,9 +92,11 @@ def decompose(
     t = np.log10(frame["t_g"].to_numpy(float))
     groups = frame["group"].to_numpy()
 
+    leading = a if a.ndim == 1 else a[:, 0]
+
     point = estimator(a, b, t)
     if not np.isfinite(point.get("total", np.nan)):
-        return {"atoms": point, **design_effect(groups, a)}
+        return {"atoms": point, **design_effect(groups, leading)}
 
     rng = np.random.default_rng(seed)
     unique_groups = np.unique(groups)
@@ -103,7 +111,7 @@ def decompose(
     for _ in range(N_PERMUTATIONS):
         null.append(estimator(a, b, permute_within_clusters(t, groups, rng)))
 
-    out = {"atoms": {}, "bootstrapped": bootstrap, **design_effect(groups, a)}
+    out = {"atoms": {}, "bootstrapped": bootstrap, **design_effect(groups, leading)}
     for atom in ATOMS:
         boot = np.array([d.get(atom, np.nan) for d in draws], dtype=float)
         boot = boot[np.isfinite(boot)]
@@ -125,6 +133,28 @@ def decompose(
     return out
 
 
+def vector_source(frame: pd.DataFrame, vectors: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """The plateau-shift vector reduced to its leading components, joined onto the bank rows.
+
+    The components are fitted on the regime being decomposed. That is not a leak — no target is
+    involved and nothing is scored out of sample here — but it does mean the axes are the axes
+    of this regime's own variation, which is what a decomposition of this regime should use.
+    """
+    from sklearn.decomposition import PCA
+    from sklearn.preprocessing import StandardScaler
+
+    columns = [c for c in vectors.columns if c.endswith("__shift")]
+    joined = frame.merge(vectors[["run", *columns]], on="run", how="inner")
+    block = joined[columns].to_numpy(float)
+    block = np.nan_to_num(block, nan=float(np.nanmedian(block)))
+    components = PCA(min(VECTOR_COMPONENTS, *block.shape), random_state=0).fit_transform(
+        StandardScaler().fit_transform(block)
+    )
+    names = [f"pc{i}" for i in range(components.shape[1])]
+    reduced = pd.DataFrame(components, columns=names, index=joined.index)
+    return pd.concat([joined, reduced], axis=1), names
+
+
 def main() -> None:
     ap = cli.parser(__doc__)
     args = ap.parse_args()
@@ -140,11 +170,15 @@ def main() -> None:
     for name, predicate in REGIMES.items():
         subsets[name] = grokked[predicate(grokked)]
 
+    vector_path = args.out / "vector_terminal.csv"
+    vectors = pd.read_csv(vector_path) if vector_path.exists() else None
+
     results = {
         "target": TARGET,
         "source_a": SOURCE_A,
         "sources_a": SOURCES_A,
         "source_b": SOURCE_B,
+        "vector_components": VECTOR_COMPONENTS,
         "n_bootstrap": N_BOOT,
         "n_permutations": N_PERMUTATIONS,
         "regimes": {},
@@ -161,6 +195,13 @@ def main() -> None:
             for estimator_name, estimator in ESTIMATORS.items()
             for pairing, column in SOURCES_A.items()
         }
+        if vectors is not None:
+            # only the Gaussian estimator: Williams-Beer bins each variable, and a
+            # three-dimensional source would ask for 4^3 cells from twenty-odd runs
+            reduced, names = vector_source(frame, vectors)
+            results["regimes"][name][f"gaussian_mmi__{VECTOR_SOURCE}"] = decompose(
+                reduced, gaussian_pid, source_a=names
+            )
         block = results["regimes"][name]["gaussian_mmi__ratio"]
         print(
             f"\n{name} — {block['n']} runs across {block['n_configurations']} configurations, "

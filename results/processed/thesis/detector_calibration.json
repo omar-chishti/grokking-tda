@@ -63,13 +63,13 @@
     "observable": "h1_max_persistence_normalised",
     "n_grokking_runs": 93,
     "n_located_proxy": 93,
-    "n_located_changepoint": 81,
-    "n_located_by_both": 81,
-    "median_separation_steps": 14575.0,
-    "median_separation_over_t_g": 1.3086458333333333,
-    "sign_agreement": 0.3333333333333333,
+    "n_located_changepoint": 72,
+    "n_located_by_both": 72,
+    "median_separation_steps": 937.0,
+    "median_separation_over_t_g": 0.08523502151605428,
+    "sign_agreement": 0.7777777777777778,
     "n_lagging_proxy": 69,
-    "n_lagging_changepoint": 8
+    "n_lagging_changepoint": 46
   },
   "unrepaired_detector": {
     "n_runs": 226,

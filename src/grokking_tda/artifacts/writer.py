@@ -15,6 +15,14 @@ import torch
 from grokking_tda.artifacts.schema import Manifest
 
 
+def write_json(path: Path, payload: dict[str, Any], *, sort_keys: bool = True) -> None:
+    """Temp file then rename, so a reader never sees a partial JSON file and an interrupted
+    write never truncates the one it replaces."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, sort_keys=sort_keys, default=str))
+    os.replace(tmp, path)
+
+
 def prepare_run_dir(run_dir: str | Path, overwrite: bool = False) -> Path:
     """Refuse a run directory that already holds a run: the logs truncate on start."""
     run_dir = Path(run_dir)
@@ -77,7 +85,4 @@ class ArtifactWriter:
 
     @staticmethod
     def _dump(path: Path, payload: dict[str, Any]) -> None:
-        # temp file then rename, so a reader never sees a partial JSON file
-        tmp = path.with_name(path.name + ".tmp")
-        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str))
-        os.replace(tmp, path)
+        write_json(path, payload)

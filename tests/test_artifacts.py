@@ -54,6 +54,23 @@ def test_writer_reader_roundtrip(tmp_path) -> None:
     assert "w" in snapshots[0].load_weights()
 
 
+def test_a_failed_json_write_leaves_the_previous_file_intact(tmp_path, monkeypatch) -> None:
+    """`summary.json` is written into the artifact store, which is not in version control and
+    costs GPU hours to rebuild. A half-written one is worse than a stale one."""
+    from grokking_tda.artifacts import writer
+
+    path = tmp_path / "summary.json"
+    writer.write_json(path, {"grokking_step": 100})
+    monkeypatch.setattr(writer.os, "replace", _raise)
+    with pytest.raises(OSError):
+        writer.write_json(path, {"grokking_step": 200})
+    assert json.loads(path.read_text()) == {"grokking_step": 100}
+
+
+def _raise(*args, **kwargs):
+    raise OSError("disk full")
+
+
 def test_run_refuses_a_manifest_from_a_later_schema(tmp_path) -> None:
     """The version is written into every manifest, so something has to read it: a store from a
     later writer must fail at the door rather than be parsed under the wrong field meanings."""

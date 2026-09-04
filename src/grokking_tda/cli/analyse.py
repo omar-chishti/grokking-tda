@@ -15,6 +15,7 @@ import pandas as pd
 from grokking_tda.analysis import ObservationContext, run_observables
 from grokking_tda.analysis.context import stored_analysis_cfg
 from grokking_tda.artifacts import Run
+from grokking_tda.artifacts.writer import write_json
 from grokking_tda.config.schema import AnalysisCfg
 from grokking_tda.evaluation import (
     all_transitions,
@@ -112,7 +113,7 @@ def main() -> None:
         stored = json.loads((out_dir / "summary.json").read_text())
         if "ph_dimension" in stored:
             summary["ph_dimension"] = stored["ph_dimension"]
-        (out_dir / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        write_json(out_dir / "summary.json", summary, sort_keys=False)
         logger.info("summary re-derived -> %s", out_dir)
         return
 
@@ -152,7 +153,7 @@ def main() -> None:
             "min": float(ph_dim["ph_dim"].min()) if len(ph_dim) else None,
         }
 
-    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+    write_json(out_dir / "summary.json", summary, sort_keys=False)
 
     logger.info("analysis -> %s", out_dir)
     headline = {

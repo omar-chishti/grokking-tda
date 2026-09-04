@@ -119,7 +119,10 @@ class ExperimentCfg:
     output_root: str = "results/raw"
     # the writer truncates its logs on start, so reusing a directory would mix two runs
     overwrite: bool = False
-    # carries every knob the sweeps vary, so distinct configs never collide
+    # A readable label, not a key: it omits the optimiser, the learning rate, the architecture,
+    # the batch size and the label permutation, so two distinct configurations can generate one
+    # name. A sweep that moves a field the template omits sets `run_name` itself, as the recipe,
+    # learning-rate and interaction programmes in `experiments/` do.
     run_name: str = (
         "${model.name}_${data.operation}${data.modulus}"
         "_f${data.train_fraction}_wd${train.optimizer.weight_decay}_${train.loss}_s${seed}"

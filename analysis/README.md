@@ -160,3 +160,7 @@ def fig_torus(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 The claim string is what the figure has to establish, and it is written into the manifest, so
 a reader can hold the figure to it.
+
+Not every builder has a renderer. `4.7` builds `figures/fig-4-7-torus.csv` and nothing draws it:
+the degree-two result is quoted in the prose of §4.6 and §6.5 rather than plotted, and the table is
+kept because it is the evidence behind those sentences.

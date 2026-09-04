@@ -24,10 +24,14 @@ retraining, and sweeps parallelise across a cluster.
 ```
 src/grokking_tda/
   registry.py        Generic typed Registry (name -> factory).
+  observable.py      The observable contract: the registry, and the direction each declares.
+                     A leaf, so producers (tda, baselines) and consumers (evaluation) share it
+                     without either importing the other's package.
   config/            Typed dataclass schema (schema.py) + Hydra ConfigStore presets (store.py).
   configs/           The Hydra YAML tree: config.yaml + experiment/ + hydra/launcher/.
   data/              modular.py: add/sub/mul/div/poly tasks, full tensors, deterministic split;
-                     permutation.py: composition in S_n, the non-cyclic control task.
+                     permutation.py: composition in S_n, the non-cyclic control task;
+                     multiop.py: several operations in one model, the operator as a token.
   models/            hooks.py (HookPoint capture) + transformer.py + mlp.py; all expose
                      forward(tokens)->logits and embedding_matrix().
   training/          engine.py (step loop) + callbacks.py + losses.py (float64 / StableMax)
@@ -35,8 +39,10 @@ src/grokking_tda/
                      with an optional dense window) + trajectory.py (projected iterate recorder).
   artifacts/         schema.py (Manifest) + writer.py (+ prepare_run_dir overwrite guard)
                      + reader.py (Run/Snapshot) — the contract between the layers.
-  analysis/          observable.py (Observable interface + ObservationContext + runner;
-                     per-snapshot diagrams disk-cached under analysis/diagrams/)
+  analysis/          identity.py (what condition a run belongs to, read from its config and not
+                     its name, and whether it re-runs one the programme already covers)
+                     + context.py (ObservationContext + the per-run runner; per-snapshot
+                     diagrams disk-cached under analysis/diagrams/)
                      + representations.py (embedding/hidden/logits extraction, train/test split)
                      + task_metrics.py (commutativity-corrected accuracy)
                      + aggregate.py (many runs -> one tidy robustness table).
@@ -44,6 +50,7 @@ src/grokking_tda/
                      + homology.py (ripser) + summaries.py (max/total/entropy) + observables.py
                      (raw and scale-normalised) + betti.py (dominance-gap Betti counts)
                      + phdim.py (PH-dimension of the optimisation path)
+                     + vectorise.py (landscapes and images: a diagram as a vector)
                      + distances.py (bottleneck/sliced-Wasserstein + trajectory velocity)
                      + significance.py (bootstrap CIs + random-init null models)
                      + trajectory.py (CROCKER — topology of the trajectory).
@@ -81,10 +88,10 @@ drift. Method code has tests; reduction code has a committed output. See `analys
 3. **Hook points** (`models/hooks.py`). Activations are captured by name via
    `run_with_cache`, so the analysis layer can pull any internal representation without
    the model knowing about TDA.
-4. **Observable** (`analysis/observable.py`). Everything measured from a snapshot —
-   H1 persistence, Fourier concentration, weight norm, LID — is the same kind of object
-   `(ctx) -> float`, so the central comparison — what does topology add over cheaper
-   diagnostics? — is a one-line config change.
+4. **Observable** (`observable.py` for the contract, `analysis/context.py` for the context it
+   is handed). Everything measured from a snapshot — H1 persistence, Fourier concentration,
+   weight norm, LID — is the same kind of object `(ctx) -> float`, so the central comparison —
+   what does topology add over cheaper diagnostics? — is a one-line config change.
 
 ## 4. Data flow
 

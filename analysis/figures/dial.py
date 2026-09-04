@@ -45,10 +45,6 @@ def ring(E: np.ndarray) -> dict:
     }
 
 
-def _pairs(xy, scale=1.0, fmt="{:.4f}/{:.4f}") -> str:
-    return ", ".join(fmt.format(scale * x, scale * y) for x, y in xy)
-
-
 def build() -> str:
     rings = {k: ring(terminal_embedding(v)) for k, v in RUNS.items()}
     hero = rings["Mlp"]

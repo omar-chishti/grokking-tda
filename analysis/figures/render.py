@@ -15,6 +15,7 @@ import pandas as pd
 from matplotlib.colors import PowerNorm
 from matplotlib.patches import Rectangle
 
+from analysis import cli
 from analysis.figures import style as S
 
 
@@ -39,7 +40,7 @@ def _spearman(x, y) -> tuple[float, float]:
     rho, p = stats.spearmanr(np.asarray(x)[m], np.asarray(y)[m])
     return float(rho), float(p)
 
-DATA = Path("results/processed/thesis/figures")
+DATA = cli.OUT_ROOT / "figures"
 RENDERERS: dict[str, Callable] = {}
 
 
@@ -1556,13 +1557,17 @@ def phdim(variant: S.Variant) -> str:
 
 
 def main() -> None:
+    global DATA
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", nargs="*")
     parser.add_argument("--variant", choices=["thesis", "slide", "both"], default="thesis")
     parser.add_argument("--out", type=Path, help="output root (default: results/figures/generated)")
+    parser.add_argument("--data", type=Path, help=f"built tables (default: {DATA})")
     args = parser.parse_args()
     if args.out:
         S.OUTPUT_ROOT = args.out
+    if args.data:
+        DATA = args.data
 
     variants = {"thesis": [S.THESIS], "slide": [S.SLIDE], "both": [S.THESIS, S.SLIDE]}[args.variant]
     wanted = args.only or sorted(RENDERERS)

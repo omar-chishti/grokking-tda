@@ -14,7 +14,7 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - run: uv run ruff check src tests analysis scripts
+      - run: uv run ruff check src tests analysis sidequest scripts
       - run: uv run mypy
       - name: pytest
         # ripser/scikit-learn and torch each load their own OpenMP runtime; without

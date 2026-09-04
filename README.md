@@ -60,10 +60,13 @@ magnitude across training. Every summary is therefore reported both raw and scal
 src/grokking_tda/   the framework: models, engine, artifact contract, TDA, baselines, evaluation
 analysis/           the reduction layer: a bank of runs -> the tables and figures a write-up quotes
 results/processed/  the tidy table behind every number and figure, small enough to track
-tests/              107 tests over the framework
+tests/              191 tests over the framework, plus an import check on the reduction layer
 experiments/        the run programme, as checked-in data
 scripts/remote/     orchestration for a pool of shared GPU workstations
 docs/               architecture and the architecture decision records
+sidequest/          a self-contained study that must not reach the main bank, tree and all
+results-stride1/    trajectories re-recorded at every optimiser step, in their own tree
+results-sidequest/  the side quest's artifact store, likewise
 ```
 
 `src/` holds the method and is unit tested; `analysis/` holds the reduction, imports the method and
@@ -82,7 +85,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design and
 
 ```bash
 uv run pytest
-uv run ruff check src tests analysis scripts
+uv run ruff check src tests analysis sidequest scripts
 uv run mypy
 ```
 

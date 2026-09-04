@@ -16,7 +16,7 @@ import pytest
 import torch
 
 from grokking_tda.analysis.aggregate import aggregate_runs, early_window_table
-from grokking_tda.analysis.observable import (
+from grokking_tda.analysis.context import (
     ObservationContext,
     diagram_cache_digest,
     stored_analysis_cfg,
@@ -52,6 +52,16 @@ def test_writer_reader_roundtrip(tmp_path) -> None:
     assert snapshots[0].step == 0
     assert snapshots[0].representation("embedding").shape == (5, 3)
     assert "w" in snapshots[0].load_weights()
+
+
+def test_run_refuses_a_manifest_from_a_later_schema(tmp_path) -> None:
+    """The version is written into every manifest, so something has to read it: a store from a
+    later writer must fail at the door rather than be parsed under the wrong field meanings."""
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "manifest.json").write_text(json.dumps({"run_name": "r", "schema_version": 2}))
+    with pytest.raises(ValueError, match="schema"):
+        Run(run_dir)
 
 
 def test_prepare_run_dir_refuses_existing_run(tmp_path) -> None:
@@ -146,8 +156,17 @@ def test_aggregate_runs_joins_config_and_summary(tiny_run, tmp_path) -> None:
         "config": {
             "seed": 1,
             "model": {"name": "mlp"},
-            "data": {"operation": "add", "modulus": 11, "train_fraction": 0.5},
-            "train": {"loss": "softmax_ce", "steps": 10, "optimizer": {"name": "adamw"}},
+            "data": {
+                "operation": "add",
+                "modulus": 11,
+                "train_fraction": 0.5,
+                "label_permutation": False,
+            },
+            "train": {
+                "loss": "softmax_ce",
+                "steps": 10,
+                "optimizer": {"name": "adamw", "lr": 1e-3, "weight_decay": 1.0},
+            },
         },
         "env": {},
         "task_meta": {"modulus": 11},

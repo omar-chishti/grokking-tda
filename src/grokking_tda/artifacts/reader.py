@@ -12,6 +12,8 @@ import pandas as pd
 import torch
 from torch import nn
 
+from grokking_tda.artifacts.schema import SCHEMA_VERSION
+
 
 @dataclass
 class Snapshot:
@@ -23,10 +25,6 @@ class Snapshot:
         return torch.load(
             self.directory / "weights.pt", map_location=map_location, weights_only=True
         )
-
-    def load_representations(self) -> dict[str, np.ndarray]:
-        with np.load(self.directory / "representations.npz") as data:
-            return {key: data[key] for key in data.files}
 
     def representation(self, key: str) -> np.ndarray | None:
         path = self.directory / "representations.npz"
@@ -40,6 +38,12 @@ class Run:
         if not (self.dir / "manifest.json").exists():
             raise FileNotFoundError(f"no manifest.json in {self.dir}")
         self.manifest = json.loads((self.dir / "manifest.json").read_text())
+        version = self.manifest.get("schema_version", SCHEMA_VERSION)
+        if version != SCHEMA_VERSION:
+            raise ValueError(
+                f"{self.dir} was written at manifest schema {version}; this reader knows "
+                f"{SCHEMA_VERSION}"
+            )
 
     @property
     def run_name(self) -> str:

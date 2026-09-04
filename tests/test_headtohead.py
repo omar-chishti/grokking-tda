@@ -7,6 +7,8 @@ import pandas as pd
 
 from grokking_tda.evaluation.headtohead import (
     FEATURE_SETS,
+    _n_splits,
+    _splitter,
     feature_columns,
     nested_scores,
 )
@@ -87,6 +89,64 @@ def test_winsorising_bounds_come_from_the_training_fold_only() -> None:
     # the caller's array must survive: an in-place clip would silently winsorise every
     # later feature set against a target that had already been clipped once
     assert target.max() > np.quantile(target, 0.9)
+
+
+def test_winsorising_does_not_carry_between_outer_folds(monkeypatch) -> None:
+    """Each fold's bounds must be the quantiles of its own unclipped training rows. Reading them
+    from a running array ratchets them inward fold by fold, and clips a test fold by bounds that
+    an earlier fold's training rows fixed --- the leak the winsorising exists to avoid."""
+    rng = np.random.default_rng(4)
+    n_groups, per = 12, 4
+    groups = np.repeat([f"cfg{g}" for g in range(n_groups)], per)
+    features = pd.DataFrame(
+        {"x__mean": rng.normal(size=len(groups)), "x__trend": rng.normal(size=len(groups))}
+    )
+    target = features["x__mean"].to_numpy() * 2.0 + rng.normal(scale=0.2, size=len(groups))
+    target[[0, 5]] += 30.0  # the heavy tails winsorising is for
+    target[[9, 17]] -= 25.0
+
+    winsor = (0.05, 0.95)
+    outer = _splitter("regression", _n_splits("regression", target, groups, 5))
+    folds = list(outer.split(features, target, groups))
+    expected = [np.quantile(target[train], winsor) for train, _ in folds]
+
+    seen = []
+    original = np.quantile
+
+    def record(values, q, *args, **kwargs):
+        out = original(values, q, *args, **kwargs)
+        if q is winsor:  # the caller's own tuple, so this is the winsorising call and not another
+            seen.append(out)
+        return out
+
+    monkeypatch.setattr(np, "quantile", record)
+    nested_scores(features, target, groups, task="regression", winsor=winsor)
+
+    assert len(seen) == len(expected)
+    for got, want in zip(seen, expected, strict=True):
+        assert np.allclose(got, want)
+
+
+def test_a_constant_test_fold_is_skipped_rather_than_scored() -> None:
+    """Clipping can leave every run in one grouped fold on the same bound. `r2_score` then
+    divides by a variance of zero and returns a number of order 1e29, which is how one reached
+    a committed table."""
+    rng = np.random.default_rng(5)
+    n_groups, per = 10, 4
+    groups = np.repeat([f"cfg{g}" for g in range(n_groups)], per)
+    features = pd.DataFrame(
+        {"x__mean": rng.normal(size=len(groups)), "x__trend": rng.normal(size=len(groups))}
+    )
+    # a target concentrated on one value with a tail at each end: clipping at the tenth and
+    # ninetieth centiles leaves nothing but the value itself
+    target = np.full(len(groups), 5.0)
+    target[groups == "cfg0"] = 0.0
+    target[groups == "cfg9"] = 99.0
+
+    assert nested_scores(features, target, groups, task="regression", winsor=(0.1, 0.9)) == []
+
+    unclipped = nested_scores(features, target, groups, task="regression")
+    assert unclipped and np.isfinite(unclipped).all()
 
 
 def test_window_end_step_is_the_run_s_own_convergence_for_tc() -> None:

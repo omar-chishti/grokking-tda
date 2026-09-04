@@ -14,6 +14,9 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from grokking_tda.baselines.fourier import FOURIER_K_SWEEP
+from grokking_tda.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 TOPOLOGY = (
     "h1_max_persistence",
@@ -113,24 +116,26 @@ def nested_scores(
     winsor: tuple[float, float] | None = None,
     compress: list[str] | None = None,
 ) -> list[float]:
+    target = np.asarray(target, dtype=float)
     outer = _splitter(task, _n_splits(task, target, groups, n_outer))
     scores: list[float] = []
     for train_idx, test_idx in outer.split(features, target, groups):
         train_groups = groups[train_idx]
         if winsor is not None:
-            # bounds from the training fold only, then applied to both sides of it, as the
-            # imputer and the scaler in the same pipeline already are
+            # Bounds from this fold's training rows, applied to a copy of the untouched target.
+            # Reading them from a running array instead would carry each fold's clipping into
+            # the next, and shape a test fold by rows that trained an earlier one.
             lo, hi = np.quantile(target[train_idx], winsor)
-            target = target.copy()
-            target[train_idx] = np.clip(target[train_idx], lo, hi)
-            target[test_idx] = np.clip(target[test_idx], lo, hi)
+            fold_target = np.clip(target, lo, hi)
+        else:
+            fold_target = target
         if len(np.unique(train_groups)) < 2:
             continue
-        if task == "classification" and len(np.unique(target[train_idx])) < 2:
+        if task == "classification" and len(np.unique(fold_target[train_idx])) < 2:
             continue
         pipeline, grid = _estimator(task, compress)
-        inner = _n_splits(task, target[train_idx], train_groups, n_inner)
-        train_x, train_y = features.iloc[train_idx], target[train_idx]
+        inner = _n_splits(task, fold_target[train_idx], train_groups, n_inner)
+        train_x, train_y = features.iloc[train_idx], fold_target[train_idx]
         if _tunable(task, train_y, train_groups, inner):
             model = GridSearchCV(
                 pipeline,
@@ -143,13 +148,20 @@ def nested_scores(
             model = pipeline.set_params(**{k: v[len(v) // 2] for k, v in grid.items()})
             model.fit(train_x, train_y)
         if task == "classification":
-            if len(np.unique(target[test_idx])) < 2:
+            if len(np.unique(fold_target[test_idx])) < 2:
                 continue
             predicted = model.predict_proba(features.iloc[test_idx])[:, 1]
-            scores.append(float(roc_auc_score(target[test_idx], predicted)))
+            scores.append(float(roc_auc_score(fold_target[test_idx], predicted)))
         else:
+            # the same guard the classification side has: winsorising can leave a whole grouped
+            # fold on one bound, and R^2 against a constant divides by a variance of zero
+            if np.ptp(fold_target[test_idx]) == 0:
+                logger.warning(
+                    "regression fold skipped: its %d test targets take one value", len(test_idx)
+                )
+                continue
             predicted = model.predict(features.iloc[test_idx])
-            scores.append(float(r2_score(target[test_idx], predicted)))
+            scores.append(float(r2_score(fold_target[test_idx], predicted)))
     return scores
 
 

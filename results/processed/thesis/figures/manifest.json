@@ -8,11 +8,123 @@
   },
   "figures": [
     {
+      "figure": "1.1",
+      "name": "hero",
+      "claim": "The network fits in 200 steps and generalises 27,600 steps later.",
+      "file": "fig-1-1-hero.csv",
+      "rows": 523
+    },
+    {
+      "figure": "4.1",
+      "name": "reproduction",
+      "claim": "Both architectures and both recipes grok; the null does not.",
+      "file": "fig-4-1-reproduction.csv",
+      "rows": 8620
+    },
+    {
+      "figure": "4.2",
+      "name": "signature",
+      "claim": "Normalised, the reference regime rises cleanly; the canonical regime has nothing to clean.",
+      "file": "fig-4-2-signature.csv",
+      "rows": 1865
+    },
+    {
+      "figure": "4.3",
+      "name": "diagrams",
+      "claim": "One long-lived cycle separates from the diagonal and stays separated.",
+      "file": "fig-4-3-diagrams.csv",
+      "rows": 699
+    },
+    {
       "figure": "4.4",
       "name": "robustness",
       "claim": "Five of sixteen conditions clear the null; one runs below it.",
       "file": "fig-4-4-robustness.csv",
       "rows": 23
+    },
+    {
+      "figure": "4.6",
+      "name": "circularity",
+      "claim": "Circularity predicts the signature; generalisation does not.",
+      "file": "fig-4-6-circularity.csv",
+      "rows": 74
+    },
+    {
+      "figure": "4.7",
+      "name": "torus",
+      "claim": "The joint representation is a torus upstream and a circle at the readout.",
+      "file": "fig-4-7-torus.csv",
+      "rows": 3600
+    },
+    {
+      "figure": "5.1",
+      "name": "basis",
+      "claim": "The circle is there under multiplication; the residue basis cannot see it.",
+      "file": "fig-5-1-basis.csv",
+      "rows": 1270
+    },
+    {
+      "figure": "5.2",
+      "name": "noncyclic",
+      "claim": "S5 groks with a huge seed spread, and the signature is present anyway.",
+      "file": "fig-5-2-noncyclic.csv",
+      "rows": 2213
+    },
+    {
+      "figure": "5.3",
+      "name": "headtohead",
+      "claim": "Topology adds little over the cheap baselines, and nothing to timing.",
+      "file": "fig-5-3-headtohead.csv",
+      "rows": 60
+    },
+    {
+      "figure": "5.4",
+      "name": "pid",
+      "claim": "What topology says about the transition is mostly said by Fourier too.",
+      "file": "fig-5-4-pid.csv",
+      "rows": 52
+    },
+    {
+      "figure": "5.5",
+      "name": "lag",
+      "claim": "Topology follows generalisation, and leads nowhere.",
+      "file": "fig-5-5-lag.csv",
+      "rows": 414
+    },
+    {
+      "figure": "5.6",
+      "name": "interventions",
+      "claim": "The interventions work on one architecture and destabilise the other.",
+      "file": "fig-5-6-interventions.csv",
+      "rows": 15938
+    },
+    {
+      "figure": "6.1",
+      "name": "crocker",
+      "claim": "The band of live features slides as the cloud contracts.",
+      "file": "fig-6-1-crocker.csv",
+      "rows": 31488
+    },
+    {
+      "figure": "6.2",
+      "name": "velocity",
+      "claim": "The representation reorganises fastest around the transition.",
+      "file": "fig-6-2-velocity.csv",
+      "rows": 1850
+    },
+    {
+      "figure": "6.3",
+      "name": "phdim",
+      "claim": "The geometry of the search turns after the network begins to generalise.",
+      "file": "fig-6-3-phdim.csv",
+      "rows": 5185
+    },
+    {
+      "figure": "6.4",
+      "name": "depth",
+      "claim": "The torus appears at the operand layer, and only after the transition.",
+      "file": "fig-6-4-depth.csv",
+      "rows": 60
     }
   ]
 }

@@ -10,6 +10,7 @@ import pandas as pd
 
 from analysis import cli
 from analysis.bank import bootstrap_median_ci, load_bank
+from grokking_tda.analysis.identity import condition_key
 from grokking_tda.artifacts.reader import Run
 from grokking_tda.tda.phdim import ph_dimension_fit
 
@@ -158,7 +159,24 @@ def recording_every(run: Run) -> int:
 
 
 def condition_of(name: str) -> str:
+    """The readable label a run's condition is reported under: its name without the seed."""
     return name.rsplit("_s", 1)[0]
+
+
+def check_conditions(runs: list[Path]) -> None:
+    """A label is a name, and a name omits the optimiser, the rate and the architecture.
+
+    Runs sharing a label must share a configuration, or a sweep cell silently pools two
+    conditions. Nothing enforces that in the naming, so it is checked before it is relied on.
+    """
+    seen: dict[str, set[str]] = {}
+    for run_dir in runs:
+        run = Run(run_dir)
+        seen.setdefault(condition_of(run.run_name), set()).add(condition_key(run.config))
+    merged = {label: keys for label, keys in seen.items() if len(keys) > 1}
+    if merged:
+        lines = "\n".join(f"  {k}: {len(v)} configurations" for k, v in merged.items())
+        raise SystemExit(f"these labels cover more than one configuration:\n{lines}")
 
 
 DRAW_SWEEP = (1, 4, 8)
@@ -335,6 +353,7 @@ def main() -> None:
     runs = sorted(p.parent for p in args.root.glob("*/trajectory.npz"))
     if not runs:
         raise SystemExit(f"no trajectory.npz under {args.root}")
+    check_conditions(runs)
 
     if args.stride_sweep:
         stride_main(runs, args)

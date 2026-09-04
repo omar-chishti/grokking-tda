@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from grokking_tda.analysis.identity import condition_key, is_replicate
+from grokking_tda.analysis.identity import condition_key, config_fields, is_replicate
 from grokking_tda.artifacts.reader import Run
 from grokking_tda.evaluation.predictive import window_end_step
 from grokking_tda.utils.logging import get_logger
@@ -24,23 +24,17 @@ _SUMMARY_KEYS = (
 
 
 def _config_row(run: Run) -> dict:
-    cfg = run.config
-    data = cfg.get("data", {})
-    train = cfg.get("train", {})
-    optim = train.get("optimizer", {})
+    """The condition fields from `identity`, so this table and the bank cannot disagree.
+
+    They did: reading `data.modulus` here rather than recomputing it gave six S_5 runs a
+    modulus of 97, which is what their manifests carry and not the order of the group.
+    """
     return {
         "run": run.run_name,
         "path": str(run.dir),
-        "seed": cfg.get("seed"),
-        "model": cfg.get("model", {}).get("name"),
-        "operation": data.get("operation"),
-        "modulus": data.get("modulus"),
-        "train_fraction": data.get("train_fraction"),
-        "label_permutation": data.get("label_permutation", False),
-        "loss": train.get("loss"),
-        "optimizer": optim.get("name"),
-        "weight_decay": optim.get("weight_decay"),
-        "steps": train.get("steps"),
+        "seed": run.config.get("seed"),
+        **config_fields(run.config),
+        "steps": run.config.get("train", {}).get("steps"),
     }
 
 
@@ -50,10 +44,10 @@ def aggregate_runs(root: str | Path) -> pd.DataFrame:
         run_dir = manifest_path.parent
         try:
             run = Run(run_dir)
+            row = _config_row(run)
         except Exception as exc:  # unreadable run: skip, never abort the sweep table
             logger.warning("skipping %s: %s", run_dir, exc)
             continue
-        row = _config_row(run)
         summary_path = run_dir / "analysis" / "summary.json"
         if summary_path.exists():
             summary = json.loads(summary_path.read_text())

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from grokking_tda.plotting.style import DIM_COLORS as _DIM_COLORS
-from grokking_tda.plotting.style import GROK_COLOR, use_vector_style
+from grokking_tda.plotting.style import SIENNA, use_vector_style
 from grokking_tda.tda.summaries import finite_bars
 
 
@@ -30,7 +30,7 @@ def plot_observables_over_time(
         ax.set_xscale("symlog")
         for label, value in (markers or {}).items():
             if value is not None:
-                ax.axvline(value, color=GROK_COLOR, ls="--", lw=1, label=label)
+                ax.axvline(value, color=SIENNA, ls="--", lw=1, label=label)
     handles, labels = axes[0][0].get_legend_handles_labels()
     if handles:
         fig.legend(handles, labels, loc="lower center", ncol=len(labels), frameon=False)

@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
+from grokking_tda.plotting.style import BRONZE, INK, PAGE, RULE, SAGE, SIENNA, SLATE
+
 from . import fonts
 
 SMALLCAPS = fonts.install()
@@ -24,13 +26,6 @@ OUTPUT_ROOT = Path(
 )
 
 # the palette, series encodings and geometry every figure in the set is drawn to
-INK = "#1F1B16"
-BRONZE = "#8C6A43"
-RULE = "#C8B69B"
-PAGE = "#FBFAF7"
-SIENNA = "#96402A"
-SLATE = "#3A5C66"
-SAGE = "#8B9179"
 
 SEQUENTIAL = LinearSegmentedColormap.from_list(
     "thesis-seq", ["#F5EFE6", "#E7D9C3", "#D3BC9B", "#B99A6E", "#9A7748", "#6E5330"]

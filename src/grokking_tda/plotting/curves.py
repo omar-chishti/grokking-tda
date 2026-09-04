@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from grokking_tda.plotting.style import GROK_COLOR, use_vector_style
+from grokking_tda.plotting.style import SIENNA, use_vector_style
 
 
 def plot_training_curves(
@@ -32,7 +32,7 @@ def plot_training_curves(
 
     if transition is not None:
         for ax in (ax_acc, ax_loss):
-            ax.axvline(transition, color=GROK_COLOR, ls="--", lw=1)
+            ax.axvline(transition, color=SIENNA, ls="--", lw=1)
 
     out_path = Path(out_path)
     fig.savefig(out_path)

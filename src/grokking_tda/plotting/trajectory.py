@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from grokking_tda.plotting.style import GROK_COLOR, SEQUENTIAL, use_vector_style
+from grokking_tda.plotting.style import SEQUENTIAL, SIENNA, use_vector_style
 
 
 def plot_crocker(
@@ -28,7 +28,7 @@ def plot_crocker(
     ax.set_yscale("symlog")
     ax.set(xlabel="filtration scale", ylabel="training step")
     if grokking_step is not None:
-        ax.axhline(grokking_step, color=GROK_COLOR, ls="--", lw=1, label="grokking")
+        ax.axhline(grokking_step, color=SIENNA, ls="--", lw=1, label="grokking")
         ax.legend(loc="upper right")
     fig.colorbar(mesh, ax=ax, label=rf"$\beta_{{{homology_dim}}}$ (alive features)")
     out_path = Path(out_path)

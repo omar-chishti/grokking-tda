@@ -12,16 +12,20 @@ from matplotlib.colors import LinearSegmentedColormap
 logging.getLogger("fontTools").setLevel(logging.WARNING)
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
+# The house palette, stated once. `analysis/figures/style.py` imports it: the two had been
+# written out separately and had already drifted, SAGE holding a different colour in each.
 INK = "#1F1B16"  # text / primary series
-ACCENT = "#8C6A43"  # warm bronze, secondary series / emphasis
+BRONZE = "#8C6A43"  # warm bronze, secondary series / emphasis
 RULE = "#C8B69B"  # light rule / faint series
-SAGE = "#5E6B5A"  # muted cool counterpoint (third series)
+SAGE = "#8B9179"  # muted cool counterpoint (third series)
 STONE = "#8E8276"  # warm grey (fourth series)
+SLATE = "#3A5C66"  # cool accent, the fifth series in the manuscript set
+SIENNA = "#96402A"  # burnt sienna: marks the grokking step on time axes
+PAGE = "#FBFAF7"  # the ground the figures sit on
 
-GROK_COLOR = "#96402A"  # burnt sienna: marks the grokking step on time axes
-DIM_COLORS = {0: STONE, 1: ACCENT, 2: SAGE}  # H0 / H1 / H2 in persistence diagrams
+DIM_COLORS = {0: STONE, 1: BRONZE, 2: SAGE}  # H0 / H1 / H2 in persistence diagrams
 
-SEQUENTIAL = LinearSegmentedColormap.from_list("thesis", ["#F5F1EA", ACCENT, INK])
+SEQUENTIAL = LinearSegmentedColormap.from_list("thesis", ["#F5F1EA", BRONZE, INK])
 
 
 def use_vector_style() -> None:
@@ -42,7 +46,7 @@ def use_vector_style() -> None:
             "axes.labelcolor": INK,
             "xtick.color": INK,
             "ytick.color": INK,
-            "axes.prop_cycle": cycler(color=[INK, ACCENT, SAGE, STONE, RULE]),
+            "axes.prop_cycle": cycler(color=[INK, BRONZE, SAGE, STONE, RULE]),
             "axes.spines.top": False,
             "axes.spines.right": False,
             "axes.grid": True,

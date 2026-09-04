@@ -2,24 +2,23 @@
 
 from __future__ import annotations
 
-from grokking_tda.analysis.observable import ObservationContext, register_observable
+from typing import TYPE_CHECKING
+
+from grokking_tda.observable import register_observable
 from grokking_tda.tda.summaries import (
-    finite_bars,
+    connectivity_scale,
     max_persistence,
     n_features,
     persistence_entropy,
     total_persistence,
 )
 
-
-def connectivity_scale(ctx: ObservationContext) -> float:
-    """The largest H0 death — already computed, and exactly linear in the cloud's size."""
-    bars = finite_bars(ctx.diagrams().get(0))
-    return float(bars[:, 1].max()) if bars.size else 0.0
+if TYPE_CHECKING:  # the context is needed to describe an observable, never to register one
+    from grokking_tda.analysis.context import ObservationContext
 
 
 def _normalised(ctx: ObservationContext, summary) -> float:
-    scale = connectivity_scale(ctx)
+    scale = connectivity_scale(ctx.diagrams())
     return summary(ctx.diagrams().get(1)) / scale if scale > 0 else float("nan")
 
 
@@ -51,7 +50,7 @@ def h1_persistence_entropy(ctx: ObservationContext) -> float:
 
 @register_observable("pointcloud_scale", direction="auto")
 def pointcloud_scale(ctx: ObservationContext) -> float:
-    return connectivity_scale(ctx)
+    return connectivity_scale(ctx.diagrams())
 
 
 @register_observable("h1_max_persistence_normalised", direction="rising")

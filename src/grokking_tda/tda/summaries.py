@@ -16,6 +16,16 @@ def finite_lifetimes(diagram: np.ndarray | None) -> np.ndarray:
     return bars[:, 1] - bars[:, 0] if bars.size else np.empty(0)
 
 
+def connectivity_scale(diagrams: dict[int, np.ndarray]) -> float:
+    """The largest finite H0 death: the diameter at which the cloud becomes one component.
+
+    The denominator every persistence summary is divided by (ADR 0005, thesis 3.3.1), so it is
+    defined once here and read by both the scalar observables and the vectorised diagrams.
+    """
+    bars = finite_bars(diagrams.get(0))
+    return float(bars[:, 1].max()) if bars.size else 0.0
+
+
 def total_persistence(diagram: np.ndarray | None) -> float:
     lifetimes = finite_lifetimes(diagram)
     return float(lifetimes.sum()) if lifetimes.size else 0.0

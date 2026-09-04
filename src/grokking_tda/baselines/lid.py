@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
-from grokking_tda.analysis.observable import ObservationContext, register_observable
+from grokking_tda.observable import register_observable
+
+if TYPE_CHECKING:  # the context is needed to describe an observable, never to register one
+    from grokking_tda.analysis.context import ObservationContext
 
 
 def two_nn_dimension(points: np.ndarray) -> float:

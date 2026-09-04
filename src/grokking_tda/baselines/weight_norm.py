@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from grokking_tda.analysis.observable import ObservationContext, register_observable
+from typing import TYPE_CHECKING
+
+from grokking_tda.observable import register_observable
+
+if TYPE_CHECKING:  # the context is needed to describe an observable, never to register one
+    from grokking_tda.analysis.context import ObservationContext
 from grokking_tda.utils.precision import tensor_norm
 
 

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import torch
 
-from grokking_tda.analysis.observable import ObservationContext, register_observable
+from grokking_tda.analysis.context import ObservationContext
+from grokking_tda.observable import register_observable
 
 
 def leak_free_test_mask(data) -> torch.Tensor:

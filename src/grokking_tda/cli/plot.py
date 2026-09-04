@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from omegaconf import OmegaConf
 
-from grokking_tda.analysis.observable import ObservationContext
+from grokking_tda.analysis.context import ObservationContext
 from grokking_tda.artifacts import Run
 from grokking_tda.config.schema import AnalysisCfg
 from grokking_tda.evaluation import grokking_step

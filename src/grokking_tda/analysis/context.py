@@ -1,4 +1,9 @@
-"""The Observable abstraction and the per-run runner, with one cached context per snapshot."""
+"""What a snapshot looks like to an observable, and the per-run runner over every snapshot.
+
+One context per snapshot, memoising the point cloud and the diagrams so that the twenty-odd
+observables measured there each pay for them once. The contract they satisfy is in
+``grokking_tda.observable``.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +15,8 @@ import pandas as pd
 
 from grokking_tda.analysis.representations import dataset_for, extract_representation_matrix
 from grokking_tda.artifacts.reader import Run, Snapshot
-from grokking_tda.registry import Registry
+from grokking_tda.config.schema import AnalysisCfg
+from grokking_tda.observable import OBSERVABLES, ensure_builtins
 from grokking_tda.tda.homology import compute_persistence
 from grokking_tda.tda.pointcloud import build_point_cloud
 from grokking_tda.utils.logging import get_logger
@@ -18,7 +24,7 @@ from grokking_tda.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-def diagram_cache_digest(cfg, seed: int) -> str:
+def diagram_cache_digest(cfg: AnalysisCfg, seed: int) -> str:
     """The construction a cached diagram came from; readers of the directory must select on it."""
     pc, hm = cfg.pointcloud, cfg.homology
     key = "|".join(
@@ -40,20 +46,25 @@ def diagram_cache_digest(cfg, seed: int) -> str:
     return hashlib.sha1(key.encode()).hexdigest()[:10]
 
 
-def stored_analysis_cfg(run: Run):
-    """The analysis recipe a run was written with, laid over the current defaults."""
+def stored_analysis_cfg(run: Run) -> AnalysisCfg:
+    """The analysis recipe a run was written with, laid over the current defaults.
+
+    Resolved back to the dataclass rather than left as an OmegaConf container: every field is
+    read once per observable per snapshot, and a container read costs 250 times a plain
+    attribute read. Returning the dataclass also puts the config back inside the type checker.
+    """
     from omegaconf import OmegaConf
 
-    from grokking_tda.config.schema import AnalysisCfg
-
-    cfg = OmegaConf.structured(AnalysisCfg)
+    merged = OmegaConf.structured(AnalysisCfg)
     if "analysis" in run.config:
-        cfg = OmegaConf.merge(cfg, run.config["analysis"])
-    return cfg
+        merged = OmegaConf.merge(merged, run.config["analysis"])
+    resolved = OmegaConf.to_object(merged)
+    assert isinstance(resolved, AnalysisCfg)
+    return resolved
 
 
 class ObservationContext:
-    def __init__(self, run: Run, snapshot: Snapshot, cfg) -> None:
+    def __init__(self, run: Run, snapshot: Snapshot, cfg: AnalysisCfg) -> None:
         self.run = run
         self.snapshot = snapshot
         self.cfg = cfg
@@ -131,26 +142,10 @@ class ObservationContext:
 
 
 Observable = Callable[[ObservationContext], float]
-OBSERVABLES: Registry[float] = Registry("observable")
-
-# Declared at registration: inferring it from first and last value misreads anything
-# non-monotone, and a wrong direction enters the lead-lag results silently
-OBSERVABLE_DIRECTION: dict[str, str] = {}
 
 
-def register_observable(name: str, *, direction: str = "rising"):
-    """Register an ``(ctx) -> float`` observable, declaring which way it moves at the transition."""
-    if direction not in {"rising", "falling", "auto"}:
-        raise ValueError(f"unknown direction {direction!r}")
-    OBSERVABLE_DIRECTION[name] = direction
-    return OBSERVABLES.register(name)
-
-
-def run_observables(run: Run, cfg) -> pd.DataFrame:
-    import grokking_tda.analysis.task_metrics  # noqa: F401
-    import grokking_tda.baselines  # noqa: F401
-    import grokking_tda.tda.observables  # noqa: F401
-
+def run_observables(run: Run, cfg: AnalysisCfg) -> pd.DataFrame:
+    ensure_builtins()
     rows: list[dict] = []
     for snapshot in run.snapshots():
         ctx = ObservationContext(run, snapshot, cfg)

@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from analysis import cli
 from analysis.bank import (
     BASELINE_WINDOW,
     PLATEAU_FROM,
@@ -20,10 +21,15 @@ from analysis.bank import (
     null_band,
     verdicts,
 )
-from grokking_tda.analysis.observable import diagram_cache_digest, stored_analysis_cfg
+from grokking_tda.analysis.context import diagram_cache_digest, stored_analysis_cfg
 from grokking_tda.artifacts import Run
 
 BUILDERS: dict[str, Callable] = {}
+
+# Where the tables a figure reads already sit. A builder takes the run root as its argument and
+# some also need a table another driver wrote, so this is set from the command line beside it
+# rather than assumed, which is what lets a second run tree build its own figure set.
+PROCESSED = cli.OUT_ROOT
 
 
 def builder(number: str, name: str, claim: str):
@@ -37,6 +43,13 @@ def builder(number: str, name: str, claim: str):
 
 class Missing(Exception):
     """An input this figure needs has not been produced yet."""
+
+
+def _table(name: str) -> Path:
+    path = PROCESSED / name
+    if not path.exists():
+        raise Missing(f"no {name} under {PROCESSED} — run the driver that writes it")
+    return path
 
 
 def _metrics(root: Path, run: str) -> pd.DataFrame:
@@ -393,9 +406,7 @@ def fig_interventions(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 @builder("5.3", "headtohead",
          "Topology adds little over the cheap baselines, and nothing to timing.")
 def fig_headtohead(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    path = Path("results/processed/thesis/head_to_head.csv")
-    if not path.exists():
-        raise Missing("no head_to_head.csv — run analysis.predictive")
+    path = _table("head_to_head.csv")
     # the ledger's file, not gtda-compare's: the CLI scores one variant, so its numbers
     # are the full column of §5.4 and not the holdout or winsorised ones beside it
     frame = pd.read_csv(path)
@@ -406,9 +417,7 @@ def fig_headtohead(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 @builder("5.4", "pid", "What topology says about the transition is mostly said by Fourier too.")
 def fig_pid(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    path = Path("results/processed/thesis/pid.json")
-    if not path.exists():
-        raise Missing("no pid.json — run analysis.pid")
+    path = _table("pid.json")
     d = json.loads(path.read_text())
     rows = []
     for regime, estimators in d.get("regimes", {}).items():
@@ -439,9 +448,7 @@ def fig_pid(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
     "4.7", "torus", "The joint representation is a torus upstream and a circle at the readout."
 )
 def fig_torus(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
-    path = Path("results/processed/thesis/torus.csv")
-    if not path.exists():
-        raise Missing("no torus.csv — run analysis.torus")
+    path = _table("torus.csv")
     frame = pd.read_csv(path)
     condition = frame.run.str.replace(r"_s\d+$", "", regex=True)
     return frame.assign(
@@ -567,11 +574,15 @@ def fig_phdim(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path("results/raw"))
-    parser.add_argument("--out", type=Path, default=Path("results/processed/thesis/figures"))
+    parser.add_argument("--root", type=Path, default=cli.RUN_ROOT)
+    parser.add_argument("--out", type=Path, default=cli.OUT_ROOT / "figures")
+    parser.add_argument("--processed", type=Path, default=cli.OUT_ROOT,
+                        help="where the tables the figures read already sit")
     parser.add_argument("--only", nargs="*", help="figure numbers, e.g. 4.2 4.6")
     args = parser.parse_args()
 
+    global PROCESSED
+    PROCESSED = args.processed
     args.out.mkdir(parents=True, exist_ok=True)
     bank, _ = load_bank(args.root)
     wanted = args.only or sorted(BUILDERS)

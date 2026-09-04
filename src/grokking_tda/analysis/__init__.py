@@ -1,15 +1,10 @@
 """Offline analysis. Importing this package registers the built-in observables."""
 
-# side-effect imports: populate the observable registry
-import grokking_tda.baselines  # noqa: E402,F401
-import grokking_tda.tda.observables  # noqa: E402,F401
 from grokking_tda.analysis.aggregate import aggregate_runs
-from grokking_tda.analysis.observable import (
-    OBSERVABLES,
-    ObservationContext,
-    register_observable,
-    run_observables,
-)
+from grokking_tda.analysis.context import ObservationContext, run_observables
+from grokking_tda.observable import OBSERVABLES, ensure_builtins, register_observable
+
+ensure_builtins()  # importers of this package expect a full registry; `observable` owns the list
 
 __all__ = [
     "OBSERVABLES",

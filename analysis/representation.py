@@ -6,7 +6,6 @@ import json
 
 import numpy as np
 import pandas as pd
-from omegaconf import OmegaConf
 
 from analysis import cli
 from analysis.bank import (
@@ -48,10 +47,9 @@ CONTROL = "transformer_add97_f0.3_wd1.0_softmax_ce_s"
 
 
 def analysis_cfg(kind: str, max_points: int) -> AnalysisCfg:
-    cfg = OmegaConf.structured(AnalysisCfg)
-    cfg.representation = kind
-    cfg.representation_split = SPLIT
-    cfg.observables = list(OBSERVABLES)
+    cfg = AnalysisCfg(
+        representation=kind, representation_split=SPLIT, observables=list(OBSERVABLES)
+    )
     cfg.pointcloud.max_points = 0 if kind == "embedding" else max_points
     cfg.pointcloud.subsample = "maxmin"
     return cfg

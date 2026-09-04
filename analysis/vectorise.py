@@ -21,8 +21,8 @@ from analysis import cli
 from analysis.bank import window_medians
 from analysis.predictive import regression_variants
 from grokking_tda.analysis.aggregate import early_window_table
+from grokking_tda.analysis.context import diagram_cache_digest, stored_analysis_cfg
 from grokking_tda.analysis.identity import is_replicate
-from grokking_tda.analysis.observable import diagram_cache_digest, stored_analysis_cfg
 from grokking_tda.artifacts.reader import Run
 from grokking_tda.evaluation.headtohead import (
     CHEAP,
@@ -36,7 +36,7 @@ from grokking_tda.evaluation.predictive import (
     before_the_event,
     early_window_feature_grid,
 )
-from grokking_tda.tda.summaries import finite_bars
+from grokking_tda.tda.summaries import connectivity_scale
 from grokking_tda.tda.vectorise import diagram_extent, landscape, persistence_image
 
 LAYERS, RESOLUTION, GRID = 5, 20, 8
@@ -59,12 +59,6 @@ def cached_diagrams(run: Run) -> dict[int, dict[int, np.ndarray]]:
                 int(name[3:]): data[name] for name in data.files
             }
     return diagrams
-
-
-def connectivity_scale(diagrams: dict[int, np.ndarray]) -> float:
-    """The largest finite H0 death — the same denominator §3.3.1 normalises the scalars by."""
-    bars = finite_bars(diagrams.get(0))
-    return float(bars[:, 1].max()) if bars.size else 0.0
 
 
 def unit_series(run: Run) -> tuple[list[int], dict[str, list[np.ndarray | None]]]:

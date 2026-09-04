@@ -80,8 +80,8 @@ def test_every_configured_observable_is_registered() -> None:
     import grokking_tda.analysis.task_metrics  # noqa: F401
     import grokking_tda.baselines  # noqa: F401
     import grokking_tda.tda.observables  # noqa: F401
-    from grokking_tda.analysis.observable import OBSERVABLES
     from grokking_tda.config.schema import AnalysisCfg
+    from grokking_tda.observable import OBSERVABLES
 
     for name in AnalysisCfg().observables:
         assert name in OBSERVABLES, name

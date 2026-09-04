@@ -9,6 +9,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from grokking_tda.observable import OBSERVABLE_DIRECTION, ensure_builtins
+
 
 def _first_crossing(steps: np.ndarray, values: np.ndarray, threshold: float) -> int | None:
     hits = np.where(values >= threshold)[0]
@@ -98,9 +100,11 @@ def all_transitions(
     acc_threshold: float = 0.9,
 ) -> dict[str, dict[str, int | None]]:
     """Transition step and signed lag for every observable, under both detectors."""
-    from grokking_tda.analysis.observable import OBSERVABLE_DIRECTION
+    # deferred because `changepoint` imports `orient` from this module: a genuine cycle, unlike
+    # the direction table, which now comes from a leaf
     from grokking_tda.evaluation.changepoint import changepoint_step
 
+    ensure_builtins()
     t_g = grokking_step(metrics, acc_threshold)
     obs = observables.sort_values("step")
     steps = obs["step"].to_numpy()
@@ -132,8 +136,7 @@ def lead_lag(
     t_c = train_convergence_step(metrics)
     t_top = None
     if observable in observables:
-        from grokking_tda.analysis.observable import OBSERVABLE_DIRECTION
-
+        ensure_builtins()
         obs = observables.sort_values("step")
         t_top = transition_step(
             obs["step"].to_numpy(),

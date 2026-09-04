@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from grokking_tda.analysis import ObservationContext, run_observables
-from grokking_tda.analysis.observable import stored_analysis_cfg
+from grokking_tda.analysis.context import stored_analysis_cfg
 from grokking_tda.artifacts import Run
 from grokking_tda.config.schema import AnalysisCfg
 from grokking_tda.evaluation import (

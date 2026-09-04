@@ -13,8 +13,8 @@ from analysis.bank import (
     load_bank,
     null_runs,
 )
-from grokking_tda.analysis.observable import OBSERVABLE_DIRECTION
 from grokking_tda.evaluation import benjamini_hochberg, benjamini_yekutieli
+from grokking_tda.observable import OBSERVABLE_DIRECTION
 
 N_RESAMPLES = 20_000
 Q = 0.1  # false-discovery rate, pre-registered in §3.7

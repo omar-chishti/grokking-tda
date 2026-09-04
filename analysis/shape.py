@@ -14,8 +14,8 @@ from analysis.bank import (
     iter_runs,
     window_medians,
 )
+from grokking_tda.analysis.context import diagram_cache_digest, stored_analysis_cfg
 from grokking_tda.analysis.identity import is_replicate, task_modulus
-from grokking_tda.analysis.observable import diagram_cache_digest, stored_analysis_cfg
 
 MIN_BARS = 5  # below this the percentile is meaningless
 

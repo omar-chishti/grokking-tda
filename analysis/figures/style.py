@@ -154,7 +154,7 @@ def direct_label(ax, x, y, text, colour=INK, *, dx=2.0, dy=0.0, size=None, style
     )
 
 
-def annotate(ax, x, y, text, *, colour=BRONZE, size=None, ha="left", va="bottom",
+def annotate(ax, x, y, text, *, colour=INK, size=None, ha="left", va="bottom",
              style="italic", transform=None, rotation=0):
     ax.text(
         x, y, text, transform=transform if transform is not None else ax.transAxes,
@@ -180,11 +180,11 @@ def panel_letter(ax, letter: str, *, dx_mm: float = 7.5, dy_mm: float = 2.0) -> 
     )
 
 
-def panel_title(ax, text: str, *, pad: float = 8.0, colour: str = BRONZE) -> None:
+def panel_title(ax, text: str, *, pad: float = 8.0, colour: str = INK) -> None:
     ax.set_title(text, color=colour, pad=pad, loc="center", family=SMALLCAPS)
 
 
-def value(ax, x, y, number: str, name: str = "", *, colour=BRONZE, ha="left", va="bottom",
+def value(ax, x, y, number: str, name: str = "", *, colour=INK, ha="left", va="bottom",
           transform=None, gap: float = 1.35) -> None:
     axes = transform if transform is not None else ax.transAxes
     size = mpl.rcParams["font.size"]
@@ -196,7 +196,7 @@ def value(ax, x, y, number: str, name: str = "", *, colour=BRONZE, ha="left", va
                     clip_on=False, annotation_clip=False, fontsize=size * 0.84)
 
 
-def key(fig, rect, entries, *, heading: str = "", note: str = "") -> None:
+def key(fig, rect, entries, *, heading: str = "") -> None:
     ax = fig.add_axes(rect)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
@@ -213,13 +213,11 @@ def key(fig, rect, entries, *, heading: str = "", note: str = "") -> None:
                 fontsize=size * 0.88)
         top = 0.80
     rows = len(entries)
-    step = (top - (0.20 if note else 0.06)) / max(rows, 1)
+    step = (top - 0.06) / max(rows, 1)
     for i, (label, draw) in enumerate(entries):
         y = top - step * (i + 0.5)
         draw(ax, y)
         ax.text(0.30, y, label, va="center", ha="left", color=INK, fontsize=size * 0.88)
-    if note:
-        ax.text(0.055, 0.055, note, va="bottom", ha="left", color=RULE, fontsize=size * 0.80)
 
 
 def sequential(zero_as_page: bool = True, floor: float = 0.0):

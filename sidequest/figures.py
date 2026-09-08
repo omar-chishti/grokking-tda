@@ -332,8 +332,10 @@ def s4_timing(variant=style.THESIS, out_dir=None) -> str:
     style.direct_label(ax, np.median(crossings["reflection0.25"]), 0.25, "reflection", BRONZE,
                        dx=3.0)
     if variant is not style.TALK:  # on a slide the takeaway line carries these
-        style.value(ax, 0.03, 0.40, "+890", "median lag")
-        style.value(ax, 0.03, 0.14, "+382 to +3,698", "quantile sweep")
+        # low on the right, the one quarter of the panel both series have left by then: on the
+        # left they ran into the curve labels, and lower still the second name met the axis
+        style.value(ax, 0.58, 0.42, "+890", "median lag")
+        style.value(ax, 0.58, 0.22, "+382 to +3,698", "quantile sweep")
 
     for ax, letter in zip(axes, "ab", strict=True):
         ax.set_xlabel("training step")

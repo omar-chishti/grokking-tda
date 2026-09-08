@@ -19,19 +19,6 @@ from analysis import cli
 from analysis.figures import style as S
 
 
-def _text_width(fig, ax, text: str, size: float) -> float:
-    """How wide ``text`` would be in the axes' own data units, for a collision test.
-
-    Measured rather than estimated: the strings here are digits in a proportional face, and a
-    per-character guess is wrong by enough to place a label on its neighbour.
-    """
-    probe = ax.text(0, 0, text, fontsize=size, alpha=0.0)
-    box = probe.get_window_extent(renderer=fig.canvas.get_renderer())
-    probe.remove()
-    (x0, _), (x1, _) = ax.transData.inverted().transform([(box.x0, 0), (box.x1, 0)])
-    return abs(x1 - x0)
-
-
 def _spearman(x, y) -> tuple[float, float]:
     """Rank correlation on the rows a panel actually draws, so it cannot drift from them."""
     from scipy import stats
@@ -160,13 +147,13 @@ def hero(variant: S.Variant) -> str:
     ax.set_ylabel("accuracy")
     S.range_frame(ax, y=(0, 1))
 
-    S.direct_label(ax, 1150, 1.00, "train accuracy", S.BRONZE, dy=-4, va="top")
+    S.direct_label(ax, 1150, 1.00, "train accuracy", S.RULE, dy=-4, va="top")
     S.direct_label(ax, 1150, 0.305, "test accuracy", S.INK, dy=4, va="bottom")
     S.direct_label(ax, 1150, 0.010, "novel pairs only", S.INK, dy=4, va="bottom")
 
     trans = ax.get_xaxis_transform()
     ax.text(t_c * 1.30, 0.048, r"$t_c$ = 200", transform=trans, ha="left", va="bottom",
-            color=S.INK, fontsize=7.0 * variant.scale)
+            color=S.RULE, fontsize=7.0 * variant.scale)
     ax.text(t_g * 0.62, 0.048, r"$t_g$ = 28,600", transform=trans, ha="right", va="bottom",
             color=S.SIENNA, fontsize=7.0 * variant.scale, zorder=6)
 
@@ -226,7 +213,7 @@ def reproduction(variant: S.Variant) -> str:
             ax.set_yticklabels(["0", "0.5", "1"])
             ax.set_ylabel("accuracy")
             if row == 0:
-                S.direct_label(ax, 320, 0.900, "train", S.BRONZE, dx=0, size=6.8 * variant.scale)
+                S.direct_label(ax, 320, 0.900, "train", S.RULE, dx=0, size=6.8 * variant.scale)
                 S.direct_label(ax, 320, 0.400, "test", S.INK, dx=0, size=6.8 * variant.scale)
         else:
             ax.set_yticklabels([])
@@ -301,7 +288,8 @@ def signature(variant: S.Variant) -> str:
                 axs.yaxis.set_visible(False)
                 for sp in axs.spines.values():
                     sp.set_visible(False)
-                S.annotate(ax, 0.035, 0.045, collapse[panel], size=6.8 * variant.scale)
+                S.annotate(ax, 0.035, 0.045, collapse[panel], colour=S.BRONZE,
+                           size=6.8 * variant.scale)
 
             _logx(ax, 100)
             S.seed_comb(ax, tg)
@@ -810,7 +798,7 @@ def noncyclic(variant: S.Variant) -> str:
     S.range_frame(strip, y=(0, 0.06))
     measured = _claims()["s5_measured_plateau"]["median"]
     S.value(strip, 0.028, 0.985, f"{measured:.3f}", "measured", colour=S.INK)
-    S.value(strip, 0.290, 0.985, f"{predicted:.3f}", "predicted")
+    S.value(strip, 0.290, 0.985, f"{predicted:.3f}", "predicted", colour=S.BRONZE)
 
     S.null_band(right, *band)
     right.axvline(1.0, color=S.SIENNA, lw=S.HAIRLINE, zorder=1)
@@ -889,27 +877,34 @@ def headtohead(variant: S.Variant) -> str:
         panels.append(ax)
         sub = d[d.task == task]
         ax.axhline(floor, color=S.RULE, lw=S.HAIRLINE, zorder=1)
-        offscale: dict[int, list[float]] = {}
-        for key, (_name, colour, dash, glyph) in families.items():
+        offscale: dict[int, list[tuple[str, float]]] = {}
+        for fi, (key, (_name, colour, dash, glyph)) in enumerate(families.items()):
             arm = sub[sub.feature_set == key].set_index("window").reindex(windows)
             x = np.arange(len(windows))
             score, err = arm.score_mean.to_numpy(float), arm.score_std.to_numpy(float)
-            # A value below the shared floor is drawn on it, as a hollow glyph, with the
-            # values named once per window; dropping it silently leaves an empty column.
+            # A value below the shared floor is drawn on it, as a hollow glyph in the family's
+            # own colour; dropping it silently would leave an empty column. Four families under
+            # the floor at one window would otherwise stack into a single glyph, so each is
+            # offset by its position in the key and named beside its own marker.
             under = np.isfinite(score) & (score < ylim[0])
+            nudge = (fi - 1.5) * 0.165
             for i in np.flatnonzero(under):
-                offscale.setdefault(int(i), []).append(float(score[i]))
+                offscale.setdefault(int(i), []).append((_name, float(score[i])))
             ax.errorbar(x[~under], score[~under], yerr=err[~under], color=colour, lw=0.9,
                         ls="solid" if dash == (None, None) else (0, dash), marker=glyph,
                         ms=3.4, mew=0.0, elinewidth=S.HAIRLINE, capsize=1.8,
                         capthick=S.HAIRLINE, alpha=0.90, zorder=3)
             if under.any():
-                ax.scatter(x[under], np.full(under.sum(), ylim[0] + 0.03), s=13, marker="v",
-                           facecolors="none", edgecolors=colour, linewidths=0.6, zorder=3)
-        for i, values in offscale.items():
-            S.direct_label(ax, i, ylim[0] + 0.03,
-                           "off scale: " + ", ".join(f"{v:.0f}" for v in sorted(values)),
-                           S.RULE, dx=0, dy=8, ha="center", size=6.0 * variant.scale)
+                ax.scatter(x[under] + nudge, np.full(under.sum(), ylim[0] + 0.03), s=13,
+                           marker="v", facecolors="none", edgecolors=colour, linewidths=0.6,
+                           zorder=3)
+                for i in np.flatnonzero(under):
+                    S.direct_label(ax, i + nudge, ylim[0] + 0.03, f"{score[i]:.0f}", colour,
+                                   dx=0, dy=8.5, ha="center", size=5.7 * variant.scale)
+        if offscale:
+            S.annotate(ax, 0.012, ylim[0] + 0.03, "off scale", colour=S.RULE, style="normal",
+                       ha="left", va="center", size=6.0 * variant.scale,
+                       transform=ax.get_yaxis_transform())
         ax.set_xticks(np.arange(len(windows)))
         ax.set_xticklabels(ticks)
         ax.set_xlim(-0.35, 2.35)
@@ -976,7 +971,7 @@ def headtohead(variant: S.Variant) -> str:
     S.key(fig, (rect.x0, rect.y0, rect.width, rect.height),
           [(name, swatch(colour, dash, glyph))
            for name, colour, dash, glyph in families.values()],
-          heading="feature set", note="bars: mean $\\pm$ s.d. over folds")
+          heading="feature set")
 
     if variant.name == "thesis":
         for ax, letter, dx in zip(panels, "ABCD", (7.5, 5.0, 7.5, 5.0), strict=True):
@@ -990,104 +985,105 @@ def pid(variant: S.Variant) -> str:
     """The redundancy question, decomposed, and the regime that reverses it. Spec: D5-4-pid.md."""
     S.use(variant)
     d = _load("fig-5-4-pid.csv")
-    d = d[d.estimator == "gaussian_mmi__ratio"]
     atoms = [("redundant", "redundant", S.RULE),
              ("unique_a", r"unique to $H_1$", S.INK),
              ("unique_b", "unique to Fourier", S.BRONZE),
              ("synergistic", "synergistic", S.SLATE)]
-    regimes = [("pooled", "pooled"), ("canonical", "canonical regime")]
-    right = float(d.total.max()) * 1.16
-    for key, _ in regimes:                      # the interval whiskers reach further than the bars
-        block = d[d.regime == key].set_index("atom")
-        if block.empty or "unique_a" not in block.index:
-            continue
-        before = sum(float(block.bits[a]) for a, _, _ in atoms[:atoms.index(
-            next(t for t in atoms if t[0] == "unique_a"))])
-        hi = float(block.ci_hi["unique_a"])
-        if np.isfinite(hi):
-            right = max(right, (before + hi) * 1.30)
-    span = (0.0, right)
+    mmi = d[d.estimator == "gaussian_mmi__ratio"]
 
-    fig = S.figure(S.FULL, 0.345, variant)
-    ax = fig.add_subplot(111)
-    fig.subplots_adjust(left=0.036, right=0.952, bottom=0.244, top=0.930)
+    fig = S.figure(S.FULL, 0.40, variant)
+    top = fig.add_axes([0.232, 0.715, 0.718, 0.163])
+    bot = fig.add_axes([0.232, 0.125, 0.718, 0.295])
     size = 6.6 * variant.scale
 
-    ax.set_xlim(*span)
-    ya = ax.get_yaxis_transform()  # x in axes fractions, y in rows
-    for frac, (_, name, colour) in zip((0.0, 0.215, 0.475, 0.775), atoms, strict=True):
-        ax.add_patch(Rectangle((frac, -1.36), 0.020, 0.30, transform=ya, clip_on=False,
-                               facecolor=colour, edgecolor="none", zorder=3))
-        ax.text(frac + 0.029, -1.21, name, transform=ya, ha="left", va="center",
-                color=S.INK, fontsize=size)
+    # (A) composition, Gaussian MMI. The bar carries the composition; the atoms are named in
+    # §5.4 to three decimals, and printing them under the segments crowded the row and put four
+    # numbers within a few thousandths of each other. A stacked bar reads as position, so no
+    # interval belongs on it either: panel (B) carries the one the question turns on.
+    span_a = (0.0, float(mmi.total.max()) * 1.16)
+    top.set_xlim(*span_a)
+    for frac, (_, name, colour) in zip((0.0, 0.235, 0.500, 0.795), atoms, strict=True):
+        top.add_patch(Rectangle((frac, 1.28), 0.018, 0.17, transform=top.transAxes,
+                                clip_on=False, facecolor=colour, edgecolor="none", zorder=3))
+        top.text(frac + 0.028, 1.365, name, transform=top.transAxes, ha="left", va="center",
+                 color=S.INK, fontsize=size)
 
-    intervals: list[tuple[float, float, str, str]] = []
-    for i, (key, label) in enumerate(regimes):
-        block = d[d.regime == key].set_index("atom")
+    for i, (key, label) in enumerate((("pooled", "pooled"), ("canonical", "canonical regime"))):
+        block = mmi[mmi.regime == key].set_index("atom")
         if block.empty:
             continue
-        row = i * 1.62
-        ax.text(0.0, row - 0.78, label, ha="left", va="bottom", color=S.INK,
-                family=S.SMALLCAPS, fontsize=size * 1.04)
-        # every segment is named under the bar. The thin ones put their names within a few
-        # thousandths of a nat of each other, so a name that will not clear the one before it
-        # slides right until it does and takes a leader back to the segment it belongs to.
-        # A second line is not available: the row beneath is only 1.62 away and carries a title.
-        left, occupied = 0.0, -np.inf
-        pad = 0.012 * (span[1] - span[0])
+        row = float(i)
+        top.text(-0.012, row, label, transform=top.get_yaxis_transform(), ha="right",
+                 va="center", color=S.INK, family=S.SMALLCAPS, fontsize=size)
+        x = 0.0
         for atom, _, colour in atoms:
             width = float(block.bits[atom])
-            ax.barh([row], [width], left=left, height=0.50, color=colour, zorder=3,
-                    edgecolor=variant.ground or "white", linewidth=0.5)
-            if width <= 0.004:  # a structural zero, ticked where the segment would have been
-                ax.plot([left, left], [row - 0.29, row + 0.29], color=colour, lw=1.3, zorder=4)
-            text = f"{width:.3f}"
-            centre = left + 0.5 * width
-            half = 0.5 * _text_width(fig, ax, text, size)
-            at = max(centre, occupied + pad + half)
-            occupied = at + half
-            if at - centre > 0.004:
-                ax.plot([centre, centre, at], [row + 0.27, row + 0.325, row + 0.325],
-                        color=S.RULE, lw=S.HAIRLINE, zorder=2, solid_joinstyle="round")
-            ax.annotate(text, xy=(at, row + 0.33), xytext=(0, -1.0),
-                        textcoords="offset points", ha="center", va="top",
-                        color=S.INK, fontsize=size)
-            intervals.append((row, left, atom, colour))
-            left += width
+            top.barh([row], [width], left=x, height=0.46, color=colour, zorder=3,
+                     edgecolor=variant.ground or "white", linewidth=0.5)
+            if width <= 0.004:  # a zero is a gap in the stack, marked no taller than the bar
+                top.plot([x, x], [row - 0.23, row + 0.23], color=colour, lw=0.9, zorder=4)
+            x += width
         total, n = float(block.total.iloc[0]), int(block.n.iloc[0])
-        ax.text(total + span[1] * 0.010, row - 0.10, f"{total:.3f}", ha="left", va="bottom",
-                color=S.INK, fontsize=size * 1.03)
-        ax.text(total + span[1] * 0.010, row + 0.06, f"$n$ = {n}", ha="left", va="top",
-                color=S.INK, alpha=0.62, fontsize=size)
+        top.text(total + span_a[1] * 0.014, row, f"$n$ = {n}", ha="left", va="center",
+                 color=S.INK, alpha=0.62, fontsize=size)
 
-    frames = {key: d[d.regime == key].set_index("atom") for key, _ in regimes}
-    for row, left, atom, _ in intervals:
-        if atom != "unique_a":
+    ylim_a = (1.58, -0.58)
+    top.set_ylim(*ylim_a)
+    top.set_yticks([])
+    top.set_xlabel(r"$I(\,\cdot\,;\ \log t_g)$,  nats", labelpad=1.5)
+    S.range_frame(top, x=span_a, y=None)
+    top.spines["left"].set_visible(False)
+
+    # (B) the atom the question turns on, under both redundancy functions, each measured from
+    # zero so that a width is a width. The MMI zeros are structural (Barrett), not estimates.
+    rows = [("pooled", "gaussian_mmi__ratio", "pooled", "MMI"),
+            ("pooled", "williams_beer__ratio", "pooled", "Williams\u2013Beer"),
+            ("canonical", "gaussian_mmi__ratio", "canonical", "MMI"),
+            ("canonical", "williams_beer__ratio", "canonical", "Williams\u2013Beer")]
+    hi_max = 0.0
+    for regime, est, _, _ in rows:
+        r = d[(d.regime == regime) & (d.estimator == est) & (d.atom == "unique_a")]
+        if not r.empty:
+            ci = float(r.ci_hi.iloc[0])
+            hi_max = max(hi_max, float(r.bits.iloc[0]), ci if np.isfinite(ci) else 0.0)
+    span_b = (0.0, hi_max * 1.42)
+    bot.set_xlim(*span_b)
+
+    for i, (regime, est, rlabel, elabel) in enumerate(rows):
+        r = d[(d.regime == regime) & (d.estimator == est) & (d.atom == "unique_a")]
+        if r.empty:
             continue
-        block = frames[regimes[int(round(row / 1.62))][0]]
-        lo, hi = float(block.ci_lo[atom]), float(block.ci_hi[atom])
-        if not (np.isfinite(lo) and np.isfinite(hi)) or hi <= lo:
-            continue
-        ax.plot([left + lo, left + hi], [row - 0.44] * 2, color=S.INK, lw=1.0,
-                solid_capstyle="butt", zorder=5)
-        for edge in (left + lo, left + hi):
-            ax.plot([edge] * 2, [row - 0.38, row - 0.50], color=S.INK, lw=1.0, zorder=5)
-        ax.annotate(r"unique to $H_1$, $95\%$", xy=(left + hi, row - 0.44), xytext=(4, 0),
-                    textcoords="offset points", ha="left", va="center", color=S.INK,
-                    alpha=0.62, fontsize=size * 0.94)
+        row, bits = float(i), float(r.bits.iloc[0])
+        lo, hi = float(r.ci_lo.iloc[0]), float(r.ci_hi.iloc[0])
+        null, pval = float(r.null_median.iloc[0]), float(r.null_p.iloc[0])
+        bot.text(-0.012, row, f"{rlabel},  {elabel}", transform=bot.get_yaxis_transform(),
+                 ha="right", va="center", color=S.INK, fontsize=size)
+        edge = bits
+        if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
+            bot.plot([lo, hi], [row] * 2, color=S.INK, lw=1.0, solid_capstyle="butt", zorder=3)
+            for e in (lo, hi):
+                bot.plot([e] * 2, [row - 0.15, row + 0.15], color=S.INK, lw=1.0, zorder=3)
+            edge = hi
+        bot.plot([null], [row], marker="|", color=S.BRONZE, ms=7.0, mew=1.1, zorder=4)
+        structural = est.startswith("gaussian_mmi") and bits <= 0.0
+        bot.scatter([bits], [row], s=22, marker="o", zorder=5,
+                    facecolors="none" if structural else S.INK,
+                    edgecolors=S.INK, linewidths=0.9)
+        if structural:          # the open glyph carries it; the caption says what it means
+            note = ""
+        elif pval < 0.001:
+            note = "   $p < 0.001$"
+        else:
+            note = f"   $p$ = {pval:.3f}".rstrip("0")
+        S.direct_label(bot, edge, row, f"{bits:.3f}{note}", S.INK, dx=5, dy=0, size=size)
 
-    ylim = (2.55, -1.95)
-    ax.set_ylim(*ylim)
-    ax.set_xlim(*span)
-    ax.set_yticks([])
-    ax.set_xlabel(r"$I(\,\cdot\,;\ \log t_g)$,  nats")
-    S.range_frame(ax, x=span, y=ylim)
-    ax.spines["left"].set_visible(False)
-
-    S.annotate(ax, 1.0, 1.005, "Gaussian MMI,  Williams\u2013Beer lattice",
-               colour=S.INK, ha="right", va="bottom", style="normal",
-               size=6.4 * variant.scale)
-
+    bot.set_ylim(3.60, -0.60)
+    bot.set_yticks([])
+    bot.set_xlabel(r"unique to $H_1$,  nats", labelpad=1.5)
+    S.range_frame(bot, x=span_b, y=None)
+    bot.spines["left"].set_visible(False)
+    S.panel_letter(top, "a", dx_mm=33.0)
+    S.panel_letter(bot, "b", dx_mm=33.0)
     return S.save(fig, "fig-5-4-pid", variant)
 
 
@@ -1570,8 +1566,7 @@ def phdim(variant: S.Variant) -> str:
             ax.scatter([g.gap.median()], [g.dim.median()], s=24, marker="o", color=S.BRONZE,
                        zorder=5, linewidths=0)
     rho, _ = _spearman(fitting.gap, fitting.dim)
-    S.value(ax, 0.975, 0.905, rf"$\rho = {rho:+.3f}$", f"n = {len(fitting)}",
-            colour=S.BRONZE, ha="right")
+    S.value(ax, 0.975, 0.905, rf"$\rho = {rho:+.3f}$", f"n = {len(fitting)}", ha="right")
     ax.set_xlim(-0.12, 1.12)
     ax.set_ylim(*ylim)
     ax.set_xticks([0.0, 0.5, 1.0])

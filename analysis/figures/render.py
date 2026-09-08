@@ -148,35 +148,36 @@ def hero(variant: S.Variant) -> str:
 
     _logx(ax, 100)
     ax.set_xlim(0, acc.step.max())
-    ax.set_ylim(-0.03, 1.15)
+    ylo, yhi = -0.03, 1.16
+    ax.set_ylim(ylo, yhi)
     ax.set_yticks([0, 0.5, 1.0])
     ax.set_yticklabels(["0", "0.5", "1"])
     ax.set_xlabel("training step")
     ax.set_ylabel("accuracy")
     S.range_frame(ax, y=(0, 1))
 
-    # a key in the clear space above the memorisation plateau, clear of the train ramp on
-    # its left and the collapses on its right
+    # a key in the clear space between the memorisation plateau and the saturated train
+    # curve, clear of the train ramp on its left and the collapses on its right; its top is
+    # fixed in accuracy units so a change of headroom cannot move a curve into it
     box = ax.get_position()
-    S.key(fig, (box.x0 + 0.415 * box.width, box.y0 + 0.705 * box.height,
-                0.215 * box.width, 0.170 * box.height),
+    key_top, key_h = (0.94 - ylo) / (yhi - ylo), 0.170
+    S.key(fig, (box.x0 + 0.415 * box.width, box.y0 + (key_top - key_h) * box.height,
+                0.215 * box.width, key_h * box.height),
           [("train accuracy", _swatch(S.RULE, S.SECONDARY, None)),
            ("test accuracy", _swatch(S.INK, 1.15, None)),
            ("novel pairs only", _swatch(S.INK, 0.9, (4, 2)))])
 
-    trans = ax.get_xaxis_transform()
-    ax.text(t_c * 1.30, 0.048, r"$t_c$ = 200", transform=trans, ha="left", va="bottom",
-            color=S.RULE, fontsize=7.0 * variant.scale)
-    ax.text(t_g * 0.62, 0.048, r"$t_g$ = 28,600", transform=trans, ha="right", va="bottom",
-            color=S.SIENNA, fontsize=7.0 * variant.scale, zorder=6)
-
-    # the delay, read along the top of the panel above the saturated train curve
+    # the delay, read along the top of the panel above the saturated train curve, its
+    # two ends named in the same row as its length
     y = 1.07
     ax.annotate("", xy=(t_g, y), xytext=(t_c, y),
                 arrowprops=dict(arrowstyle="->", color=S.BRONZE, lw=S.HAIRLINE,
                                 shrinkA=0, shrinkB=0, mutation_scale=6))
-    ax.text((t_c * t_g) ** 0.5, y + 0.012, r"$143\times$", ha="center", va="bottom",
-            color=S.BRONZE, style="italic", fontsize=7.6 * variant.scale)
+    label = dict(y=y + 0.012, va="bottom", fontsize=7.0 * variant.scale)
+    ax.text(t_c * 1.07, s=r"$t_c$ = 200", ha="left", color=S.RULE, **label)
+    ax.text((t_c * t_g) ** 0.5, s=r"$143\times$", ha="center", color=S.BRONZE,
+            style="italic", **label)
+    ax.text(t_g * 0.96, s=r"$t_g$ = 28,600", ha="right", color=S.SIENNA, **label)
 
     return S.save(fig, "fig-1-1-hero", variant)
 

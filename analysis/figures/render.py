@@ -57,9 +57,9 @@ def _condition_label(key) -> tuple[str, ...]:
             "" if op == "compose" else f"{int(mod)}", f"{frac:g}", f"{wd:g}", extra)
 
 
-CONDITION_COLUMNS = ((-0.566, "left"), (-0.480, "left"), (-0.336, "right"),
-                     (-0.258, "right"), (-0.182, "right"), (-0.150, "left"))
-CONDITION_HEADERS = ("arch", "op", "$p$", "$f$", "wd", "")
+CONDITION_COLUMNS = ((-0.566, "left"), (-0.480, "left"), (-0.350, "right"),
+                     (-0.276, "right"), (-0.204, "right"), (-0.140, "right"), (-0.112, "left"))
+CONDITION_HEADERS = ("arch", "op", "$p$", "$f$", "wd", "$n$", "")
 
 
 def _condition_columns(ax, fields, *, size, columns=CONDITION_COLUMNS,
@@ -101,6 +101,14 @@ def _condition_row(**conditions):
         circularity=float(row["circularity"]),
         t_g=float(row["t_g_median"]),
     )
+
+
+def _swatch(colour, lw, dash):
+    """A line sample for ``S.key``; ``dash`` is a matplotlib dash tuple or ``None``."""
+    def draw(kax, y):
+        kax.plot([0.07, 0.235], [y, y], color=colour, lw=lw, clip_on=False,
+                 ls="solid" if dash is None else (0, dash))
+    return draw
 
 
 def _logx(ax, lo: float = 1.0) -> None:
@@ -149,18 +157,12 @@ def hero(variant: S.Variant) -> str:
 
     # a key in the clear space above the memorisation plateau, clear of the train ramp on
     # its left and the collapses on its right
-    def swatch(colour, lw, dash):
-        def draw(kax, y):
-            kax.plot([0.07, 0.235], [y, y], color=colour, lw=lw, clip_on=False,
-                     ls="solid" if dash is None else (0, dash))
-        return draw
-
     box = ax.get_position()
     S.key(fig, (box.x0 + 0.415 * box.width, box.y0 + 0.705 * box.height,
                 0.215 * box.width, 0.170 * box.height),
-          [("train accuracy", swatch(S.RULE, S.SECONDARY, None)),
-           ("test accuracy", swatch(S.INK, 1.15, None)),
-           ("novel pairs only", swatch(S.INK, 0.9, (4, 2)))])
+          [("train accuracy", _swatch(S.RULE, S.SECONDARY, None)),
+           ("test accuracy", _swatch(S.INK, 1.15, None)),
+           ("novel pairs only", _swatch(S.INK, 0.9, (4, 2)))])
 
     trans = ax.get_xaxis_transform()
     ax.text(t_c * 1.30, 0.048, r"$t_c$ = 200", transform=trans, ha="left", va="bottom",
@@ -223,9 +225,12 @@ def reproduction(variant: S.Variant) -> str:
         if ci == 0:
             ax.set_yticklabels(["0", "0.5", "1"])
             ax.set_ylabel("accuracy")
-            if row == 0:
-                S.direct_label(ax, 320, 0.900, "train", S.RULE, dx=0, size=6.8 * variant.scale)
-                S.direct_label(ax, 320, 0.400, "test", S.INK, dx=0, size=6.8 * variant.scale)
+            if row == 0:  # the series are named once, in (A)'s clear space above the plateau
+                box = ax.get_position()
+                S.key(fig, (box.x0 + 0.20 * box.width, box.y0 + 0.50 * box.height,
+                            0.22 * box.width, 0.26 * box.height),
+                      [("train", _swatch(S.RULE, 0.7, None)),
+                       ("test", _swatch(S.INK, 1.15, None))])
         else:
             ax.set_yticklabels([])
 
@@ -339,8 +344,12 @@ def signature(variant: S.Variant) -> str:
             ax.text(float(np.median(tg)) * 2.4, ax.get_ylim()[0], r"$t_g$", color=S.SIENNA,
                     fontsize=6.4 * variant.scale, ha="left", va="bottom")
 
-    S.annotate(axes[(0, 0)], 0.055, 0.845, "cloud scale, $s$", colour=S.BRONZE,
-               size=6.6 * variant.scale)
+    box = axes[(0, 0)].get_position()  # (A)'s clear lower-left, under the falling seeds
+    S.key(fig, (box.x0 + 0.04 * box.width, box.y0 + 0.22 * box.height,
+                0.36 * box.width, 0.33 * box.height),
+          [("one seed", _swatch(S.RULE, 0.5, None)),
+           ("median", _swatch(S.INK, S.DATA, None)),
+           ("scale $s$, on its own axis", _swatch(S.RULE, 0.7, (1, 2.2)))])
     ax = axes[(0, 0)]
     tg_med = float(np.median(sorted(
         d[d.panel == "reference"].groupby("run").t_g.first().dropna().unique())))
@@ -452,19 +461,21 @@ _OPERATION = {"add": "$a+b$", "sub": "$a-b$", "mul": r"$a \times b$", "div": r"$
               "compose": r"$S_5$", "permuted": "permuted labels", "poly": "$a^3+ab$"}
 
 
-COLUMNS_44 = ((-0.462, "left"), (-0.376, "left"), (-0.238, "right"), (-0.150, "right"),
-              (-0.055, "right"))
+COLUMNS_44 = ((-0.462, "left"), (-0.376, "left"), (-0.262, "right"), (-0.186, "right"),
+              (-0.112, "right"), (-0.030, "right"))
+HEADERS_44 = ("arch", "op", "$p$", "$f$", "wd", "$n$")
 
 
 def _robustness_fields(row) -> tuple[str, ...]:
     if row.block == "null model":
-        return ("", _OPERATION[row.operation], "", "", f"$^{{{int(row.n_runs)}}}$")
+        return ("", _OPERATION[row.operation], "", "", "", f"{int(row.n_runs)}")
     arch = "MLP" if row.model == "mlp" else "tf"
-    n = "" if (row.n_runs == 5 and row.n_grokked == 5) else \
-        f"$^{{{int(row.n_grokked)}/{int(row.n_runs)}}}$"
+    # seeds that grokked of seeds run, where the two differ; a bare count where they agree
+    n = f"{int(row.n_runs)}" if row.n_grokked == row.n_runs else \
+        f"{int(row.n_grokked)}/{int(row.n_runs)}"
     return (arch, _OPERATION[row.operation],
             "" if row.operation == "compose" else f"{int(row.modulus)}",
-            f"{row.train_fraction:g}", f"{row.weight_decay:g}{n}", "")
+            f"{row.train_fraction:g}", f"{row.weight_decay:g}", n)
 
 
 @renders("4.4", "robustness")
@@ -512,7 +523,7 @@ def robustness(variant: S.Variant) -> str:
     ax.set_yticks([])
     ax.set_ylim(len(conditions) - 0.4, -0.6)
     _condition_columns(ax, [_robustness_fields(r) for _, r in conditions.iterrows()],
-                       size=size, columns=COLUMNS_44, y0=-0.75)
+                       size=size, columns=COLUMNS_44, headers=HEADERS_44, y0=-0.75)
     ax.set_xticklabels([])
     ax.tick_params(axis="x", length=0)
     ax.spines["bottom"].set_visible(False)
@@ -589,6 +600,8 @@ def circularity(variant: S.Variant) -> str:
     ax2 = fig.add_subplot(gs[0, 1], sharey=ax)
 
     S.null_band(ax, 0.75, 1.32)
+    S.annotate(ax, 0.012, 0.775, "null", colour=S.INK, style="normal", va="top",
+               size=6.2 * variant.scale, transform=ax.get_yaxis_transform())
 
     # fit on log y
     m = np.isfinite(d.circularity) & (y > 0)
@@ -781,8 +794,11 @@ def noncyclic(variant: S.Variant) -> str:
     for run in runs:
         g = d[d.run == run].sort_values("step")
         colour = S.SLATE if run == censored else S.INK
-        for ax in (top, strip):
-            ax.plot(g.step, g.test_acc, color=colour, lw=0.9, zorder=3)
+        top.plot(g.step, g.test_acc, color=colour, lw=0.9, zorder=3)
+        # the strip is the pre-transition plateau, so each seed ends at its own grokking
+        # step, on the mark the comb already makes there
+        before = g[g.step <= float(g.t_g.iloc[0])]
+        strip.plot(before.step, before.test_acc, color=colour, lw=0.9, zorder=3)
 
     for ax in (top, strip):
         _logx(ax, 100)
@@ -829,10 +845,9 @@ def noncyclic(variant: S.Variant) -> str:
     # ensemble, so only its edges and the censored seed are named
     highest = max(ends, key=lambda r: ends[r][1])
     lowest = min((r for r in ends if r != censored), key=lambda r: ends[r][1])
-    for run in (highest, lowest, censored):
+    for run in (highest, lowest):  # the censored seed is named by its open glyph
         x, y = ends[run]
-        S.direct_label(right, x, y, f"{y:.1f}", S.SLATE if run == censored else S.INK,
-                       dx=4, size=6.6 * variant.scale)
+        S.direct_label(right, x, y, f"{y:.1f}", S.INK, dx=4, size=6.6 * variant.scale)
 
     right.set_xscale("log")
     right.set_yscale("log")
@@ -1166,7 +1181,9 @@ def lag(variant: S.Variant) -> str:
 
     ax.set_yticks([])
     ax.set_ylim(-0.8, len(t) - 0.2)
-    _condition_columns(ax, list(t.label), size=6.4 * variant.scale)
+    _condition_columns(ax, [(*label[:5], str(n), label[5])
+                            for label, n in zip(t.label, t.n, strict=True)],
+                       size=6.4 * variant.scale)
     ax.tick_params(axis="y", length=0)
     ax.set_xticklabels([])
     ax.spines["left"].set_visible(False)
@@ -1259,6 +1276,10 @@ def crocker(variant: S.Variant) -> str:
             tg = cell.t_g.dropna()
             if not tg.empty:
                 ax.axvline(float(tg.iloc[0]), color=S.SIENNA, lw=S.HAIRLINE, zorder=3)
+                if ri == 1 and ci == 0:
+                    ax.text(float(tg.iloc[0]) * 1.12, 0.03, r"$t_g$", color=S.SIENNA,
+                            transform=ax.get_xaxis_transform(), ha="left", va="bottom",
+                            fontsize=6.4 * variant.scale, zorder=6)
             ax.set_xscale("log")
             ax.set_yscale("log")
             ax.set_xlim(max(grid.columns.min(), 1), grid.columns.max())
@@ -1324,8 +1345,8 @@ def interventions(variant: S.Variant) -> str:
                 ax.plot(g.step, g.test_acc, color=colour, lw=weight, ls=dash, zorder=3,
                         alpha=0.85)
                 if bool(arm[arm.run == run].diverged.iloc[0]):
-                    ax.scatter([g.step.iloc[-1]], [g.test_acc.iloc[-1]], s=16, marker="o",
-                               facecolors="none", edgecolors=colour, linewidths=0.8, zorder=5)
+                    ax.scatter([g.step.iloc[-1]], [g.test_acc.iloc[-1]], s=18, marker="x",
+                               color=colour, linewidths=0.8, zorder=5)
         _logx(ax, 100)
         ax.set_xlim(0, sub.step.max())
         ax.set_ylim(-0.03, 1.06)
@@ -1397,8 +1418,7 @@ def interventions(variant: S.Variant) -> str:
         return draw
 
     def diverged(ax, y):
-        ax.plot([0.1225], [y], marker="o", ms=3.6, mfc="none", mec=S.INK, mew=0.8,
-                clip_on=False)
+        ax.plot([0.1225], [y], marker="x", ms=3.8, color=S.INK, mew=0.8, clip_on=False)
 
     S.key(fig, (rect.x0, rect.y0 - 0.042, rect.width, rect.height + 0.118),
           [(name, swatch(colour, weight, dash)) for name, colour, weight, dash in arms.values()]
@@ -1534,6 +1554,10 @@ def phdim(variant: S.Variant) -> str:
         tg = sub.t_g.dropna()
         if not tg.empty:
             ax.axvline(float(tg.median()), color=S.SIENNA, lw=0.6, zorder=3)
+            if (ri, ci) == (0, 0):
+                ax.text(float(tg.median()) * 1.08, 0.03, r"$t_g$", color=S.SIENNA,
+                        transform=ax.get_xaxis_transform(), ha="left", va="bottom",
+                        fontsize=6.4 * variant.scale)
 
         lo, hi = float(sub.step.min()), float(sub.step.max())
         ax.set_xscale("log")

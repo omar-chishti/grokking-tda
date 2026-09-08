@@ -112,7 +112,7 @@ def s1_mirrored_thread(variant=style.THESIS, out_dir=None) -> str:
         ax.set_xlim(centre[0] - lim, centre[0] + lim)
         ax.set_ylim(centre[1] - lim, centre[1] + lim)
         style.panel_title(ax, name, colour=colour, pad=2.0)
-        style.panel_letter(ax, "a" if operator == "add" else "b", dx_mm=2.0, dy_mm=-1.0)
+        style.panel_letter(ax, "A" if operator == "add" else "B", dx_mm=2.0, dy_mm=-1.0)
 
     # (c) the degree itself: the angle each loop accumulates, which is a straight line of
     # slope +/- k and needs no gate, no plane and no threshold to be read
@@ -144,7 +144,7 @@ def s1_mirrored_thread(variant=style.THESIS, out_dir=None) -> str:
     unrolled.set_xlabel("$b$")
     unrolled.set_ylabel("turns accumulated")
     style.range_frame(unrolled, (0, modulus - 1), (-16, 16))
-    style.panel_letter(unrolled, "c", dx_mm=8.0)
+    style.panel_letter(unrolled, "C", dx_mm=8.0)
     style.value(unrolled, 0.035, 0.92, "−1.000", "winding antisymmetry")
     style.value(unrolled, 0.035, 0.26, "0.21", "reflection residual")
     return _save(fig, "s1-mirrored-thread", variant, out_dir)
@@ -181,7 +181,7 @@ def s2_shift_landscape(variant=style.THESIS, out_dir=None) -> str:
         ax.set_xlabel("candidate shift $s$")
         style.panel_title(ax, title)
         style.range_frame(ax, (-modulus // 2, modulus // 2), (0, 1.6))
-        style.panel_letter(ax, "ab"[ax is axes[1]], dx_mm=6.0)
+        style.panel_letter(ax, "AB"[ax is axes[1]], dx_mm=6.0)
 
     axes[0].set_ylabel("relative residual")
     median = land[(land["run"] == REFERENCE) & (land["family"] == "reflected")]
@@ -230,7 +230,7 @@ def s3_leak_split(variant=style.THESIS, out_dir=None) -> str:
         ax.set_xlabel("training step")
         style.panel_title(ax, title)
         style.range_frame(ax, (700, 3e4), (0, 1.0))
-        style.panel_letter(ax, "ab"[ax is axes[1]], dx_mm=6.0)
+        style.panel_letter(ax, "AB"[ax is axes[1]], dx_mm=6.0)
         if variant is not style.TALK:
             style.direct_label(ax, 2.6e4, 1 / modulus, "$1/p$", RULE, dy=-3.0, va="top", size=7.0)
         style.seed_comb(ax, sorted(frame.groupby("run").apply(
@@ -245,10 +245,17 @@ def s3_leak_split(variant=style.THESIS, out_dir=None) -> str:
     if variant is not style.TALK:
         style.value(axes[0], 0.05, 0.90, f"{plateau['add'].median():.3f}", "plateau, $a + b$")
         style.value(axes[0], 0.05, 0.66, f"{plateau['sub'].median():.3f}", "plateau, $a - b$")
-    style.direct_label(axes[0], 6.5e3, plateau["add"].median(), "$a + b$", INK,
-                       ha="right", dy=5.0)
-    style.direct_label(axes[0], 6.5e3, plateau["sub"].median(), "$a - b$", BRONZE,
-                       ha="right", dy=5.0)
+    # the operators are named once, in (b)'s empty upper-left, where its point is that the
+    # two curves lie on one another
+    def swatch(colour):
+        def draw(kax, y):
+            kax.plot([0.07, 0.235], [y, y], color=colour, lw=style.SECONDARY, clip_on=False)
+        return draw
+
+    box = axes[1].get_position()
+    style.key(fig, (box.x0 + 0.05 * box.width, box.y0 + 0.62 * box.height,
+                    0.30 * box.width, 0.26 * box.height),
+              [("$a + b$", swatch(INK)), ("$a - b$", swatch(BRONZE))])
     return _save(fig, "s3-leak-split", variant, out_dir)
 
 
@@ -337,7 +344,7 @@ def s4_timing(variant=style.THESIS, out_dir=None) -> str:
         style.value(ax, 0.58, 0.42, "+890", "median lag")
         style.value(ax, 0.58, 0.22, "+382 to +3,698", "quantile sweep")
 
-    for ax, letter in zip(axes, "ab", strict=True):
+    for ax, letter in zip(axes, "AB", strict=True):
         ax.set_xlabel("training step")
         style.panel_letter(ax, letter, dx_mm=7.0)
     return _save(fig, "s4-timing", variant, out_dir)

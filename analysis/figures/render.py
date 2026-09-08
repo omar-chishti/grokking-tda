@@ -111,6 +111,21 @@ def _swatch(colour, lw, dash):
     return draw
 
 
+def _glyph(filled: bool):
+    """One seed of the tally, for ``S.key``."""
+    def draw(kax, y):
+        kax.scatter(0.15, y, s=8.0, marker="o", linewidths=0.6, edgecolor=S.SIENNA,
+                    facecolor=S.SIENNA if filled else "none", clip_on=False)
+    return draw
+
+
+def _comb_tooth():
+    """One tooth of the seed comb, for ``S.key``."""
+    def draw(kax, y):
+        kax.plot([0.15, 0.15], [y - 0.07, y + 0.07], color=S.SIENNA, lw=0.6, clip_on=False)
+    return draw
+
+
 def _logx(ax, lo: float = 1.0) -> None:
     ax.set_xscale("symlog", linthresh=lo)
 
@@ -227,17 +242,19 @@ def reproduction(variant: S.Variant) -> str:
         if ci == 0:
             ax.set_yticklabels(["0", "0.5", "1"])
             ax.set_ylabel("accuracy")
-            if row == 0:  # the series are named once, in (A)'s clear space above the plateau
+            if row == 1:  # every mark is named once, in the one panel with room for it
                 box = ax.get_position()
-                S.key(fig, (box.x0 + 0.20 * box.width, box.y0 + 0.50 * box.height,
-                            0.22 * box.width, 0.26 * box.height),
+                S.key(fig, (box.x0 + 0.31 * box.width, box.y0 + 0.24 * box.height,
+                            0.36 * box.width, 0.58 * box.height),
                       [("train", _swatch(S.RULE, 0.7, None)),
-                       ("test", _swatch(S.INK, 1.15, None))])
+                       ("test, median", _swatch(S.INK, 1.15, None)),
+                       ("seed grokked", _glyph(True)),
+                       ("did not grok", _glyph(False)),
+                       (r"$t_g$, one per seed", _comb_tooth())])
         else:
             ax.set_yticklabels([])
 
-        _seed_tally(ax, sub.run.nunique(), len(tg), size=6.7 * variant.scale,
-                    name="seeds grokked" if pi == 0 else "")
+        _seed_tally(ax, sub.run.nunique(), len(tg), size=6.7 * variant.scale)
         if tg:
             past_middle = max(tg) > 0.45 * end
             S.direct_label(ax, min(tg) if past_middle else max(tg), 0.030,

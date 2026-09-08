@@ -147,9 +147,20 @@ def hero(variant: S.Variant) -> str:
     ax.set_ylabel("accuracy")
     S.range_frame(ax, y=(0, 1))
 
-    S.direct_label(ax, 1150, 1.00, "train accuracy", S.RULE, dy=-4, va="top")
-    S.direct_label(ax, 1150, 0.305, "test accuracy", S.INK, dy=4, va="bottom")
-    S.direct_label(ax, 1150, 0.010, "novel pairs only", S.INK, dy=4, va="bottom")
+    # a key in the clear space above the memorisation plateau, clear of the train ramp on
+    # its left and the collapses on its right
+    def swatch(colour, lw, dash):
+        def draw(kax, y):
+            kax.plot([0.07, 0.235], [y, y], color=colour, lw=lw, clip_on=False,
+                     ls="solid" if dash is None else (0, dash))
+        return draw
+
+    box = ax.get_position()
+    S.key(fig, (box.x0 + 0.415 * box.width, box.y0 + 0.705 * box.height,
+                0.215 * box.width, 0.170 * box.height),
+          [("train accuracy", swatch(S.RULE, S.SECONDARY, None)),
+           ("test accuracy", swatch(S.INK, 1.15, None)),
+           ("novel pairs only", swatch(S.INK, 0.9, (4, 2)))])
 
     trans = ax.get_xaxis_transform()
     ax.text(t_c * 1.30, 0.048, r"$t_c$ = 200", transform=trans, ha="left", va="bottom",
@@ -157,9 +168,9 @@ def hero(variant: S.Variant) -> str:
     ax.text(t_g * 0.62, 0.048, r"$t_g$ = 28,600", transform=trans, ha="right", va="bottom",
             color=S.SIENNA, fontsize=7.0 * variant.scale, zorder=6)
 
-    y = 0.685
-    ax.annotate("", xy=(t_c, y), xytext=(t_g, y), xycoords=trans, textcoords=trans,
-                arrowprops=dict(arrowstyle="<->", color=S.BRONZE, lw=S.HAIRLINE,
+    y = 0.60
+    ax.annotate("", xy=(t_g, y), xytext=(t_c, y), xycoords=trans, textcoords=trans,
+                arrowprops=dict(arrowstyle="->", color=S.BRONZE, lw=S.HAIRLINE,
                                 shrinkA=0, shrinkB=0, mutation_scale=6))
     ax.text(t_c * 3.0, y + 0.024, r"$143\times$", transform=trans, ha="center",
             va="bottom", color=S.BRONZE, style="italic", fontsize=7.6 * variant.scale)
@@ -1478,7 +1489,6 @@ def velocity(variant: S.Variant) -> str:
     ax.set_xlabel("located changepoint, step")
     S.range_frame(ax, x=(0, float(d.step.max())), y=(-0.85, len(rows) - 0.35))
     ax.spines["left"].set_visible(False)
-    S.panel_title(ax, "where the step is located", pad=7)
     if variant.name == "thesis":
         S.panel_letter(ax, "D", dx_mm=3.0, dy_mm=1.0)
 

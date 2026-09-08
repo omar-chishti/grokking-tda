@@ -148,7 +148,7 @@ def hero(variant: S.Variant) -> str:
 
     _logx(ax, 100)
     ax.set_xlim(0, acc.step.max())
-    ax.set_ylim(-0.03, 1.06)
+    ax.set_ylim(-0.03, 1.15)
     ax.set_yticks([0, 0.5, 1.0])
     ax.set_yticklabels(["0", "0.5", "1"])
     ax.set_xlabel("training step")
@@ -170,12 +170,13 @@ def hero(variant: S.Variant) -> str:
     ax.text(t_g * 0.62, 0.048, r"$t_g$ = 28,600", transform=trans, ha="right", va="bottom",
             color=S.SIENNA, fontsize=7.0 * variant.scale, zorder=6)
 
-    y = 0.60
-    ax.annotate("", xy=(t_g, y), xytext=(t_c, y), xycoords=trans, textcoords=trans,
+    # the delay, read along the top of the panel above the saturated train curve
+    y = 1.07
+    ax.annotate("", xy=(t_g, y), xytext=(t_c, y),
                 arrowprops=dict(arrowstyle="->", color=S.BRONZE, lw=S.HAIRLINE,
                                 shrinkA=0, shrinkB=0, mutation_scale=6))
-    ax.text(t_c * 3.0, y + 0.024, r"$143\times$", transform=trans, ha="center",
-            va="bottom", color=S.BRONZE, style="italic", fontsize=7.6 * variant.scale)
+    ax.text((t_c * t_g) ** 0.5, y + 0.012, r"$143\times$", ha="center", va="bottom",
+            color=S.BRONZE, style="italic", fontsize=7.6 * variant.scale)
 
     return S.save(fig, "fig-1-1-hero", variant)
 

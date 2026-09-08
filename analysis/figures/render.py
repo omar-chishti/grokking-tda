@@ -423,15 +423,17 @@ def diagrams(variant: S.Variant) -> str:
                    edgecolors=S.PAGE, linewidths=0.5)
         dominant.append((stage, colour, float(b[top]), float(dd[top])))
 
-    x_ref, y_ref = 0.70 + 0.545 * 0.46, 0.70 + 0.177 * 0.46
-    ordered = sorted(dominant, key=lambda t: -(t[3] - y_ref) / max(x_ref - t[2], 1e-6))
-    for row, (stage, colour, bx, dy) in enumerate(ordered):
-        ax.annotate(f"{stage}   {dy - bx:.3f}", xy=(bx, dy), xytext=(0.545, 0.265 - 0.088 * row),
-                    textcoords="axes fraction", color=S.INK, va="center", ha="left",
-                    fontsize=7.0 * variant.scale,
-                    arrowprops=dict(arrowstyle="-", color=colour, lw=0.35, alpha=0.65,
-                                    shrinkA=1.0, shrinkB=4.0,
-                                    connectionstyle="arc3,rad=0.10"))
+    # A key rather than leaders: three lines to three points inside the cloud crossed each
+    # other and the data. The marked points carry the same three shades.
+    row_of = {"memorising": 0, "grokking": 1, "final": 2}
+    for stage, colour, bx, dy in dominant:
+        y = 0.255 - 0.085 * row_of[stage]
+        ax.scatter([0.540], [y], s=26, marker="o", color=colour, transform=ax.transAxes,
+                   zorder=5, edgecolors=S.PAGE, linewidths=0.5)
+        ax.text(0.585, y, stage, transform=ax.transAxes, color=S.INK, va="center",
+                ha="left", fontsize=7.0 * variant.scale)
+        ax.text(0.985, y, f"{dy - bx:.3f}", transform=ax.transAxes, color=S.INK,
+                va="center", ha="right", fontsize=7.0 * variant.scale)
     ax.set_xlim(0.70, 1.16)
     ax.set_ylim(0.70, 1.16)
     ax.set_aspect("equal")
@@ -887,13 +889,27 @@ def headtohead(variant: S.Variant) -> str:
         panels.append(ax)
         sub = d[d.task == task]
         ax.axhline(floor, color=S.RULE, lw=S.HAIRLINE, zorder=1)
+        offscale: dict[int, list[float]] = {}
         for key, (_name, colour, dash, glyph) in families.items():
             arm = sub[sub.feature_set == key].set_index("window").reindex(windows)
             x = np.arange(len(windows))
-            ax.errorbar(x, arm.score_mean, yerr=arm.score_std, color=colour, lw=0.9,
+            score, err = arm.score_mean.to_numpy(float), arm.score_std.to_numpy(float)
+            # A value below the shared floor is drawn on it, as a hollow glyph, with the
+            # values named once per window; dropping it silently leaves an empty column.
+            under = np.isfinite(score) & (score < ylim[0])
+            for i in np.flatnonzero(under):
+                offscale.setdefault(int(i), []).append(float(score[i]))
+            ax.errorbar(x[~under], score[~under], yerr=err[~under], color=colour, lw=0.9,
                         ls="solid" if dash == (None, None) else (0, dash), marker=glyph,
                         ms=3.4, mew=0.0, elinewidth=S.HAIRLINE, capsize=1.8,
                         capthick=S.HAIRLINE, alpha=0.90, zorder=3)
+            if under.any():
+                ax.scatter(x[under], np.full(under.sum(), ylim[0] + 0.03), s=13, marker="v",
+                           facecolors="none", edgecolors=colour, linewidths=0.6, zorder=3)
+        for i, values in offscale.items():
+            S.direct_label(ax, i, ylim[0] + 0.03,
+                           "off scale: " + ", ".join(f"{v:.0f}" for v in sorted(values)),
+                           S.RULE, dx=0, dy=8, ha="center", size=6.0 * variant.scale)
         ax.set_xticks(np.arange(len(windows)))
         ax.set_xticklabels(ticks)
         ax.set_xlim(-0.35, 2.35)
@@ -913,11 +929,26 @@ def headtohead(variant: S.Variant) -> str:
                         .increment_over_baselines.iloc[0]) for w in windows]
         y = np.arange(len(values))
         ax.axvline(0.0, color=S.INK, lw=0.6, zorder=2)
+        lo, hi = -1.15, 0.55
         for value, row in zip(values, y, strict=True):
-            ax.plot([0, value], [row, row], color=S.BRONZE, lw=S.HAIRLINE, zorder=3)
-        ax.scatter(values, y, s=19, marker="o", zorder=4, linewidths=0.8,
-                   facecolors=[S.BRONZE if v > 0 else "none" for v in values],
+            ax.plot([0, min(max(value, lo), hi)], [row, row], color=S.BRONZE,
+                    lw=S.HAIRLINE, zorder=3)
+        inside = [lo <= v <= hi for v in values]
+        ax.scatter([v for v, k in zip(values, inside, strict=True) if k],
+                   [r for r, k in zip(y, inside, strict=True) if k],
+                   s=19, marker="o", zorder=4, linewidths=0.8,
+                   facecolors=[S.BRONZE if v > 0 else "none"
+                               for v, k in zip(values, inside, strict=True) if k],
                    edgecolors=S.BRONZE)
+        for value, row, k in zip(values, y, inside, strict=True):
+            if k:
+                continue
+            edge = hi if value > hi else lo
+            ax.scatter([edge], [row], s=19, marker=">" if value > hi else "<",
+                       facecolors="none", edgecolors=S.BRONZE, linewidths=0.8, zorder=4)
+            S.direct_label(ax, edge, row, f"{value:+.1f}", S.BRONZE,
+                           dx=-3 if value > hi else 3, dy=6,
+                           ha="right" if value > hi else "left", size=6.0 * variant.scale)
         ax.set_yticks(y)
         ax.set_yticklabels(ticks, fontsize=6.8 * variant.scale)
         ax.set_ylim(len(values) - 0.5, -0.5)
@@ -977,9 +1008,9 @@ def pid(variant: S.Variant) -> str:
             right = max(right, (before + hi) * 1.30)
     span = (0.0, right)
 
-    fig = S.figure(S.FULL, 0.330, variant)
+    fig = S.figure(S.FULL, 0.345, variant)
     ax = fig.add_subplot(111)
-    fig.subplots_adjust(left=0.036, right=0.952, bottom=0.255, top=0.955)
+    fig.subplots_adjust(left=0.036, right=0.952, bottom=0.244, top=0.930)
     size = 6.6 * variant.scale
 
     ax.set_xlim(*span)
@@ -1479,7 +1510,13 @@ def phdim(variant: S.Variant) -> str:
             ax.plot(g.step, g.ph_dim, color=S.RULE, lw=0.5, zorder=2)
         median = sub.groupby("step").ph_dim.median()
         ax.plot(median.index, median.values, color=S.INK, lw=1.15, zorder=4)
-        terminal[prefix] = float(median.iloc[-1])
+        # the same terminal statistic panel (f) scores: the last five windows of each run,
+        # medianed over runs. Reading the last point of the pooled median instead makes the
+        # panel disagree with the scatter beside it.
+        terminal[prefix] = float(
+            sub.sort_values("step").groupby("run").ph_dim
+            .apply(lambda s: s.dropna().tail(5).median()).median()
+        )
 
         tg = sub.t_g.dropna()
         if not tg.empty:
@@ -1494,7 +1531,7 @@ def phdim(variant: S.Variant) -> str:
         ax.minorticks_off()
         S.range_frame(ax, x=(lo, hi), y=ylim)
         S.panel_title(ax, title, pad=7)
-        S.annotate(ax, 0.965, 0.86, f"{median.iloc[-1]:.2f}", ha="right",
+        S.annotate(ax, 0.965, 0.86, f"{terminal[prefix]:.2f}", ha="right",
                    size=7.4 * variant.scale)
         if ci == 0:
             ax.set_yticklabels(["1.0", "1.2", "1.4", "1.6"])

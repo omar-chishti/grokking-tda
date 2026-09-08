@@ -1,5 +1,5 @@
 {
-  "generated_from": "/Users/omar/Desktop/Imperial/Individual Project/Code/results/raw",
+  "generated_from": "results/raw",
   "n_runs_loaded": 226,
   "n_main_programme": 138,
   "n_dense": 88,
@@ -359,8 +359,9 @@
     "order": 120,
     "ordered_pairs": 14400,
     "commuting_pairs": 840,
-    "commuting_fraction": 0.058333333333333334,
-    "predicted_plateau": 0.034999999999999996,
+    "leakable_pairs": 720,
+    "leakable_fraction": 0.05,
+    "predicted_plateau": 0.03,
     "train_fraction": 0.6
   },
   "s5_measured_plateau": {

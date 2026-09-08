@@ -118,7 +118,7 @@ def plateau_relaxed(
 ) -> bool:
     """Has this run too few snapshots past the plateau bound to take a median?
 
-    Thirteen grok inside their last fifth. Theirs starts at ``t_g`` instead, which understates
+    Fourteen grok inside their last fifth. Theirs starts at ``t_g`` instead, which understates
     a rising effect, and is reported because it departs from the rule §4.2 states.
     """
     steps = obs["step"].to_numpy(float)

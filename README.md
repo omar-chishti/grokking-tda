@@ -60,7 +60,7 @@ magnitude across training. Every summary is therefore reported both raw and scal
 src/grokking_tda/   the framework: models, engine, artifact contract, TDA, baselines, evaluation
 analysis/           the reduction layer: a bank of runs -> the tables and figures a write-up quotes
 results/processed/  the tidy table behind every number and figure, small enough to track
-tests/              191 tests over the framework, plus an import check on the reduction layer
+tests/              193 tests over the framework, plus an import check on the reduction layer
 experiments/        the run programme, as checked-in data
 scripts/remote/     orchestration for a pool of shared GPU workstations
 docs/               architecture and the architecture decision records

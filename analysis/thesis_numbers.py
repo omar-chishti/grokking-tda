@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -218,13 +219,16 @@ def commutativity_prediction(n_symbols: int = 5, train_fraction: float = 0.6) ->
 
     commuting = sum(1 for p in elements for q in elements if compose(p, q) == compose(q, p))
     order = len(elements)
-    fraction = commuting / (order * order)
+    # a pair (a, a) is its own transpose, so it is held out with itself and cannot leak
+    leakable = commuting - order
+    fraction = leakable / (order * order)
     return {
         "group": f"S_{n_symbols}",
         "order": order,
         "ordered_pairs": order * order,
         "commuting_pairs": commuting,
-        "commuting_fraction": fraction,
+        "leakable_pairs": leakable,
+        "leakable_fraction": fraction,
         "predicted_plateau": train_fraction * fraction,
         "train_fraction": train_fraction,
     }
@@ -289,7 +293,7 @@ def build(root: Path, out: Path) -> dict:
     add_runs = sorted(canonical.run)
     decayed = main[main.weight_decay > 0]
     claims = {
-        "generated_from": str(root.resolve()),
+        "generated_from": os.path.relpath(root.resolve(), Path(__file__).resolve().parents[1]),
         "n_runs_loaded": int(len(bank)),
         "n_main_programme": int((~bank.replicate).sum()),
         "n_dense": int(bank.replicate.sum()),
@@ -405,9 +409,9 @@ def report(claims: dict, conditions: pd.DataFrame) -> None:
     )
     cs, s5 = claims["commutativity_s5"], claims["s5_measured_plateau"]
     print(
-        f"\nS_5 commutativity: {cs['commuting_pairs']}/{cs['ordered_pairs']} pairs commute "
-        f"({cs['commuting_fraction']:.4f}); predicted plateau at f={cs['train_fraction']} "
-        f"is {cs['predicted_plateau']:.4f}"
+        f"\nS_5 commutativity: {cs['commuting_pairs']}/{cs['ordered_pairs']} pairs commute, "
+        f"{cs['leakable_pairs']} off the diagonal ({cs['leakable_fraction']:.4f}); predicted "
+        f"plateau at f={cs['train_fraction']} is {cs['predicted_plateau']:.4f}"
     )
     if s5.get("n"):
         print(

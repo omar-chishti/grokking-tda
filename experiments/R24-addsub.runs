@@ -9,7 +9,7 @@
 #   Documentation/SideQuest_Orientation_2026-09-03.md
 #
 # LAUNCH WITH A SEPARATE RESULTS TREE, or these runs enter the thesis bank:
-#   RESULTS_DIR=results-sidequest REMOTE_USER=oc525 ./scripts/remote/gtda-remote launch \
+#   RESULTS_DIR=results-sidequest REMOTE_USER=<login> ./scripts/remote/gtda-remote launch \
 #       experiments/R24-addsub.runs
 # The `_sq-` tag in the run name is the second guard (identity.REPLICATE_TAGS); the separate tree
 # is the first, and the reason nothing in results/ can move.

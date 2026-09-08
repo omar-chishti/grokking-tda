@@ -754,7 +754,7 @@ def noncyclic(variant: S.Variant) -> str:
     S.use(variant)
     d = _load("fig-5-2-noncyclic.csv")
     band = float(d.null_lo.iloc[0]), float(d.null_hi.iloc[0])
-    predicted = 0.6 * 840 / 14400  # §3.5, from the 840 commuting pairs of S_5
+    predicted = 0.6 * 720 / 14400  # §3.5: the 840 commuting pairs of S_5 less the 120 diagonal
 
     fig = S.figure(S.FULL, 0.585, variant)
     gs = fig.add_gridspec(2, 2, height_ratios=[2.05, 1.0], left=0.068, right=0.912,
@@ -792,8 +792,8 @@ def noncyclic(variant: S.Variant) -> str:
                ha="left", va="center", style="normal", size=6.6 * variant.scale)
 
     strip.set_ylim(0, 0.062)
-    strip.set_yticks([0, 0.035])
-    strip.set_yticklabels(["0", "0.035"])
+    strip.set_yticks([0, predicted])
+    strip.set_yticklabels(["0", f"{predicted:.3f}"])
     strip.set_xlabel("training step")
     S.range_frame(strip, y=(0, 0.06))
     measured = _claims()["s5_measured_plateau"]["median"]
@@ -941,9 +941,16 @@ def headtohead(variant: S.Variant) -> str:
             edge = hi if value > hi else lo
             ax.scatter([edge], [row], s=19, marker=">" if value > hi else "<",
                        facecolors="none", edgecolors=S.BRONZE, linewidths=0.8, zorder=4)
-            S.direct_label(ax, edge, row, f"{value:+.1f}", S.BRONZE,
-                           dx=-3 if value > hi else 3, dy=6,
-                           ha="right" if value > hi else "left", size=6.0 * variant.scale)
+            # the increment is a difference between two fits; where both sit far below
+            # zero it is named with them, so a large positive number is not read as a result
+            pair = d[(d.task == task) & (d.window == windows[row])].set_index("feature_set")
+            base, both = (float(pair.score_mean[k]) for k in ("baselines", "baselines+topology"))
+            side = dict(dx=-3 if value > hi else 3, ha="right" if value > hi else "left",
+                        size=6.0 * variant.scale)
+            S.direct_label(ax, edge, row, f"{value:+.1f}", S.BRONZE, dy=6, **side)
+            if max(base, both) < -5:
+                S.direct_label(ax, edge, row, f"{base:.0f} to {both:.0f}", S.RULE, dy=-7,
+                               **side)
         ax.set_yticks(y)
         ax.set_yticklabels(ticks, fontsize=6.8 * variant.scale)
         ax.set_ylim(len(values) - 0.5, -0.5)
@@ -1082,8 +1089,8 @@ def pid(variant: S.Variant) -> str:
     bot.set_xlabel(r"unique to $H_1$,  nats", labelpad=1.5)
     S.range_frame(bot, x=span_b, y=None)
     bot.spines["left"].set_visible(False)
-    S.panel_letter(top, "a", dx_mm=33.0)
-    S.panel_letter(bot, "b", dx_mm=33.0)
+    S.panel_letter(top, "A", dx_mm=33.0)
+    S.panel_letter(bot, "B", dx_mm=33.0)
     return S.save(fig, "fig-5-4-pid", variant)
 
 
@@ -1228,7 +1235,7 @@ def crocker(variant: S.Variant) -> str:
 
     fig = S.figure(S.FULL, S.RATIOS["standard"], variant)
     gs = fig.add_gridspec(2, 2, left=0.090, right=0.980, bottom=0.215, top=0.885,
-                          hspace=0.22, wspace=0.10)
+                          hspace=0.22, wspace=0.10, height_ratios=[1.0, 1.6])
 
     mesh = None
     for ci, (regime, subtitle) in enumerate(regimes):
@@ -1557,9 +1564,9 @@ def phdim(variant: S.Variant) -> str:
         ax.scatter(above.gap, np.full(len(above), ylim[1] - 0.012), s=13, marker="^",
                    facecolors="none", edgecolors=S.INK, linewidths=0.5, zorder=4,
                    clip_on=False)
-        S.direct_label(ax, float(above.gap.min()), ylim[1] - 0.012,
+        S.direct_label(ax, -0.10, ylim[1] - 0.012,
                        "off scale: " + ", ".join(f"{v:.1f}" for v in sorted(above.dim)),
-                       S.INK, dx=-6, dy=-1, ha="right", size=6.4 * variant.scale)
+                       S.INK, dx=0, dy=-7, ha="left", va="top", size=6.0 * variant.scale)
     condition = fitting.assign(cond=fitting.index.str.replace(r"_s\d+$", "", regex=True))
     for _, g in condition.groupby("cond"):
         if g.dim.median() <= ylim[1]:
@@ -1666,6 +1673,10 @@ def depth(variant: S.Variant) -> str:
             base = float(len(STAGES) - 1 - ri)
             ax.plot([0.06, len(columns) - 0.06], [base, base], color=S.RULE,
                     lw=S.HAIRLINE, zorder=1)
+            for level in (1, 2):  # the scale, on every row: a bar is read against a rule
+                y = base + scale * level / 2.0
+                ax.plot([0.06, len(columns) - 0.06], [y, y], color=S.RULE, lw=0.3,
+                        ls=(0, (1.0, 2.2)), alpha=0.55, zorder=1)
             rows = block[block.stage == stage].set_index("depth")
             for ci, col in enumerate(columns.itertuples()):
                 if col.depth not in rows.index:

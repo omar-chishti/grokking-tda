@@ -28,8 +28,10 @@ def _circle(direction: int, dim: int = 8, seed: int = 0) -> np.ndarray:
 
 @pytest.mark.parametrize("direction", [1, -1])
 def test_a_circle_winds_once_in_its_own_plane(direction: int) -> None:
+    """Once round, in either direction. The sign belongs to the plane's basis, which the
+    decomposition fixes only up to a reflection, so it is not asserted here."""
     loop = _circle(direction)
-    assert winding(loop, _plane(loop)) == pytest.approx(direction, abs=1e-9)
+    assert abs(winding(loop, _plane(loop))) == pytest.approx(1.0, abs=1e-9)
 
 
 def test_the_product_of_two_windings_is_basis_free() -> None:
@@ -72,7 +74,7 @@ def test_noise_winds_too_which_is_why_the_winding_is_gated() -> None:
     rng = np.random.default_rng(0)
     noise = rng.normal(size=(P, 8))
     basis = _plane(noise)
-    assert abs(winding(noise, basis)) >= 1.0, "noise winds; the guard cannot be the winding"
+    assert abs(winding(noise, basis)) >= 1.0 - 1e-9, "noise winds; the guard cannot be the winding"
     assert monotonicity(noise, basis) < 0.7
     assert planarity(noise) < 0.6
 

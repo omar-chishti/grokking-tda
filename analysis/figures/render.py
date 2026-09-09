@@ -370,7 +370,7 @@ def signature(variant: S.Variant) -> str:
            ("median", _swatch(S.INK, S.DATA, None))])
     box = axes[(0, 1)].get_position()  # the scale trace is named where it is least crowded
     S.key(fig, (box.x0 + 0.04 * box.width, box.y0 + 0.22 * box.height,
-                0.33 * box.width, 0.25 * box.height),
+                0.26 * box.width, 0.25 * box.height),
           [("scale $s$\n(own axis)", _swatch(S.RULE, 0.7, (1, 2.2)))])
     ax = axes[(0, 0)]
     tg_med = float(np.median(sorted(

@@ -1,8 +1,8 @@
-"""The four operator figures of R24, in the house system (Documentation/Figures/S-operator.md).
+"""The four operator figures of R24 (thesis Appendix B), in the house system.
 
-They live here rather than in ``analysis/figures`` because the side quest is not thesis work and
-must not reach the manuscript's build. The drawing style is shared, since a figure that came out
-looking like an import would defeat the point of having a house style at all.
+They live here rather than in ``analysis/figures`` because the operator runs keep their own
+results tree and read nothing from the thesis bank. The drawing style is shared, since a figure
+that came out looking like an import would defeat the point of having a house style at all.
 """
 
 from __future__ import annotations
@@ -260,7 +260,7 @@ def s3_leak_split(variant=style.THESIS, out_dir=None) -> str:
 
 
 def _fraction_of_own_change(step, y, rising):
-    """A series rescaled to the fraction of its own total change, which is how §11.1 times them.
+    """A series rescaled to the fraction of its own total change, which is how §B.4 times them.
 
     Two series of different units and opposite sense cannot be compared on one axis; two series
     each expressed as *how far through its own transition it is* can, and the horizontal gap
@@ -305,7 +305,7 @@ def s4_timing(variant=style.THESIS, out_dir=None) -> str:
     style.direct_label(ax, 38000, 0.06, "reference", BRONZE, ha="right", dy=6.0)
     style.direct_label(ax, 38000, 1.46, "permuted labels", RULE, ha="right", dy=-5.0)
 
-    # (b) both series as the fraction of their own transition, which is what §11.1 times and the
+    # (b) both series as the fraction of their own transition, which is what §B.4 times and the
     # only way a lag between an accuracy and a residual can be a horizontal distance on one axis
     ax = axes[1]
     crossings: dict[str, list[float]] = {}

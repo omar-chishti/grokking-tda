@@ -1,4 +1,4 @@
-regime,estimator,atom,bits,share,ci_lo,ci_hi,null_median,null_p,total,n,n_configurations,n_effective,target,source_a,source_b
+regime,estimator,atom,nats,share,ci_lo,ci_hi,null_median,null_p,total,n,n_configurations,n_effective,target,source_a,source_b
 pooled,gaussian_mmi__ratio,redundant,0.13089142093168477,0.7898252182730608,0.0005915089144277391,0.3424525362597801,0.005835965947434907,0.01199400299850075,0.16572200773466894,74,19,22.34975859955167,log10 t_g,h1_max_persistence_normalised__ratio,circularity
 pooled,gaussian_mmi__ratio,unique_a,0.0,0.0,0.0,0.15860284340388564,0.0,1.0,0.16572200773466894,74,19,22.34975859955167,log10 t_g,h1_max_persistence_normalised__ratio,circularity
 pooled,gaussian_mmi__ratio,unique_b,0.026559470902637994,0.16026520113829015,0.0,0.17918681276744805,0.0003306192661442983,0.13993003498250875,0.16572200773466894,74,19,22.34975859955167,log10 t_g,h1_max_persistence_normalised__ratio,circularity

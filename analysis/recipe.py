@@ -1,13 +1,7 @@
-"""Which single ingredient of the recipe decides how circular the solution is? (§4.5, §7.6)
+"""Which single ingredient of the recipe decides how circular the solution is? (§4.5, §7.4)
 
-§4.5 concludes that *the recipe as a whole* determines circularity, which is an admission
-rather than a finding: the two headline regimes differ in six things at once and the
-weight-decay dose sweep shows the dose alone is not it. R14 holds the modulus, the weight
-decay and the budget fixed and moves one factor at a time from each of two anchors, so a
-difference between a cell and its anchor is attributable to that factor and nothing else.
-
-A cell is identified from its configuration rather than its name: the name records the design
-and the configuration is what ran, and where they disagree the configuration is right.
+R14 holds the modulus, the weight decay and the budget fixed and moves one of the six ingredients
+at a time from each anchor. A cell is identified from its configuration rather than its name.
 """
 
 from __future__ import annotations

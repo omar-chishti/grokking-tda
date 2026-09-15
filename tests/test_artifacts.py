@@ -1,10 +1,7 @@
-"""The artifact store's contract: what a run writes, and what may be read back from it.
+"""The artifact store's contract.
 
-Training happens once and analysis happens many times, so everything downstream is a
-statement about this directory rather than about the training loop. Three guarantees are
-pinned here — a run round-trips, a run directory is never quietly reused, and the derived
-layers (the diagram cache, the representation splits, the aggregate) read what was written
-rather than something adjacent to it.
+A run round-trips, a run directory is never quietly reused, and the derived layers (the diagram
+cache, the representation splits, the aggregate) read what was written.
 """
 
 from __future__ import annotations

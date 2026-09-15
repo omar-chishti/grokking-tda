@@ -114,12 +114,10 @@ def verdict_invariance(root: Path, summaries: pd.DataFrame) -> pd.DataFrame:
 
 
 def in_window_drift(bank: pd.DataFrame) -> pd.DataFrame:
-    """How much the cloud's scale moves *between the two windows an effect is read across*.
+    """How much the cloud's scale moves between the two windows an effect is read across.
 
-    §3.3.1 motivates the correction with the contraction over the whole run, which reaches
-    $239\\times$; but the baseline window opens at $0.5\\,t_g$, so neither compared window touches
-    initialisation and that is not the drift the ratio suffers. The quotient of the raw and
-    normalised ratios *is* that drift, because the two differ only by the scale divided out.
+    That is the drift the ratio suffers, far smaller than the whole-run contraction because neither
+    window touches initialisation. It equals the quotient of the raw and normalised ratios.
     """
     raw, norm = "h1_max_persistence__ratio", "h1_max_persistence_normalised__ratio"
     # the condition table excludes re-runs, so this must too, or the two disagree on the same run

@@ -1,9 +1,7 @@
-"""Persistence itself, on shapes whose answer is known before the code runs.
+"""Persistence on shapes whose answer is known in advance.
 
-Every number in the thesis is a summary of a diagram, so the diagram has to be right on a
-circle and empty on a blob before anything it says about an embedding is worth reading.
-The summaries that read a diagram rather than a cloud — entropy, the distance between two
-of them, the velocity along a sequence, the dimension of the path — are pinned here too.
+The diagram must be right on a circle and empty on a blob; the summaries that read a diagram
+(entropy, distances, velocity, the path's dimension) are pinned here too.
 """
 
 from __future__ import annotations

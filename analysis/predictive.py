@@ -1,4 +1,4 @@
-"""The completed predictive head-to-head (§5.4): full, extreme condition held out, winsorised."""
+"""The completed predictive head-to-head (§5.3): full, extreme condition held out, winsorised."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from grokking_tda.analysis.identity import condition_key
 from grokking_tda.evaluation.headtohead import head_to_head
 from grokking_tda.evaluation.predictive import PREREGISTERED_WINDOWS, before_the_event
 
-# the configuration §5.4 names as the candidate driver of the negative, as a condition key
+# the configuration §5.3 names as the candidate driver of the negative, as a condition key
 EXTREME_GROUP = condition_key(
     {
         "model": {"name": "transformer"},

@@ -26,14 +26,10 @@ def _gaussian_mi(x: np.ndarray, y: np.ndarray) -> float:
 def gaussian_pid(
     source_a, source_b, target, *, normal_scores: bool = True
 ) -> dict[str, float]:
-    """MMI decomposition of ``I({A,B}; T)`` in nats; ``unique_a`` is the headline.
+    """MMI decomposition of ``I({A,B}; T)`` in nats.
 
-    Under MMI the weaker source's unique atom is zero by construction, so a zero here means
-    dominated, not uninformative. ``williams_beer_pid`` is the estimator that can tell them apart.
-
-    Source A may be multivariate, which is what a vectorised diagram needs: the atoms are then
-    the decomposition against a source of that width, and the covariance costs a degree of
-    freedom per column.
+    The weaker source's unique atom is zero by construction, so a zero means dominated rather than
+    uninformative; ``williams_beer_pid`` can tell the two apart. Source A may be multivariate.
     """
     a = np.asarray(source_a, dtype=float)
     a = a.reshape(-1, 1) if a.ndim == 1 else a

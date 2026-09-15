@@ -113,7 +113,7 @@ def intervention_timing(bank: pd.DataFrame) -> dict:
 
 
 def dose_response(bank: pd.DataFrame) -> dict:
-    """Does the topological transition track ``t_g`` as weight decay drags it? (§5.7.1)"""
+    """Does the topological transition track ``t_g`` as weight decay drags it? (§5.7)"""
     dose = bank[
         (bank.model == "transformer")
         & (bank.operation == "add")
@@ -374,7 +374,7 @@ def report(claims: dict, conditions: pd.DataFrame) -> None:
     dr = claims["dose_response"]
     if "slope" in dr:
         print(
-            f"\ndose-response (§5.7.1): log t_top on log t_g over {dr['n']} runs at "
+            f"\ndose-response (§5.7): log t_top on log t_g over {dr['n']} runs at "
             f"weight decays {dr['doses']} — slope {dr['slope']:+.2f} "
             f"(se {dr['slope_stderr']:.2f}), R^2 {dr['r2']:.2f}, p {dr['p']:.3g}, "
             f"Spearman {dr['spearman_rho']:+.2f}"

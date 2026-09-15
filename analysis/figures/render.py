@@ -930,10 +930,8 @@ def headtohead(variant: S.Variant) -> str:
             arm = sub[sub.feature_set == key].set_index("window").reindex(windows)
             x = np.arange(len(windows))
             score, err = arm.score_mean.to_numpy(float), arm.score_std.to_numpy(float)
-            # A value below the shared floor is drawn on it, as a hollow glyph in the family's
-            # own colour; dropping it silently would leave an empty column. Four families under
-            # the floor at one window would otherwise stack into a single glyph, so each is
-            # offset by its position in the key and named beside its own marker.
+            # below the shared floor: drawn on it as a hollow glyph in the family's colour,
+            # offset by its place in the key so families at one window stay distinct
             under = np.isfinite(score) & (score < ylim[0])
             nudge = (fi - 1.5) * 0.165
             for i in np.flatnonzero(under):
@@ -1051,10 +1049,8 @@ def pid(variant: S.Variant) -> str:
     bot = fig.add_axes([0.232, 0.125, 0.718, 0.295])
     size = 6.6 * variant.scale
 
-    # (A) composition, Gaussian MMI. The bar carries the composition; the atoms are named in
-    # §5.4 to three decimals, and printing them under the segments crowded the row and put four
-    # numbers within a few thousandths of each other. A stacked bar reads as position, so no
-    # interval belongs on it either: panel (B) carries the one the question turns on.
+    # (A) composition, Gaussian MMI. The atoms' values are in §5.4 and a stacked bar carries no
+    # interval; panel (B) has the one the question turns on.
     span_a = (0.0, float(mmi.total.max()) * 1.16)
     top.set_xlim(*span_a)
     for frac, (_, name, colour) in zip((0.0, 0.235, 0.500, 0.795), atoms, strict=True):
@@ -1072,7 +1068,7 @@ def pid(variant: S.Variant) -> str:
                  va="center", color=S.INK, family=S.SMALLCAPS, fontsize=size)
         x = 0.0
         for atom, _, colour in atoms:
-            width = float(block.bits[atom])
+            width = float(block.nats[atom])
             top.barh([row], [width], left=x, height=0.46, color=colour, zorder=3,
                      edgecolor=variant.ground or "white", linewidth=0.5)
             if width <= 0.004:  # a zero is a gap in the stack, marked no taller than the bar
@@ -1100,7 +1096,7 @@ def pid(variant: S.Variant) -> str:
         r = d[(d.regime == regime) & (d.estimator == est) & (d.atom == "unique_a")]
         if not r.empty:
             ci = float(r.ci_hi.iloc[0])
-            hi_max = max(hi_max, float(r.bits.iloc[0]), ci if np.isfinite(ci) else 0.0)
+            hi_max = max(hi_max, float(r.nats.iloc[0]), ci if np.isfinite(ci) else 0.0)
     span_b = (0.0, hi_max * 1.42)
     bot.set_xlim(*span_b)
 
@@ -1108,20 +1104,20 @@ def pid(variant: S.Variant) -> str:
         r = d[(d.regime == regime) & (d.estimator == est) & (d.atom == "unique_a")]
         if r.empty:
             continue
-        row, bits = float(i), float(r.bits.iloc[0])
+        row, nats = float(i), float(r.nats.iloc[0])
         lo, hi = float(r.ci_lo.iloc[0]), float(r.ci_hi.iloc[0])
         null, pval = float(r.null_median.iloc[0]), float(r.null_p.iloc[0])
         bot.text(-0.012, row, f"{rlabel},  {elabel}", transform=bot.get_yaxis_transform(),
                  ha="right", va="center", color=S.INK, fontsize=size)
-        edge = bits
+        edge = nats
         if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
             bot.plot([lo, hi], [row] * 2, color=S.INK, lw=1.0, solid_capstyle="butt", zorder=3)
             for e in (lo, hi):
                 bot.plot([e] * 2, [row - 0.15, row + 0.15], color=S.INK, lw=1.0, zorder=3)
             edge = hi
         bot.plot([null], [row], marker="|", color=S.BRONZE, ms=7.0, mew=1.1, zorder=4)
-        structural = est.startswith("gaussian_mmi") and bits <= 0.0
-        bot.scatter([bits], [row], s=22, marker="o", zorder=5,
+        structural = est.startswith("gaussian_mmi") and nats <= 0.0
+        bot.scatter([nats], [row], s=22, marker="o", zorder=5,
                     facecolors="none" if structural else S.INK,
                     edgecolors=S.INK, linewidths=0.9)
         if structural:          # the open glyph carries it; the caption says what it means
@@ -1130,7 +1126,7 @@ def pid(variant: S.Variant) -> str:
             note = "   $p < 0.001$"
         else:
             note = f"   $p$ = {pval:.3f}".rstrip("0")
-        S.direct_label(bot, edge, row, f"{bits:.3f}{note}", S.INK, dx=5, dy=0, size=size)
+        S.direct_label(bot, edge, row, f"{nats:.3f}{note}", S.INK, dx=5, dy=0, size=size)
 
     bot.set_ylim(3.60, -0.60)
     bot.set_yticks([])

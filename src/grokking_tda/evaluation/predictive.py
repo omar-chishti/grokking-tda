@@ -17,13 +17,11 @@ def window_end_step(window: str, train_convergence: int | None) -> int | None:
 
 
 def before_the_event(table: pd.DataFrame) -> pd.DataFrame:
-    """Drop runs whose window closes at or after their own grokking step.
+    """Drop grokking runs whose window closes at or after their own grokking step.
 
-    The window above is a step count and knows nothing of where a given run's transition falls,
-    so for the fastest conditions it closes late and the features are read after the event they
-    are asked to predict. Twenty-one of eighty-three grokked runs were in that position at five
-    thousand steps, and they carried the whole of the positive R^2 in the grid. Non-grokkers are
-    kept: they are the negative class of the classification, not a leak.
+    A fixed-step window closes late for the fastest conditions and reads features after the event
+    they predict; at five thousand steps those runs carried all of the positive R^2. Non-grokkers
+    stay, as the negative class.
     """
     grokked = table["grokking_step"].notna()
     after = table["window_step"].isna() | (table["grokking_step"] > table["window_step"])

@@ -1,4 +1,4 @@
-"""Partial information decomposition, per regime and with uncertainty (§5.5)."""
+"""Partial information decomposition, per regime and with uncertainty (§5.4)."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ SOURCES_A = {
     "terminal": "h1_max_persistence_normalised__plateau",
 }
 
-# The vectorised source of §5.4: the diagram as a landscape and an image rather than as one
+# The vectorised source of §5.3: the diagram as a landscape and an image rather than as one
 # number. Three components, because the Gaussian estimator spends a degree of freedom on each
 # and the smallest regime carries twenty-odd runs.
 VECTOR_COMPONENTS = 3

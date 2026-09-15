@@ -19,9 +19,8 @@ STRIDES = (1, 5, 20, 40, 60, 100)  # in optimiser steps, so a run can only repor
 PROJECTIONS = (0, 64, 32)  # 0 keeps the stored 128 dimensions
 STRIDE = 50
 CALIBRATION_DIMS = (1, 2, 3, 4)
-# alpha-stable Levy walks, whose image has Hausdorff dimension alpha: Simsekli et al.'s own
-# model class, and the ladder the Gaussian one cannot supply, since a Brownian path has
-# dimension min(2, k) in every ambient dimension and three of its four rungs coincide.
+# alpha-stable Levy walks, whose image has Hausdorff dimension alpha (Simsekli et al.'s model
+# class); Brownian paths cannot supply the ladder, being two-dimensional for every k >= 2.
 ALPHAS = (1.0, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.5, 2.0)
 N_ITERATES = 200  # Birdal et al.'s protocol: the final consecutive iterates, and only those
 
@@ -50,11 +49,9 @@ def calibrate_alpha(
 ) -> list[dict]:
     """What the estimator returns on walks whose image dimension is known to be ``alpha``.
 
-    Drawn directly in the projected dimensions rather than drawn in parameter space and then
-    projected: a linear combination of alpha-stable variates is alpha-stable with the same index,
-    so this *is* the projected walk and not an approximation of one. Sampled at the stride the
-    real trajectories are read at, so what is calibrated is the measurement rather than the
-    estimator in isolation.
+    Drawn directly in the projected dimensions, which is exact because a linear combination of
+    alpha-stable variates is alpha-stable with the same index, and sampled at the stride the real
+    trajectories are read at.
     """
     from scipy.stats import levy_stable
 
@@ -96,13 +93,11 @@ def _median(values: list[dict], key: str) -> float:
 def stride_sweep(
     points: np.ndarray, steps: np.ndarray, window: int, *, every: int = 20, seed: int = 0
 ) -> pd.DataFrame:
-    """PH-dimension against the *iterate* stride, at a fixed number of points per window.
+    """PH-dimension against the iterate stride, at a fixed number of points per window.
 
-    Birdal et al. fit on consecutive iterates. A recording made every ``every`` steps can be
-    thinned but not refined, so a run reports the strides at or above its own recording rate and
-    R19 exists to supply the rest. Holding the window at a fixed number of *points* rather than
-    steps is what makes a difference attributable to the sampling rate instead of to how much of
-    training the window covers.
+    A recording can be thinned but not refined, so each run reports its own stride and coarser ones.
+    Fixing points rather than steps attributes a difference to the sampling rate, not to how much of
+    training the window spans.
     """
     rows = []
     for stride in STRIDES:

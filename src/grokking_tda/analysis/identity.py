@@ -1,9 +1,6 @@
 """What condition a run belongs to, and whether it re-runs one the programme already covers.
 
-Both questions were answered twice — once in ``analysis/bank.py`` for the condition table and
-once by string surgery in ``aggregate.early_window_table`` for the cross-validation groups —
-and the two disagreed, which is how forty-two duplicate optimisation paths came to straddle
-folds. They are answered here, once.
+Answered once, here, for both the condition table and the cross-validation groups.
 """
 
 from __future__ import annotations
@@ -54,20 +51,16 @@ def condition_key(config: dict) -> str:
     return "|".join(f"{key}={value}" for key, value in config_fields(config).items())
 
 
-# A run name carrying one of these repeats a condition the programme already covers. Dense,
-# trajectory and stride-one re-runs follow the same optimisation path as their main-programme
-# twin and differ only in what was recorded; the recipe sweep's cells differ in architecture and
-# batching, fields `config_fields` does not carry, so they would otherwise collapse into the
-# reference regime's condition and drag a 200k budget into its interval and the null band.
-# A new re-run programme adds its tag here before it launches, or it pools in silence.
+# A run name carrying one of these repeats a condition already covered: dense, trajectory and
+# stride-one re-runs share their twin's optimisation path, and recipe cells differ in fields
+# `config_fields` omits. A new re-run programme adds its tag here before it launches.
 REPLICATE_TAGS = ("_dense_", "_traj_", "_stride1", "_recipe-", "_sq-")
 
 
 def is_replicate(run_name: str, config: dict) -> bool:
     """Is this run outside the main programme's condition table?
 
-    The substring test is load-bearing, and ``trajectory_dim > 0`` is not the structural fix it
-    looks like: ``R9c-s5-final.runs`` sets it on the five S_5 runs, which are main programme and
-    are the non-cyclic condition of thesis §5.3.
+    By name rather than by ``trajectory_dim > 0``, which ``R9c-s5-final.runs`` also sets on the
+    five main-programme S_5 runs of thesis §5.2.
     """
     return any(tag in run_name for tag in REPLICATE_TAGS) or config["train"].get("dense_to", 0) > 0

@@ -68,9 +68,9 @@ def test_two_circles_in_orthogonal_planes_do_not() -> None:
     assert overlap(_plane(a), _plane(b)) == pytest.approx(0.0, abs=1e-6)
 
 
-def test_noise_winds_too_which_is_why_the_winding_is_gated() -> None:
-    """The trap the measurement is built around: a closed circuit of noise accumulates an integer
-    winding just as a circle does. Only monotonicity separates them."""
+def test_noise_winds_but_is_not_monotone() -> None:
+    """A closed circuit of noise winds by an integer as a circle does; only monotonicity separates
+    them."""
     rng = np.random.default_rng(0)
     noise = rng.normal(size=(P, 8))
     basis = _plane(noise)

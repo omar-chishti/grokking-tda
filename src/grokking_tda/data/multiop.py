@@ -1,12 +1,7 @@
-"""One model, several modular operations, with the operator as a token.
+"""One model, several modular operations, with the operator as a token (thesis Appendix B).
 
-Every other task here trains one operation per model, so the operation is a choice of config and
-never reaches the network. Tokenising it asks what a single-operation model cannot: whether the
-network reuses one circle for `a + b` and `a - b`, traversing it in opposite directions, or builds
-two. See `Documentation/SideQuest_Orientation_2026-09-03.md`.
-
-The residues keep indices ``0 .. p-1`` so that ``embedding_matrix()``'s slice still returns exactly
-the residue rows; the operators and ``=`` sit above them. That ordering is load-bearing.
+Residues keep indices ``0 .. p-1`` so that ``embedding_matrix()`` still returns exactly the
+residue rows; the operators and ``=`` sit above them.
 """
 
 from __future__ import annotations

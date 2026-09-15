@@ -1,21 +1,13 @@
-"""Does one model reuse one circle for `a + b` and `a - b`, or build two? (R24)
+"""Does one model reuse one circle for `a + b` and `a - b`, or build two? (R24, thesis Appendix B)
 
-Persistence cannot answer it: the diagrams are computed over Z/2, where -1 = +1, and a rotation
-and a reflection of a circle have identical barcodes anyway. The distinction lives in the induced
-map on H_1, whose degree is +1 for a rotation and -1 for a reflection.
+Persistence cannot say: over Z/2 a rotation and a reflection of a circle have the same barcode.
+The difference is the degree of the induced map on H_1, measured three ways:
 
-So this measures the degree, twice over, and the two measurements answer different halves:
-
-  * the winding of each operator's loop, in **one plane fitted to both**. The sign of a principal
-    axis is arbitrary, so a single winding means nothing; the two windings **against each other**
-    are basis-free, and w_sub = -w_add says the operators traverse one curve opposite ways.
-  * the principal angles between each operator's **own** plane, which says whether there is one
-    circle to traverse or two.
-  * the best cyclic alignment of one loop onto the other, with and without reversal. Winding is a
-    summary; this asks the claim directly, since a - b = a + (-b) makes the subtraction loop the
-    addition loop re-indexed by b -> -b, point for point.
-
-Design and outcomes: Documentation/SideQuest_Orientation_2026-09-03.md
+  * the two operators' windings in one plane fitted to both (one winding's sign is arbitrary;
+    the pair's is not);
+  * the principal angles between each operator's own plane: one circle or two;
+  * the best cyclic alignment of one loop onto the other, with and without reversal, since
+    a - b = a + (-b) makes the subtraction loop the addition loop re-indexed by b -> -b.
 """
 
 from __future__ import annotations
@@ -54,9 +46,8 @@ def _turning(loop: np.ndarray, basis: np.ndarray) -> np.ndarray:
 def winding(loop: np.ndarray, basis: np.ndarray) -> float:
     """Turns accumulated by a closed loop projected into ``basis``, signed.
 
-    Always an integer, and that is the trap: a closed circuit of *noise* also winds, typically by
-    one. The winding says which way something was traversed and never whether the something is a
-    circle — ``monotonicity`` is what says that, and it gates every reading of this.
+    A closed circuit of noise also winds, typically by one, so the winding gives a direction but
+    not a circle; ``monotonicity`` gates every reading of it.
     """
     return float(_turning(loop, basis).sum() / (2 * np.pi))
 
@@ -88,12 +79,10 @@ def overlap(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def antisymmetry(forward: np.ndarray, backward: np.ndarray) -> float:
-    """Correlation of two operators' windings across anchors: -1 one curve read both ways.
+    """Correlation of two operators' windings across anchors: -1 is one curve read both ways.
 
-    The product of two windings was the first statistic here and it is a poor one. A loop at
-    Fourier frequency k winds k times, so the product is -k^2 and reads as -256 where the degree
-    is -1; worse, it varies with k across anchors and hides under its own scale. The correlation
-    is the same claim at unit scale.
+    The product of windings scales as -k^2 at Fourier frequency k and varies with k across anchors;
+    the correlation states the same claim at unit scale.
     """
     return float(np.corrcoef(forward, backward)[0, 1])
 
@@ -266,7 +255,7 @@ def trace(run: Run, every: int) -> pd.DataFrame:
 
 
 def export(run: Run) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """The two loops as drawn, and the search landscape behind §9.4 — the geometry the figures need.
+    """The two loops as drawn, and the search landscape behind §B.3 — the geometry the figures need.
 
     ``measure`` keeps only the minimum of each search; a figure of a search has to show what was
     refused as well as what was chosen.

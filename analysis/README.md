@@ -25,18 +25,18 @@ normalisation.py     is the contraction a similarity, and does the verdict survi
 torus.py             degree-two homology of the joint-input cloud, by stage, depth and
                      projected dimension                               (thesis 4.6, 6.5)
 representation.py    the signature on the embedding, the hidden state and the logits, at
-                     matched cloud cardinality                         (thesis 7.1, RQ4)
+                     matched cloud cardinality                         (thesis 5.6, RQ4)
 circularity.py       two non-spectral circularity measures, the residual after
                      circularity, and a column-shuffle null            (thesis 4.5)
 predictive.py        the head-to-head, extreme condition held out, target winsorised
-                                                                       (thesis 5.4)
+                                                                       (thesis 5.3)
 vectorise.py         the same head-to-head and decomposition against landscapes and
-                     images rather than scalar summaries              (thesis 5.4, 5.5)
+                     images rather than scalar summaries              (thesis 5.3, 5.4, A.7)
 pid.py               decomposition per regime: two redundancy functions, two source
-                     pairings, cluster bootstrap and null              (thesis 5.5)
+                     pairings, cluster bootstrap and null              (thesis 5.4)
 redundancy.py        resampled-null p-values across the grid, BH and BY   (thesis 3.7, 4.4)
 detector.py          detector recovery on a step of known location, and whether the
-                     timing result survives the second detector        (thesis 3.6, 5.6)
+                     timing result survives the second detector        (thesis 3.6, 5.5)
 velocity.py          changepoint on the topological velocity, with its controls (thesis 6.3)
 phdim.py             window x projection sweep; the estimator on known dimensions (thesis 6.4)
 instability.py       do the transient collapses reach the analysed checkpoints? (thesis 7.4)
@@ -147,7 +147,7 @@ real data are therefore conservative, and the meaningful comparison is null-rela
 barcode, so a cloud whose above-floor bars are all signal has no gap to find: two comparable loops
 and nothing beneath them count as zero, and one noise bar beneath them counts as two. The failure is
 directional — the cleaner the cloud, the worse the answer — so it weakens a negative and cannot
-manufacture a positive. F2 in `Documentation/Code_Audit_2026-08-31.md`.
+manufacture a positive.
 
 ## Figure builders
 

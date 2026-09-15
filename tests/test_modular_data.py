@@ -1,9 +1,6 @@
-"""The tasks themselves: the label each operation defines, and the split over it.
+"""The tasks: the label each operation defines, the split, and the permuted-label control.
 
-Everything measured downstream is a statement about a dataset, so an operation that
-computes the wrong label produces a perfectly well-behaved topology of the wrong thing.
-The permuted-label control is here too, because it is a task and not a setting: it must
-destroy the rule while leaving the label marginals alone.
+The permutation must destroy the rule and keep the label marginals.
 """
 
 from __future__ import annotations

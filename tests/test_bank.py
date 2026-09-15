@@ -1,9 +1,7 @@
-"""The window rule, the verdict rule and the replicate flag — the layer the thesis quotes.
+"""The window rule, the verdict rule and the replicate flag.
 
-Every number in Chapters 4-7 comes out of ``analysis/bank.py``, so the rules it encodes are
-worth pinning: the windows are anchored on ``t_g`` and fall back when there is none, the
-verdict is stated against the null's observed extremes rather than a quantile, and re-runs of
-an existing condition are excluded from the condition table rather than pooled into it.
+Windows anchor on ``t_g`` and fall back without one; the verdict is read against the null's
+observed extremes; re-runs are excluded from the condition table.
 """
 
 from __future__ import annotations

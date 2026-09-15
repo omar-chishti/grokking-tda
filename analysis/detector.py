@@ -1,4 +1,4 @@
-"""How much does the choice of detector decide the timing result? (§3.6, §5.6)"""
+"""How much does the choice of detector decide the timing result? (§3.6, §5.5)"""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ def unrepaired(root: Path) -> dict:
 
 
 def changepoint_agreement(bank: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
-    """The timing result under the second detector, from the same ``t_g`` (§3.6, §5.6)."""
+    """The timing result under the second detector, from the same ``t_g`` (§3.6, §5.5)."""
     runs = bank[bank.grokked & ~bank.replicate].copy()
     runs["label"] = [condition_label(r) for _, r in runs.iterrows()]
     both = runs.dropna(subset=["t_top", "t_changepoint"])

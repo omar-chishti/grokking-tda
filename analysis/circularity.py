@@ -207,7 +207,7 @@ def main() -> None:
     residual = residual_analysis(merged)
     if residual:
         print(
-            f"\nresidual (§2.2): circularity explains "
+            f"\nresidual: circularity explains "
             f"{residual['ratio_on_circularity_r2']:.2f} of the log ratio's variance; "
             f"the ratio tracks log t_g at rho={residual['ratio_vs_t_g']['rho']:+.3f}, "
             f"what is left of it at rho={residual['residual_vs_t_g']['rho']:+.3f} "
@@ -223,7 +223,7 @@ def main() -> None:
     if nulls:
         nulls = pd.DataFrame(nulls)
         nulls.to_csv(args.out / "column_shuffle_null.csv", index=False)
-        print(f"\ncolumn-shuffle null (§2.8), {len(nulls)} trained embeddings:")
+        print(f"\ncolumn-shuffle null (§4.5), {len(nulls)} trained embeddings:")
         for _, r in nulls.iterrows():
             print(
                 f"  {r.run:46s} H1 max {r.h1_max:.4f} -> {r.h1_max_null_median:.4f}"

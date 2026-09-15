@@ -1,4 +1,4 @@
-"""Is the signature a function of dimensional collapse, and where is it not? (§4.5, §5.3)"""
+"""Is the signature a function of dimensional collapse, and where is it not? (§4.5, §5.2)"""
 
 from __future__ import annotations
 

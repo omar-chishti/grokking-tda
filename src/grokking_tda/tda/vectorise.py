@@ -1,13 +1,8 @@
-"""Landscapes and images: a diagram as a vector rather than as one number.
+"""Landscapes and images: a diagram as a vector rather than one number.
 
-Every topological observable in ``observables.py`` reduces a diagram to a scalar, and a verdict
-built on those is a verdict about the reduction as much as about the topology. Landscapes and
-images are the standard alternative — stable vectorisations with the same Lipschitz guarantee the
-bottleneck distance gives the diagram itself — and they turn the comparison against a Fourier
-spectrum into one between two vectors rather than two numbers.
-
-Both are functions of a diagram alone. The sampling grid is the caller's, because a landscape
-sampled on its own diagram's range is not comparable to the next checkpoint's.
+Both are stable vectorisations, Lipschitz in the bottleneck distance as the diagram itself is.
+The sampling grid is the caller's, because a landscape sampled on its own diagram's range is not
+comparable with the next checkpoint's.
 """
 
 from __future__ import annotations

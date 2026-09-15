@@ -1,10 +1,8 @@
 """The operational definitions of the transition, which every timing claim rests on.
 
-A detector that answers where there is nothing to find is worse than one that answers
-nothing: an invented step enters the lead-lag comparison silently and is indistinguishable
-there from a real one. These pin the cases the definitions were written against — a series
-that only decays, one that opens on an initialisation transient, and the two detectors
-disagreeing about which way an observable moves before they disagree about where it turns.
+An invented step enters the lead-lag comparison indistinguishable from a real one, so these pin
+the cases the definitions were written against: a series that only decays, one that opens on an
+initialisation transient, and the direction each detector reads.
 """
 
 from __future__ import annotations

@@ -1,16 +1,8 @@
-r"""When does a network acquire the operand symmetry the benchmark leaks through? (§3.5, §8.2)
+r"""When does a network acquire the operand symmetry the benchmark leaks through? (§3.5, §4.1)
 
-§3.5 argues that the memorisation-phase plateau on modular addition is the transpose of a
-memorised training pair, not partial generalisation, and that the leak needs two ingredients:
-a commutative task, and an architecture that learns to ignore operand order. It asserts the
-second on a timescale --- "within a few hundred steps, before memorisation is even complete"
---- without measuring it, and it notes that not every architecture does, without saying which.
-
-The measure is how often the network gives $(a, b)$ and $(b, a)$ the same answer, whether or
-not that answer is right --- corrected for chance, because raw agreement is degenerate exactly
-where it matters. An untrained transformer predicts five of ninety-seven classes and so agrees
-with itself on $99.6\%$ of pairs while having learnt nothing; the correction divides out the
-agreement its own predicted-class distribution would produce by coincidence.
+The measure is how often the network gives $(a, b)$ and $(b, a)$ the same answer, right or
+wrong, corrected for chance: an untrained transformer predicts five of ninety-seven classes and
+so agrees with itself on $99.6\%$ of pairs having learnt nothing.
 """
 
 from __future__ import annotations

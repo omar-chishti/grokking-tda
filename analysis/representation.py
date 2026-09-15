@@ -1,4 +1,4 @@
-"""Which representation space carries the most informative topology? (RQ4, §7.1)"""
+"""Which representation space carries the most informative topology? (RQ4, §5.6)"""
 
 from __future__ import annotations
 

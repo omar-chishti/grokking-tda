@@ -1,9 +1,7 @@
 """The Observable contract: a named ``(context) -> float``, with the direction it moves declared.
 
-Kept out of ``analysis/`` deliberately. Importing anything from that package registers the
-built-in observables, which imports ``tda`` and ``baselines``, which would in turn have to import
-the package they are being registered into. This module depends on nothing but the registry, so
-the producers of observables and the consumer of their directions can both reach it.
+Kept out of ``analysis/`` so that the producers (``tda``, ``baselines``) and the consumer of
+directions can all import it without a cycle.
 """
 
 from __future__ import annotations
@@ -28,11 +26,9 @@ def register_observable(name: str, *, direction: str = "rising"):
 def ensure_builtins() -> None:
     """Register the observables this package ships, if nothing has yet.
 
-    Registration is a side effect of importing the modules that define them, so a caller who
-    reaches a direction without having imported them reads an empty table and gets ``auto`` —
-    which resolves the direction from the data being measured, the one thing the declaration
-    exists to prevent. Every entry point that reads the table calls this first. The imports sit
-    inside the function because they point back at packages that import this one.
+    Registration happens on import, and a caller that reads a direction first would get ``auto``,
+    the direction inferred from the data, which declaring it exists to prevent. The imports are
+    local because those packages import this one.
     """
     if OBSERVABLE_DIRECTION:
         return

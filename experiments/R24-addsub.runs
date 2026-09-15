@@ -5,8 +5,7 @@
 # the diagrams are over Z/2 where -1 = +1, and a rotation and a reflection of a circle have the
 # same barcode. The degree of the induced map on H_1 is what separates them.
 #
-# Design, measurements and what each outcome would mean:
-#   Documentation/SideQuest_Orientation_2026-09-03.md
+# What it found: thesis Appendix B.
 #
 # LAUNCH WITH A SEPARATE RESULTS TREE, or these runs enter the thesis bank:
 #   RESULTS_DIR=results-sidequest REMOTE_USER=<login> ./scripts/remote/gtda-remote launch \

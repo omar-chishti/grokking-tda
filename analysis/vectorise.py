@@ -1,12 +1,7 @@
-"""Is the redundancy verdict about topology, or about a scalar summary of it? (§5.4, §5.5)
+"""Is the redundancy verdict about topology, or about a scalar summary of it? (§5.3, §5.4)
 
-Every topological feature the head-to-head scores is one number per diagram. A diagram is a
-multiset, and reducing it to a scalar is a choice that the verdict then inherits: if vectorised
-topology predicts no better than the scalars do, the negative belongs to the topology, and if it
-does, the negative belonged to the summary.
-
-Landscapes and images are computed here from the diagrams already cached under each run, so this
-adds no homology computation and touches nothing the bank has committed.
+Scores the head-to-head and the decomposition against landscapes and images built from each
+run's cached diagrams, so no homology is recomputed.
 """
 
 from __future__ import annotations
@@ -176,7 +171,7 @@ def permuted_block(frame: pd.DataFrame, vectors: tuple[str, ...], seed: int) -> 
 def scored(
     table: pd.DataFrame, window: str, vectors: tuple[str, ...], *, seed: int = 0
 ) -> pd.DataFrame:
-    """The §5.4 grid with the vector block beside the scalar one, on the same folds.
+    """The §5.3 grid with the vector block beside the scalar one, on the same folds.
 
     Only the guarded grid is scored. On the leaked one a quarter of the runs are read after the
     step they are asked to predict, and a feature set given more columns would inherit more of

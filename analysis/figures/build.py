@@ -430,7 +430,7 @@ def fig_pid(root: Path, bank: pd.DataFrame) -> pd.DataFrame:
                     continue
                 rows.append({
                     "regime": regime, "estimator": estimator, "atom": atom,
-                    "bits": value["estimate"],
+                    "nats": value["estimate"],
                     "share": value["estimate"] / total if total else float("nan"),
                     "ci_lo": value["ci"][0], "ci_hi": value["ci"][1],
                     "null_median": value["null_median"], "null_p": value["null_p"],

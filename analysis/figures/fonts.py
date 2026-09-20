@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import matplotlib.font_manager as fm
@@ -58,6 +59,7 @@ def _derive(source: Path, target: Path, family: str, style: str, tags: tuple[str
 
 def install() -> str:
     CACHE.mkdir(exist_ok=True)
+    derived = 0
     for style, suffix in _STYLES.items():
         source = Path.home() / "Library" / "Fonts" / f"ETbb{suffix or '-Regular'}.otf"
         target = CACHE / f"ETbbSC{suffix or '-Regular'}.otf"
@@ -66,4 +68,10 @@ def install() -> str:
         if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
             _derive(source, target, FAMILY, style, ("onum", "smcp"))
         fm.fontManager.addfont(str(target))
+        derived += 1
+    if not derived:
+        # the search path is macOS's, so elsewhere every panel title falls back to the default
+        # serif and the small-capitals device is lost — silently, unless it is said here
+        warnings.warn(f"no ETbb face under {Path.home() / 'Library' / 'Fonts'}: "
+                      "panel titles will not render in small capitals", stacklevel=2)
     return FAMILY

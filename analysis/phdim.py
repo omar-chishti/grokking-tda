@@ -17,7 +17,7 @@ from grokking_tda.tda.phdim import ph_dimension_fit
 WINDOWS = (100, 200, 400)
 STRIDES = (1, 5, 20, 40, 60, 100)  # in optimiser steps, so a run can only report its own and up
 PROJECTIONS = (0, 64, 32)  # 0 keeps the stored 128 dimensions
-STRIDE = 50
+WINDOW_STRIDE = 50
 CALIBRATION_DIMS = (1, 2, 3, 4)
 # alpha-stable Levy walks, whose image has Hausdorff dimension alpha (Simsekli et al.'s model
 # class); Brownian paths cannot supply the ladder, being two-dimensional for every k >= 2.
@@ -76,7 +76,7 @@ def calibrate_alpha(
 
 def series(points: np.ndarray, steps: np.ndarray, window: int, *, seed: int = 0) -> pd.DataFrame:
     rows = []
-    for end in range(window, len(steps) + 1, STRIDE):
+    for end in range(window, len(steps) + 1, WINDOW_STRIDE):
         rows.append(
             {
                 "step": int(steps[end - 1]),
@@ -108,7 +108,7 @@ def stride_sweep(
             continue
         values = [
             ph_dimension_fit(thinned[end - window : end], seed=seed)
-            for end in range(window, len(thinned) + 1, STRIDE)
+            for end in range(window, len(thinned) + 1, WINDOW_STRIDE)
         ]
         finite = [v for v in values if np.isfinite(v["ph_dim"])]
         rows.append(
@@ -187,7 +187,8 @@ def draw_sweep(runs: list, window: int = 200, seed: int = 0) -> pd.DataFrame:
             continue
         steps, points = trajectory
         for draws in DRAW_SWEEP:
-            for end in range(len(steps), max(window, len(steps) - 5 * STRIDE), -STRIDE):
+            earliest = max(window, len(steps) - 5 * WINDOW_STRIDE)
+            for end in range(len(steps), earliest, -WINDOW_STRIDE):
                 fit = ph_dimension_fit(points[end - window : end], n_draws=draws, seed=seed)
                 rows.append({"run": run.run_name, "condition": condition_of(run.run_name),
                              "n_draws": draws, "step": int(steps[end - 1]), **fit})

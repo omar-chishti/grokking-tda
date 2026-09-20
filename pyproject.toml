@@ -70,6 +70,10 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.mypy]
 python_version = "3.10"
+# `src/` only, deliberately. The reduction layer is matplotlib-heavy, where a figure is an
+# untyped object and a registry decorator carries attributes the checker cannot see; checking
+# it reports 35 errors and none of them is a defect. It is linted instead, and the guarantee
+# it carries is a committed output rather than a type.
 packages = ["grokking_tda"]
 ignore_missing_imports = true   # ripser/persim/giotto ship no stubs
 # Off deliberately: this project pins two torch majors (2.2.2 on macOS, >=2.4 on Linux),

@@ -609,9 +609,11 @@ def recipe(out: Path | None) -> str:
     top = ax.get_xaxis_transform()
     for name, x in anchors.items():
         ax.axvline(x, color=S.RULE, lw=S.HAIRLINE, zorder=1)
-        ax.text(x, 1.110, name, transform=top, ha="center", va="bottom", color=S.INK,
+        # the name clears the number by a line rather than by a hair: at 1.110 against 1.040
+        # the two stood half a millimetre apart and read as one smudged block
+        ax.text(x, 1.145, name, transform=top, ha="center", va="bottom", color=S.INK,
                 family=S.SMALLCAPS, fontsize=_pt(7.4))
-        ax.text(x, 1.040, f"{x:.2f}", transform=top, ha="center", va="bottom", color=S.INK,
+        ax.text(x, 1.035, f"{x:.2f}", transform=top, ha="center", va="bottom", color=S.INK,
                 style="italic", fontsize=_pt(6.8))
 
     # each ingredient starts one arrow at each anchor; a cause sends the two toward each other

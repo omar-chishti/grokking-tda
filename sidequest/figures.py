@@ -194,8 +194,11 @@ def s2_shift_landscape(variant=style.THESIS, out_dir=None) -> str:
         style.value(axes[1], 0.06, 0.30,
                     f"{at_null[at_null['shift'] == 0]['residual'].median():.3f}",
                     "best rotation, $s = 0$", colour=SLATE)
-    style.value(axes[0], 0.06, 0.62, "reflected", "", colour=BRONZE)
-    style.value(axes[0], 0.06, 0.48, "rotated", "", colour=SLATE)
+    # the slide has no values in the corner to sit under, so the two names drop into the empty
+    # half: every anchor's residual stays near or above 1 except in the trough at s = 0
+    names = (0.30, 0.18) if variant is style.TALK else (0.62, 0.48)
+    style.value(axes[0], 0.06, names[0], "reflected", "", colour=BRONZE)
+    style.value(axes[0], 0.06, names[1], "rotated", "", colour=SLATE)
     return _save(fig, "s2-shift-landscape", variant, out_dir)
 
 
@@ -259,17 +262,18 @@ def s3_leak_split(variant=style.THESIS, out_dir=None) -> str:
     return _save(fig, "s3-leak-split", variant, out_dir)
 
 
-def _fraction_of_own_change(step, y, rising):
+def _fraction_of_own_change(step, y):
     """A series rescaled to the fraction of its own total change, which is how §B.4 times them.
 
     Two series of different units and opposite sense cannot be compared on one axis; two series
     each expressed as *how far through its own transition it is* can, and the horizontal gap
-    between them is then the lag itself rather than an artefact of scaling.
+    between them is then the lag itself rather than an artefact of scaling. Dividing by the
+    series' own signed change is what carries a falling one, so neither caller declares a sense.
     """
     base = np.median(y[: max(3, len(y) // 5)])
     final = np.median(y[-max(3, len(y) // 5):])
     scaled = (y - base) / (final - base + 1e-12)
-    return step, np.clip(scaled, -0.1, 1.1) if rising else np.clip(scaled, -0.1, 1.1)
+    return step, np.clip(scaled, -0.1, 1.1)
 
 
 def s4_timing(variant=style.THESIS, out_dir=None) -> str:
@@ -315,10 +319,10 @@ def s4_timing(variant=style.THESIS, out_dir=None) -> str:
         observed = observed.dropna(subset=["test_acc"]).sort_values("step")
         series = {
             "accuracy": (_fraction_of_own_change(observed["step"].to_numpy(float),
-                                                 observed["test_acc"].to_numpy(float), True), INK),
+                                                 observed["test_acc"].to_numpy(float)), INK),
             "reflection": (_fraction_of_own_change(
                 frame["step"].to_numpy(float),
-                frame["residual_reflected_median"].to_numpy(float), False), BRONZE),
+                frame["residual_reflected_median"].to_numpy(float)), BRONZE),
         }
         for name, ((x, y), colour) in series.items():
             ax.plot(x, y, color=colour, lw=style.SECONDARY, alpha=0.85)
@@ -336,8 +340,14 @@ def s4_timing(variant=style.THESIS, out_dir=None) -> str:
     # apart do not have to share a line
     style.direct_label(ax, np.median(crossings["accuracy0.75"]), 0.75, "test accuracy", INK,
                        dx=-3.0, ha="right")
-    style.direct_label(ax, np.median(crossings["reflection0.25"]), 0.25, "reflection", BRONZE,
-                       dx=3.0)
+    # bronze on bronze: at slide distance the name cannot sit at the crossing, where its own
+    # seeds still fan out. On a slide it moves to where they have converged and the black series
+    # has already left the panel's lower half.
+    if variant is style.TALK:
+        style.direct_label(ax, 16800.0, 0.62, "reflection", BRONZE, dx=3.0)
+    else:
+        style.direct_label(ax, np.median(crossings["reflection0.25"]), 0.25, "reflection",
+                           BRONZE, dx=3.0)
     if variant is not style.TALK:  # on a slide the takeaway line carries these
         # low on the right, the one quarter of the panel both series have left by then: on the
         # left they ran into the curve labels, and lower still the second name met the axis

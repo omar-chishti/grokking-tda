@@ -114,7 +114,8 @@ def _phenomenon(stage: int):
     _accuracy_axis(ax, end=end)
     S.range_frame(ax, x=(0.0, end), y=(0, 1))  # the spine spans the run in every stage
     ax.set_ylabel("accuracy")
-    S.direct_label(ax, 900, 1.00, "train", S.BRONZE, dy=-4, va="top", size=_pt(7.6))
+    # ink, not bronze: bronze carries the 143x annotation here, and it may not also name a series
+    S.direct_label(ax, 900, 1.00, "train", S.INK, dy=-4, va="top", size=_pt(7.6))
     S.direct_label(ax, 900, 0.305, "test", S.INK, dy=4, va="bottom", size=_pt(7.6))
 
     trans = ax.get_xaxis_transform()
@@ -308,8 +309,11 @@ def _flip(stage: int):
     # correction is the slope rather than a claim about it
     for x, column in ((0.0, raw), (1.0, norm)):
         lo, hi = bands[column]
-        ax.add_patch(plt.Rectangle((x - 0.075, lo), 0.150, hi - lo, facecolor=S.RULE, alpha=0.22,
-                               edgecolor="none", zorder=0))
+        # the corrected band arrives with the lines that land in it: drawn on the first stage it
+        # is an empty tinted box, which reads as a container waiting to be filled
+        if stage > 1 or column == raw:
+            ax.add_patch(plt.Rectangle((x - 0.075, lo), 0.150, hi - lo, facecolor=S.RULE,
+                                       alpha=0.22, edgecolor="none", zorder=0))
         ax.plot([x, x], [0.045, 4.2], color=S.RULE, lw=S.HAIRLINE, zorder=0.5)
 
     cleared = 0
@@ -354,9 +358,16 @@ def _flip(stage: int):
                 fontsize=_pt(7.6))
         ax.text(x, -0.085, count, ha="center", va="top", color=S.INK, fontsize=_pt(7.4),
                 transform=ax.get_xaxis_transform())
-        ax.text(x + side * 0.105, band[1], f"null {band[0]:.2f}–{band[1]:.2f}",
-                ha="left" if side > 0 else "right", va="bottom", color=S.INK, alpha=0.62,
-                fontsize=_pt(6.6))
+        # each limit against the edge it marks, on the side the lines never cross
+        edge = x + side * 0.095
+        align = "left" if side > 0 else "right"
+        if stage > 1 or side < 0:  # the corrected limits arrive with their band
+            for limit in band:
+                ax.text(edge, limit, f"{limit:.2f}", ha=align, va="center", color=S.INK,
+                        alpha=0.62, fontsize=_pt(6.6))
+        if side < 0:  # what the grey is, named once, at the band the eye meets first
+            ax.text(edge, (band[0] * band[1]) ** 0.5, "null", ha=align, va="center",
+                    color=S.INK, alpha=0.62, fontsize=_pt(6.6), family=S.SMALLCAPS)
 
     return fig
 
@@ -375,11 +386,11 @@ def signature(out: Path | None) -> str:
 
 TALK_COLUMNS = ((-0.385, "left"), (-0.300, "left"), (-0.205, "left"), (-0.085, "right"),
                 (-0.020, "right"))
-TALK_HEADERS = ("arch", "op", "", "wd", "$n$")
+TALK_HEADERS = ("arch", "op", "$p$, $f$", "wd", "$n$")
 # the lag forest carries two MLP intervention arms that the dose alone cannot tell apart
 LAG_COLUMNS = ((-0.460, "left"), (-0.385, "left"), (-0.300, "left"), (-0.180, "right"),
                (-0.165, "left"))
-LAG_HEADERS = ("arch", "op", "", "wd", "")
+LAG_HEADERS = ("arch", "op", "$p$, $f$", "wd", "")
 
 
 def _setting(operation: str, modulus: float, fraction: float) -> str:
@@ -732,7 +743,7 @@ def _pid(stage: int):
 
         unique = block.loc["unique_a"]
         if unique.nats <= 0.004:
-            S.direct_label(ax, left, row, r"unique to $H_1$:  zero, by construction", S.INK,
+            S.direct_label(ax, left, row, r"unique to $H_1$:  zero", S.INK,
                            dx=7, size=_pt(7.0))
         else:
             ax.text(float(block.nats["redundant"]) + unique.nats / 2, row,
@@ -1059,7 +1070,7 @@ def interventions(out: Path | None) -> str:
     strip.set_xlabel(r"normalised $H_1^{\max}$ ratio")
 
     # both titles at one height, above the column heads
-    for x, title in ((0.2425, "MLP"), (0.715, "the same architecture, three times")):
+    for x, title in ((0.2425, "one MLP"), (0.715, "three arms")):
         fig.text(x, 0.935, title, ha="center", va="center", color=S.INK, family=S.SMALLCAPS,
                  fontsize=plt.rcParams["axes.titlesize"])
     return _save(fig, "talk-11-interventions", out)
@@ -1147,7 +1158,7 @@ def phdim(out: Path | None) -> str:
     scatter.set_xticks([0.0, 0.5, 1.0])
     scatter.set_xticklabels(["0", "0.5", "1"])
     scatter.set_yticks([1.0, 1.2, 1.4, 1.6])
-    scatter.set_yticklabels([])  # the left panel's scale, shared
+    scatter.set_yticklabels(["1.0", "1.2", "1.4", "1.6"])  # a panel away, so repeated not implied
     scatter.set_xlabel("generalisation gap")
     S.range_frame(scatter, x=(0, 1), y=ylim)
     S.panel_title(scatter, "terminal dimension against the gap", pad=7)

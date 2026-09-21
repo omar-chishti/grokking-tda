@@ -259,9 +259,15 @@ def _signature_row(fig, gs, column: str, *, ylabel: str, scale_trace: bool) -> N
         ax.margins(y=0.26 if scale_trace else 0.10)
         ax.set_xlabel("training step")
         S.panel_title(ax, titles[regime], pad=7)
+        # The name goes on the normalised row alone. It names the same quantity in both rows,
+        # and the raw row has nowhere to put it: the cloud-scale trace descends across the only
+        # space beside the number, so wherever the name sits there it lands on the dotted line
+        # and reads as naming the scale -- which is what `cloud scale, s` already names.
+        # gap 0.92 rather than style.value's 1.35, because the offset is in points and at talk
+        # type (1.25x on a panel no taller) a line and a half of air detaches name from number.
         S.value(ax, 0.975 if scale_trace else 0.035, 0.925, ratios[(regime, column)],
-                r"plateau $\div$ baseline" if ci == 0 else "",
-                ha="right" if scale_trace else "left")
+                r"plateau $\div$ baseline" if (ci == 0 and not scale_trace) else "",
+                ha="right" if scale_trace else "left", gap=0.92)
         if ci == 0:
             ax.set_ylabel(ylabel)
 
